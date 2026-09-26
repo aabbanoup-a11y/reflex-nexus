@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Loader2, Send, Users2, Sparkles, ArrowRight, Trash2, Paperclip, X, FileText, Brain } from "lucide-react";
 import { askAssistant } from "@/lib/chat.functions";
+import { browsePage } from "@/lib/agent.functions";
 import { getMemoryState, saveMemory, suggestMemories } from "@/lib/memory.functions";
 import { logRun, notifyDone, requestNotifyPermission } from "@/lib/activity";
 import { hasCrisisSignal, EMERGENCY_CONTACTS } from "@/lib/safety";
@@ -57,8 +58,38 @@ function AssistantPage() {
   const saveMem = useServerFn(saveMemory);
   const suggestMem = useServerFn(suggestMemories);
   const assistant = getAssistant(active);
-  const key = teamMode ? "team" : active;
+  const browse = useServerFn(browsePage);
+  // محادثة واحدة مشتركة بين كل المساعدين ومحفوظة على الجهاز.
+  const key = "shared";
   const messages = threads[key] ?? [];
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("shared-thread-v1");
+      if (saved) setThreads({ shared: JSON.parse(saved) });
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    const list = threads.shared;
+    if (!list) return;
+    try {
+      localStorage.setItem("shared-thread-v1", JSON.stringify(list.slice(-200).map(({ atts, ...m }) => m)));
+    } catch { /* ignore */ }
+  }, [threads]);
+
+  // لو الرسالة فيها رابط، أي مساعد يقرأ الصفحة عبر متصفح Cloudflare.
+  const withWeb = async (q: string) => {
+    const url = q.match(URL_RE)?.[0];
+    if (!url) return q;
+    try {
+      toast.info("🌐 بفتح الصفحة في المتصفح السحابي...");
+      const page = await browse({ data: { url } });
+      return `${q}\n\n[محتوى الصفحة ${url} من المتصفح]:\n${page.text}`;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "ما قدرتش أفتح الصفحة");
+      return q;
+    }
+  };
 
   useEffect(() => {
     if (!user) return setMemOn(null);
@@ -145,15 +176,21 @@ function AssistantPage() {
     try {
       if (teamMode) {
         const manager = getAssistant("manager");
-        const history = (threads["team"] ?? []).slice(-4).map(strip);
-        const plan = await runOne(manager, "team", [...history, { role: "user", content: q }], q, atts);
+        const history = (threads[key] ?? []).slice(-12).map(strip);
+        const qWeb = await withWeb(q);
+        const plan = await runOne(manager, key, [...history, { role: "user", content: qWeb }], q, atts);
         if (!plan) return;
         const crew = ASSISTANTS.filter((a) => a.key !== "manager");
-        const results = await Promise.all(
-          crew.map((a) =>
-            runOne(a, "team", [{ role: "user", content: `طلب المستخدم: ${q}\n\nخطة المدير:\n${plan.text}\n\nنفّذ الجزء الخاص بتخصصك فقط في 5 نقاط عملية قصيرة.` }], q, atts),
-          ),
-        );
+        const results: (Awaited<ReturnType<typeof runOne>>)[] = [];
+        // دفعات صغيرة عشان ما نضغطش على حد الطلبات.
+        for (let i = 0; i < crew.length; i += 6) {
+          const batch = await Promise.all(
+            crew.slice(i, i + 6).map((a) =>
+              runOne(a, key, [...history, { role: "user", content: `طلب المستخدم: ${qWeb}\n\nخطة المدير:\n${plan.text}\n\nنفّذ الجزء الخاص بتخصصك فقط في 5 نقاط عملية قصيرة.` }], q, atts),
+            ),
+          );
+          results.push(...batch);
+        }
         const shared = crew
           .map((a, i) => (results[i] ? `${a.name}:\n${results[i]!.text}` : ""))
           .filter(Boolean)
@@ -168,8 +205,8 @@ function AssistantPage() {
         }
         notifyDone("الفريق خلّص كل المهام", q);
       } else {
-        const history = (threads[key] ?? []).slice(-6).map(strip);
-        await runOne(assistant, key, [...history, { role: "user", content: q }], q, atts);
+        const history = (threads[key] ?? []).slice(-20).map(strip);
+        await runOne(assistant, key, [...history, { role: "user", content: await withWeb(q) }], q, atts);
       }
     } finally {
       setLoading(false);
@@ -375,6 +412,10 @@ function AttList({ atts }: { atts: Att[] }) {
   );
 }
 
+// كل المساعدين بيشوفوا المحادثة المشتركة: رد كل مساعد بيتبعت للباقي باسم صاحبه.
 function strip(m: Msg) {
+  if (m.role === "assistant" && m.author) return { role: "assistant" as const, content: `[${m.author}]: ${m.content}` };
   return { role: m.role, content: m.content };
 }
+
+const URL_RE = /https?:\/\/[^\s)]+/;
