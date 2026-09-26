@@ -127,3 +127,25 @@ export const runStep = createServerFn({ method: "POST" })
     );
     return { screenshot: shot, observation };
   });
+
+// قراءة نص صفحة حقيقية عبر Cloudflare Browser Rendering (قراءة فقط) لأي مساعد.
+export const browsePage = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ url: z.string().url() }).parse(d))
+  .handler(async ({ data }) => {
+    const k = keys();
+    const acc = await accountId(k);
+    let r: Response | undefined;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      r = await fetch(`${CF_API}/accounts/${acc}/browser-rendering/markdown`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${k.lovable}`, "X-Connection-Api-Key": k.cf, "Content-Type": "application/json" },
+        body: JSON.stringify({ url: data.url, gotoOptions: { waitUntil: "networkidle0", timeout: 30000 } }),
+      });
+      if (r.status !== 429) break;
+      await new Promise((res) => setTimeout(res, 11000));
+    }
+    if (!r || r.status === 429) throw new Error("المتصفح السحابي مشغول، جرّب بعد دقيقة");
+    if (!r.ok) throw new Error(`فشل فتح الصفحة [${r.status}]`);
+    const j = (await r.json()) as { result?: string };
+    return { text: String(j.result ?? "").slice(0, 12000) };
+  });
