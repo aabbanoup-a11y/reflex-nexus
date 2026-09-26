@@ -40,7 +40,9 @@ async function screenshot(url: string, scripts: string[]) {
     ];
     body["waitForTimeout"] = 800 * scripts.length + 1200;
   }
-  const r = await fetch(`${CF_API}/accounts/${acc}/browser-rendering/screenshot`, {
+  let r: Response | undefined;
+  for (let attempt = 0; attempt < 4; attempt++) {
+  r = await fetch(`${CF_API}/accounts/${acc}/browser-rendering/screenshot`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${k.lovable}`,
@@ -49,6 +51,11 @@ async function screenshot(url: string, scripts: string[]) {
     },
     body: JSON.stringify(body),
   });
+  if (r.status !== 429) break;
+  await new Promise((res) => setTimeout(res, 11000));
+  }
+  if (!r) throw new Error("Cloud browser unavailable");
+  if (r.status === 429) throw new Error("متصفح Cloudflare مشغول (حد الخطة المجانية)، حاول بعد دقيقة");
   if (!r.ok) throw new Error(`Cloud browser failed [${r.status}]: ${await r.text()}`);
   const buf = new Uint8Array(await r.arrayBuffer());
   let bin = "";
