@@ -90,7 +90,7 @@ function AssistantPage() {
         continue;
       }
       const preview = f.type.startsWith("image/") || f.type.startsWith("video/") ? URL.createObjectURL(f) : undefined;
-      setPending((p) => [...p, { path, mime: f.type || "application/octet-stream", name: f.name, preview }]);
+      setPending((p) => [...p, { path, mime: f.type || "application/octet-stream", name: f.name, ...(preview ? { preview } : {}) }]);
     }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
@@ -179,10 +179,10 @@ function AssistantPage() {
 
   const openSuggestions = async () => {
     const text = messages.filter((m) => m.role === "user").map((m) => m.content).join("\n").slice(0, 8000);
-    if (!text) return toast.info("اكتب شوية في المحادثة الأول");
+    if (!text) { toast.info("اكتب شوية في المحادثة الأول"); return; }
     try {
       const items = await suggestMem({ data: { text } });
-      if (!items.length) return toast.info("مفيش حاجة واضحة أفتكرها");
+      if (!items.length) { toast.info("مفيش حاجة واضحة أفتكرها"); return; }
       setSuggest(items.map((i) => ({ ...i, pick: true })));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "حصل خطأ");

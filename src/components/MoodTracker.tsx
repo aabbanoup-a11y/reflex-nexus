@@ -19,9 +19,9 @@ export function MoodTracker() {
   }, []);
   const add = async (mood: number) => {
     const { data: u } = await supabase.auth.getUser();
-    if (!u.user) return toast.error("سجّل دخول الأول");
+    if (!u.user) { toast.error("سجّل دخول الأول"); return; }
     const { error } = await supabase.from("mood_checkins").insert({ user_id: u.user.id, mood, note: note.trim() || null });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setNote("");
     toast.success("اتسجل — أي خطوة صغيرة تفرق");
     void load();
