@@ -70,7 +70,7 @@ function AssistantPage() {
     } catch { /* ignore */ }
   }, []);
   useEffect(() => {
-    const list = threads.shared;
+    const list = threads["shared"];
     if (!list) return;
     try {
       localStorage.setItem("shared-thread-v1", JSON.stringify(list.slice(-200).map(({ atts, ...m }) => m)));
