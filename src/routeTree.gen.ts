@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AgentRouteImport } from './routes/agent'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as HistoryRouteImport } from './routes/history'
@@ -23,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentRoute = AgentRouteImport.update({
+  id: '/agent',
+  path: '/agent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AssistantRoute = AssistantRouteImport.update({
@@ -48,6 +54,7 @@ const AuthenticatedMemoryRoute = AuthenticatedMemoryRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
@@ -55,6 +62,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
@@ -64,6 +72,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/agent': typeof AgentRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
@@ -71,13 +80,14 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/assistant' | '/auth' | '/history' | '/memory'
+  fullPaths: '/' | '/agent' | '/assistant' | '/auth' | '/history' | '/memory'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/assistant' | '/auth' | '/history' | '/memory'
+  to: '/' | '/agent' | '/assistant' | '/auth' | '/history' | '/memory'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/agent'
     | '/assistant'
     | '/auth'
     | '/history'
@@ -87,6 +97,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AgentRoute: typeof AgentRoute
   AssistantRoute: typeof AssistantRoute
   AuthRoute: typeof AuthRoute
   HistoryRoute: typeof HistoryRoute
@@ -106,6 +117,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent': {
+      id: '/agent'
+      path: '/agent'
+      fullPath: '/agent'
+      preLoaderRoute: typeof AgentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/assistant': {
@@ -153,6 +171,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AgentRoute: AgentRoute,
   AssistantRoute: AssistantRoute,
   AuthRoute: AuthRoute,
   HistoryRoute: HistoryRoute,
