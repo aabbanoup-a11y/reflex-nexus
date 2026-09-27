@@ -8,7 +8,7 @@ const Turn = z.object({
   thread: z.array(z.object({ who: z.string(), text: z.string() })).max(200),
 });
 
-export type ToolEvent = { tool: string; ok: boolean; text: string; link?: string; shot?: string };
+export type ToolEvent = { tool: string; ok: boolean; text: string; link?: string | undefined; shot?: string | undefined };
 export type TurnReply = { model: string; text: string; tools: ToolEvent[]; usedModel: string };
 
 const HINT = (me: string) => `إنت "${me}" واحد من شبكة 30 نموذج ذكاء اصطناعي بتشتغل مع أبانوب في محادثة واحدة مشتركة. كل الردود (بتاعته وبتاعت باقي النماذج) قدامك تحت وبتتحفظ عند الكل.
