@@ -245,7 +245,7 @@ function EmployeeCard({
             {employee.job_title} — {employee.department}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {employee.code} · 🤖 {employee.ai_model?.split("/")[1]}
+            {employee.code} · 🤖 {modelForKey(employee.code).split("/").pop()}
           </p>
         </div>
       </div>
@@ -327,7 +327,7 @@ function TaskDialog({
           </DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">
-          {employee?.job_title} · النموذج: {employee?.ai_model}
+          {employee?.job_title} · النموذج: {employee ? modelForKey(employee.code) : ""}
         </p>
 
         <Input
