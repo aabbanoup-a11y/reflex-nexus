@@ -4,16 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const commandSchema = z.object({
   deviceId: z.string().uuid(),
-  kind: z.enum([
-    "open_chrome",
-    "open_url",
-    "back",
-    "forward",
-    "tap_text",
-    "type_text",
-    "screenshot",
-    "stop",
-  ]),
+  kind: z.enum(["open_chrome", "open_url", "back", "tap_text", "type_text", "screenshot", "stop"]),
   payload: z.record(z.string(), z.unknown()).default({}),
 });
 
@@ -66,14 +57,16 @@ export const stopCompanion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ deviceId: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
-    const { error } = await context.supabase.from("companion_commands").insert({
-      device_id: data.deviceId,
-      user_id: context.userId,
-      kind: "stop",
-      payload: {},
-      status: "approved",
-      approved_at: new Date().toISOString(),
-    });
+    const { error } = await context.supabase
+      .from("companion_commands")
+      .insert({
+        device_id: data.deviceId,
+        user_id: context.userId,
+        kind: "stop",
+        payload: {},
+        status: "approved",
+        approved_at: new Date().toISOString(),
+      });
     if (error) throw new Error(error.message);
     return { ok: true };
   });

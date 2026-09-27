@@ -14,7 +14,7 @@ create table if not exists public.companion_commands (
   id uuid primary key default gen_random_uuid(),
   device_id uuid not null references public.companion_devices(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
-  kind text not null check (kind in ('open_chrome','open_url','back','forward','tap_text','type_text','screenshot','stop')),
+  kind text not null check (kind in ('open_chrome','open_url','back','tap_text','type_text','screenshot','stop')),
   payload jsonb not null default '{}'::jsonb,
   status text not null default 'queued' check (status in ('queued','approved','running','succeeded','failed','cancelled')),
   requires_approval boolean not null default false,
@@ -46,27 +46,12 @@ alter table public.companion_commands enable row level security;
 alter table public.companion_events enable row level security;
 
 drop policy if exists companion_devices_owner on public.companion_devices;
-create policy companion_devices_owner on public.companion_devices for all to authenticated
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
+create policy companion_devices_owner on public.companion_devices for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists companion_commands_owner on public.companion_commands;
-create policy companion_commands_owner on public.companion_commands for all to authenticated
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
+create policy companion_commands_owner on public.companion_commands for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists companion_events_owner on public.companion_events;
-create policy companion_events_owner on public.companion_events for all to authenticated
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy companion_events_owner on public.companion_events for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- The app only receives rows for devices owned by the signed-in user.
-do $$ begin
-  alter publication supabase_realtime add table public.companion_devices;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter publication supabase_realtime add table public.companion_commands;
-exception when duplicate_object then null;
-end $$;
-do $$ begin
-  alter publication supabase_realtime add table public.companion_events;
-exception when duplicate_object then null;
-end $$;
+do $$ begin alter publication supabase_realtime add table public.companion_devices; exception when duplicate_object then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.companion_commands; exception when duplicate_object then null; end $$;
+do $$ begin alter publication supabase_realtime add table public.companion_events; exception when duplicate_object then null; end $$;

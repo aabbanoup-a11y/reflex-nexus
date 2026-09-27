@@ -3,7 +3,6 @@ package com.abanoubai.companion
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.provider.Settings
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -17,7 +16,6 @@ object CommandExecutor {
                 if (url.startsWith("https://") || url.startsWith("http://")) openUrl(context, url)
             }
             "back" -> CompanionAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
-            "forward" -> CompanionAccessibilityService.instance?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_FORWARD)
             "tap_text", "type_text", "screenshot", "stop" -> CompanionAccessibilityService.instance?.handleScopedCommand(kind, record)
         }
     }

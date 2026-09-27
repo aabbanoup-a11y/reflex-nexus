@@ -37,9 +37,7 @@ function CompanionPage() {
     }
   }
   useEffect(() => {
-    void refresh();
-    // The initial load is intentionally one-shot.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void refresh(); /* initial load */
   }, []);
 
   async function send(deviceId: string, kind: "open_chrome" | "open_url" | "back") {
