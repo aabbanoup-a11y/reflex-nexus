@@ -74,9 +74,9 @@ export const networkTurn = createServerFn({ method: "POST" })
         text: await n.callModel(peer, `نموذج "${me.label}" في الشبكة بيسألك. رد بالعربية باختصار.`, [{ role: "user", content: m[2]!.trim() || "?" }]),
       }));
     }
-    for (const m of text.matchAll(/\[\[GH_READ:\s*([^|\]]+?)\s*\|?\s*([^\]]*?)\s*\]\]/g)) {
+    for (const m of text.matchAll(/\[\[GH_READ:([^|\]]+)\|?([^\]]*)\]\]/g)) {
       if (jobs++ >= 8) break;
-      await run(`📖 GitHub ${m[1]}/${m[2]}`, async () => ({ text: await n.ghRead(m[1]!, m[2] ?? "") }));
+      await run(`📖 GitHub ${m[1]}/${m[2]}`, async () => ({ text: await n.ghRead(m[1]!.trim(), (m[2] ?? "").trim()) }));
     }
     for (const m of text.matchAll(/\[\[GH_WRITE:\s*([^|\]]+?)\s*\|\s*([^\]]+?)\s*\]\]\n?([\s\S]*?)\[\[\/GH_WRITE\]\]/g)) {
       if (jobs++ >= 10) break;
