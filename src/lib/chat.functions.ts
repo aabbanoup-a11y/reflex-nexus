@@ -150,7 +150,7 @@ export const askAssistant = createServerFn({ method: "POST" })
     const hasFile = data.attachments.some((a) => !a.mime.startsWith("image/") && !a.mime.startsWith("video/") && !a.mime.startsWith("audio/"));
     const capable = (id: string) => {
       const r = reg.find((x) => x.id === id);
-      if (!r) return reg.length === 0;
+      if (!r) return reg.length === 0 || (!hasVideo && !hasImage && !hasFile);
       return (!hasVideo || r.supports_video) && (!hasImage || r.supports_images) && (!hasFile || r.supports_files);
     };
 
@@ -178,9 +178,12 @@ export const askAssistant = createServerFn({ method: "POST" })
     let lastError = "";
     for (const model of chain) {
       try {
-        const text = model.startsWith("openai/")
-          ? await callResponses(key, model, system, data.messages, parts)
-          : await callChat(key, model, system, data.messages, parts);
+        const text =
+          model.startsWith("cf/") || model.startsWith("anthropic/")
+            ? await (await import("./network.server")).callModel(model, `${system}\n${styleHint}`, data.messages)
+            : model.startsWith("openai/")
+              ? await callResponses(key, model, system, data.messages, parts)
+              : await callChat(key, model, system, data.messages, parts);
         return { text, model, switched: model !== data.model };
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err);

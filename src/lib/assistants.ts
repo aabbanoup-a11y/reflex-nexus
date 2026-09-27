@@ -6,15 +6,17 @@ export type ModelOption = {
   note: string;
 };
 
-// ترتيب البدائل: لو النموذج الأول مشغول أو فشل، يتم التحويل تلقائياً للي بعده.
-export const MODELS: ModelOption[] = [
-  { id: "google/gemini-3.8-flash", label: "جيميني 3.8 فلاش", note: "سريع جداً ومتوازن" },
-  { id: "google/gemini-3.7-flash", label: "جيميني 3.7 فلاش", note: "بديل مستقر" },
-  { id: "google/gemini-3.1-flash-lite", label: "جيميني لايت", note: "الأخف والأسرع" },
-  { id: "openai/gpt-6-astra", label: "GPT-6 أسترا", note: "تفكير أعمق" },
-];
+import { NET_MODELS, modelForKey } from "./models30";
 
-export const DEFAULT_MODEL = MODELS[0]!.id;
+// الـ30 نموذج — Cloudflare الأول (على حسابك) وبعدين Lovable AI.
+export const MODELS: ModelOption[] = NET_MODELS.map((m) => ({
+  id: m.id,
+  label: m.label,
+  note: m.provider === "cloudflare" ? "Cloudflare (حسابك)" : "Lovable AI",
+}));
+
+export const DEFAULT_MODEL = "google/gemini-3.8-flash";
+export { modelForKey };
 
 // لكل دور نموذج أساسي مخصص، والباقي بدائل بالترتيب.
 export function chainFor(primary: string): string[] {
@@ -262,6 +264,11 @@ export const ASSISTANTS: Assistant[] = [
     starters: ["يقرأ أي صفحة من رابط"],
   },
 ];
+
+// توزيع الـ30 نموذج على المساعدين (كل مساعد نموذج مختلف).
+ASSISTANTS.forEach((a, i) => {
+  a.model = NET_MODELS[(i * 7) % NET_MODELS.length]!.id;
+});
 
 export function getAssistant(key: AssistantKey): Assistant {
   return ASSISTANTS.find((a) => a.key === key) ?? ASSISTANTS[0]!;
