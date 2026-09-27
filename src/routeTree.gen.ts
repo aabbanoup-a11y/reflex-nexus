@@ -15,6 +15,7 @@ import { Route as AgentRouteImport } from './routes/agent'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as NetworkRouteImport } from './routes/network'
 import { Route as AuthenticatedMemoryRouteImport } from './routes/_authenticated/memory'
 
 const IndexRoute = IndexRouteImport.update({
@@ -46,6 +47,11 @@ const HistoryRoute = HistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NetworkRoute = NetworkRouteImport.update({
+  id: '/network',
+  path: '/network',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedMemoryRoute = AuthenticatedMemoryRouteImport.update({
   id: '/memory',
   path: '/memory',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
+  '/network': typeof NetworkRoute
   '/memory': typeof AuthenticatedMemoryRoute
 }
 export interface FileRoutesByTo {
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
+  '/network': typeof NetworkRoute
   '/memory': typeof AuthenticatedMemoryRoute
 }
 export interface FileRoutesById {
@@ -76,13 +84,28 @@ export interface FileRoutesById {
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
+  '/network': typeof NetworkRoute
   '/_authenticated/memory': typeof AuthenticatedMemoryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/agent' | '/assistant' | '/auth' | '/history' | '/memory'
+  fullPaths:
+    | '/'
+    | '/agent'
+    | '/assistant'
+    | '/auth'
+    | '/history'
+    | '/network'
+    | '/memory'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/agent' | '/assistant' | '/auth' | '/history' | '/memory'
+  to:
+    | '/'
+    | '/agent'
+    | '/assistant'
+    | '/auth'
+    | '/history'
+    | '/network'
+    | '/memory'
   id:
     | '__root__'
     | '/'
@@ -91,6 +114,7 @@ export interface FileRouteTypes {
     | '/assistant'
     | '/auth'
     | '/history'
+    | '/network'
     | '/_authenticated/memory'
   fileRoutesById: FileRoutesById
 }
@@ -101,6 +125,7 @@ export interface RootRouteChildren {
   AssistantRoute: typeof AssistantRoute
   AuthRoute: typeof AuthRoute
   HistoryRoute: typeof HistoryRoute
+  NetworkRoute: typeof NetworkRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -147,6 +172,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/network': {
+      id: '/network'
+      path: '/network'
+      fullPath: '/network'
+      preLoaderRoute: typeof NetworkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/memory': {
       id: '/_authenticated/memory'
       path: '/memory'
@@ -175,6 +207,7 @@ const rootRouteChildren: RootRouteChildren = {
   AssistantRoute: AssistantRoute,
   AuthRoute: AuthRoute,
   HistoryRoute: HistoryRoute,
+  NetworkRoute: NetworkRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
