@@ -24,8 +24,8 @@ jobs:
           packages: "platform-tools platforms;android-35 build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - run: gradle wrapper --gradle-version 8.10.2
-      - run: ./gradlew assembleRelease -PSUPABASE_URL=${{ secrets.SUPABASE_URL }} -PSUPABASE_PUBLISHABLE_KEY=${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+      - run: ./gradlew assembleDebug -PSUPABASE_URL=${{ secrets.SUPABASE_URL }} -PSUPABASE_PUBLISHABLE_KEY=${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
       - uses: actions/upload-artifact@v4
         with:
-          name: abanoubai-companion-release
-          path: android-companion/app/build/outputs/apk/release/app-release-unsigned.apk
+          name: abanoubai-companion-debug-apk
+          path: android-companion/app/build/outputs/apk/debug/app-debug.apk
