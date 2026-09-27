@@ -4,5 +4,5 @@
     android:notificationTimeout="100"
     android:canRetrieveWindowContent="true"
     android:canPerformGestures="true"
-    android:description="تنفيذ أوامر المتصفح المصرح بها من لوحة AbanoubAI"
+    android:description="@string/accessibility_service_description"
     android:settingsActivity="com.abanoubai.companion.MainActivity" />
