@@ -4,12 +4,20 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
-android { namespace = "com.abanoubai.companion"; compileSdk = 35
-    defaultConfig { applicationId = "com.abanoubai.companion"; minSdk = 26; targetSdk = 35; versionCode = 1; versionName = "0.1.0" }
+android {
+    namespace = "com.abanoubai.companion"
+    compileSdk = 35
+    defaultConfig {
+        applicationId = "com.abanoubai.companion"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 1
+        versionName = "0.1.0"
+        buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL") ?: "https://YOUR_PROJECT.supabase.co"}\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY") ?: "YOUR_PUBLISHABLE_KEY"}\"")
+    }
     buildTypes { release { isMinifyEnabled = false } }
     buildFeatures { buildConfig = true }
-    buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL") ?: "https://YOUR_PROJECT.supabase.co"}\"")
-    buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY") ?: "YOUR_PUBLISHABLE_KEY"}\"")
 }
 
 kotlin { jvmToolchain(17) }
