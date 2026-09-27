@@ -20,8 +20,8 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v3
-      - run: yes | sdkmanager --licenses >/dev/null || true
-      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+        with:
+          packages: "platform-tools platforms;android-35 build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - run: gradle wrapper --gradle-version 8.10.2
       - run: ./gradlew assembleRelease -PSUPABASE_URL=${{ secrets.SUPABASE_URL }} -PSUPABASE_PUBLISHABLE_KEY=${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
