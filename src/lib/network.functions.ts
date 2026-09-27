@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { NET_MODELS, REPOS, WORK_BRANCH } from "./models30";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const Turn = z.object({
   model: z.string().min(1),
@@ -92,6 +93,7 @@ export const networkTurn = createServerFn({ method: "POST" })
   });
 
 export const mergeRepo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ repo: z.enum(REPOS) }).parse(i))
   .handler(async ({ data }) => {
     const n = await import("./network.server");

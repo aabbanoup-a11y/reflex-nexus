@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Search, Sparkles, Users, Building2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { askAssistant } from "@/lib/chat.functions";
-import { chainFor } from "@/lib/assistants";
+import { chainFor, modelForKey } from "@/lib/assistants";
 import { logRun, notifyDone, requestNotifyPermission } from "@/lib/activity";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -286,7 +286,7 @@ function TaskDialog({
     if (!employee) return;
     requestNotifyPermission();
     const task = goal.trim() || "اكتب خطة عمل لهذا الأسبوع ونفّذ أول خطوة";
-    const model = employee.ai_model || "google/gemini-3.8-flash";
+    const model = modelForKey(employee.code);
     setLoading(true);
     setReply(null);
     try {
