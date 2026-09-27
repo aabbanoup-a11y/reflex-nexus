@@ -126,6 +126,9 @@ function Home() {
             <Button asChild size="sm" variant="outline">
               <Link to="/agent">وكيل المتصفح</Link>
             </Button>
+            <Button asChild size="sm">
+              <Link to="/network">شبكة الـ30 نموذج</Link>
+            </Button>
           </div>
           <h1 className="text-3xl font-bold sm:text-4xl">منصة إدارة الموظفين</h1>
           <p className="mt-3 max-w-xl text-muted-foreground">
