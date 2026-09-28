@@ -33,7 +33,7 @@ async function rest(path, method, body) {
 
 async function logEvent(cmd, type, message) {
   const { deviceId, session } = await get();
-  await rest("companion_events", "POST", { command_id: cmd?.id ?? null, device_id: deviceId, user_id: session.user_id, event_type: type, message: String(message ?? "").slice(0, 2000) }).catch(() => {});
+  await rest("companion_events", "POST", { command_id: cmd?.id ?? null, device_id: deviceId, user_id: session.user_id, event_type: type, message: String(message ?? "").slice(0, type === "screenshot" ? 500000 : 2000) }).catch(() => {});
 }
 
 async function setStatus(id, status, error) {
