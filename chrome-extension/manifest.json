@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "AbanoubAI Companion",
+  "version": "1.0.0",
+  "description": "يسمح لصفحة AbanoubAI بالتحكم في Chrome بعد موافقتك، مع سجل وزر إيقاف.",
+  "permissions": ["storage", "tabs", "scripting", "activeTab", "alarms"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "AbanoubAI Companion" },
+  "externally_connectable": {
+    "matches": [
+      "https://reflex-nexus.lovable.app/*",
+      "https://*.lovable.app/*",
+      "http://localhost:8080/*"
+    ]
+  }
+}
