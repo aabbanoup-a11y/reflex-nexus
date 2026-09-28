@@ -46,6 +46,16 @@ function AuthPage() {
     else setMessage("تم إرسال رابط الدخول إلى بريدك.");
   }
 
+  async function oauth(provider: "google" | "github") {
+    setBusy(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/auth` },
+    });
+    setBusy(false);
+    if (error) toast.error(error.message);
+  }
+
   return (
     <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6">
@@ -55,6 +65,10 @@ function AuthPage() {
           <Input dir="ltr" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" autoComplete="email" />
           <Input dir="ltr" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="كلمة المرور" autoComplete={mode === "login" ? "current-password" : "new-password"} />
           <Button className="w-full" disabled={busy} onClick={() => void submit()}>{mode === "login" ? "دخول" : "إنشاء حساب"}</Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" disabled={busy} onClick={() => void oauth("google")}>Google</Button>
+            <Button variant="outline" disabled={busy} onClick={() => void oauth("github")}>GitHub</Button>
+          </div>
           <Button className="w-full" variant="outline" disabled={busy} onClick={() => void sendMagicLink()}>إرسال رابط دخول للبريد</Button>
           <button className="w-full text-sm text-primary underline" onClick={() => setMode(mode === "login" ? "signup" : "login")}>
             {mode === "login" ? "ليس لدي حساب — إنشاء حساب" : "لدي حساب — تسجيل الدخول"}
