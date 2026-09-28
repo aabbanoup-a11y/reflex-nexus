@@ -31,8 +31,8 @@ export const queueCompanionCommand = createServerFn({ method: "POST" })
     }
     if (
       data.kind === "type_text" &&
-      typeof data.payload.text === "string" &&
-      data.payload.text.length > 500
+      typeof data.payload["text"] === "string" &&
+      (data.payload["text"] as string).length > 500
     ) {
       throw new Error("النص أطول من الحد المسموح");
     }
