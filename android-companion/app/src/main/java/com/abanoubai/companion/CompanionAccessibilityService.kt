@@ -26,7 +26,7 @@ class CompanionAccessibilityService : AccessibilityService() {
                 val args = android.os.Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text.take(500)) }
                 node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
             }
-            "screenshot" -> { /* Capture is intentionally wired through a later signed upload endpoint. */ }
+            "screenshot" -> throw IllegalStateException("لقطة الشاشة تحتاج MediaProjection وموافقة النظام ولم تُفعّل بعد")
         }
     }
 }

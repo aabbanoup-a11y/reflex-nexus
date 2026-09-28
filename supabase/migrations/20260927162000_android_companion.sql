@@ -16,7 +16,7 @@ create table if not exists public.companion_commands (
   user_id uuid not null references auth.users(id) on delete cascade,
   kind text not null check (kind in ('open_chrome','open_url','back','tap_text','type_text','screenshot','stop')),
   payload jsonb not null default '{}'::jsonb,
-  status text not null default 'queued' check (status in ('queued','approved','running','succeeded','failed','cancelled')),
+  status text not null default 'queued' check (status in ('queued','approved','running','succeeded','failed','cancelled','rejected')),
   requires_approval boolean not null default false,
   approved_at timestamptz,
   started_at timestamptz,
@@ -55,3 +55,20 @@ create policy companion_events_owner on public.companion_events for all to authe
 do $$ begin alter publication supabase_realtime add table public.companion_devices; exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.companion_commands; exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.companion_events; exception when duplicate_object then null; end $$;
+
+create or replace function public.set_companion_updated_at()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists companion_devices_updated_at on public.companion_devices;
+create trigger companion_devices_updated_at
+before update on public.companion_devices
+for each row execute function public.set_companion_updated_at();

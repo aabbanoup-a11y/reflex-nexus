@@ -11,7 +11,7 @@
 - [x] Lovable هو الاستضافة الحالية، والموقع المنشور هو https://reflex-nexus.lovable.app
 - [x] طبقة أولية لربط Android Companion: جداول Supabase، أوامر allowlist، سجل أحداث، وصفحة /companion
 - [x] مشروع Android Companion مستقل بخدمة Accessibility وGitHub Actions لبناء APK
-- [ ] تطبيق migration على Supabase وإنشاء تدفق الاقتران الآمن
-- [ ] إضافة واجهة رمز الاقتران وربط الجهاز بالهوية
+- [x] تطبيق migration على Supabase وإضافة توثيق Realtime عبر Access token
+- [x] إضافة واجهة Device ID وAccess token وربط الجهاز بالهوية الحالية
 - [ ] بناء APK Release واختبار فتح Chrome على Oppo فعليًا
-- [ ] تنزيل ملفات على الموبايل والتحكم في متصفح الموبايل — يحتاج موافقة المستخدم وتطبيق Companion مثبتًا
+- [ ] لقطة الشاشة/تنزيل الملفات والتحكم الموسع في متصفح الموبايل — يحتاج MediaProjection وموافقة المستخدم وتطبيق Companion مثبتًا

@@ -39,7 +39,7 @@ async function logEvent(cmd, type, message) {
 async function setStatus(id, status, error) {
   const patch = { status };
   if (status === "running") patch.started_at = new Date().toISOString();
-  if (status === "done" || status === "failed") patch.finished_at = new Date().toISOString();
+  if (status === "succeeded" || status === "failed") patch.finished_at = new Date().toISOString();
   if (error) patch.error = String(error).slice(0, 1000);
   await rest(`companion_commands?id=eq.${id}`, "PATCH", patch).catch(() => {});
 }
@@ -88,7 +88,7 @@ async function run(cmd) {
       case "stop": await chrome.storage.local.set({ enabled: false }); result = "stopped"; break;
     }
     await logEvent(cmd, cmd.kind === "screenshot" ? "screenshot" : "done", result);
-    await setStatus(cmd.id, "done");
+    await setStatus(cmd.id, "succeeded");
   } catch (e) {
     await logEvent(cmd, "error", e.message);
     await setStatus(cmd.id, "failed", e.message);
