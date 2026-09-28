@@ -42,7 +42,7 @@ export const queueCompanionCommand = createServerFn({ method: "POST" })
         device_id: data.deviceId,
         user_id: context.userId,
         kind: data.kind,
-        payload: data.payload,
+        payload: data.payload as import("@/integrations/supabase/types").Json,
         requires_approval: sensitive.has(data.kind),
         status: sensitive.has(data.kind) ? "queued" : "approved",
         approved_at: sensitive.has(data.kind) ? null : new Date().toISOString(),
