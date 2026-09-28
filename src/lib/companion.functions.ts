@@ -26,7 +26,7 @@ export const queueCompanionCommand = createServerFn({ method: "POST" })
   .inputValidator((input) => commandSchema.parse(input))
   .handler(async ({ context, data }) => {
     if (data.kind === "open_url") {
-      const url = typeof data.payload.url === "string" ? data.payload.url : "";
+      const url = typeof data.payload["url"] === "string" ? (data.payload["url"] as string) : "";
       if (!/^https?:\/\//i.test(url)) throw new Error("الرابط يجب أن يبدأ بـ http أو https");
     }
     if (
