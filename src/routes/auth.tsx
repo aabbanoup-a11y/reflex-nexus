@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,9 +48,16 @@ function AuthPage() {
 
   async function oauth(provider: "google" | "github") {
     setBusy(true);
-    const result = await lovable.auth.signInWithOAuth(provider, { redirect_uri: `${window.location.origin}/auth` });
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/auth` },
+    });
     setBusy(false);
-    if (result.error) toast.error(result.error.message);
+    if (error) {
+      const label = provider === "google" ? "Google" : "GitHub";
+      toast.error(`${label} غير مفعّل في Supabase بعد: ${error.message}`);
+      setMessage(`فعّل مزود ${label} من Supabase Authentication ثم أعد المحاولة.`);
+    }
   }
 
   return (
