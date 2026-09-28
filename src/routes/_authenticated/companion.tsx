@@ -88,6 +88,19 @@ function CompanionPage() {
     });
   }
 
+  async function createAndroidDevice() {
+    if (!uid) return setMsg("سجّل الدخول الأول");
+    const { data: d, error } = await supabase
+      .from("companion_devices")
+      .insert({ user_id: uid, device_name: "Oppo", platform: "android" })
+      .select("id")
+      .single();
+    if (error) return setMsg(error.message);
+    setDev(d.id);
+    setMsg(`تم إنشاء جهاز Oppo. Device ID: ${d.id}`);
+    await loadDevices();
+  }
+
   async function send(kind: string, payload: Record<string, unknown> = {}) {
     if (!dev) return;
     const needs = SENSITIVE.has(kind);
@@ -114,6 +127,7 @@ function CompanionPage() {
         <b>1) الربط</b>
         <Input dir="ltr" value={extId} onChange={(e) => setExtId(e.target.value.trim())} placeholder="Extension ID من chrome://extensions" />
         <Button onClick={() => void pair()}>ربط هذا المتصفح</Button>
+        <Button variant="outline" onClick={() => void createAndroidDevice()}>إنشاء جهاز Android لـ Oppo</Button>
         <Button
           variant="outline"
           disabled={!sessionToken}
@@ -121,6 +135,14 @@ function CompanionPage() {
         >
           نسخ Access token لتطبيق Oppo
         </Button>
+        {dev && devices.find((d) => d.id === dev)?.platform === "android" && (
+          <Button
+            variant="outline"
+            onClick={() => void navigator.clipboard.writeText(dev).then(() => setMsg("تم نسخ Device ID؛ الصقه في تطبيق Oppo."))}
+          >
+            نسخ Device ID لتطبيق Oppo
+          </Button>
+        )}
         {msg && <p className="text-sm">{msg}</p>}
       </section>
 
