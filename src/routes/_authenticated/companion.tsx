@@ -31,6 +31,7 @@ function CompanionPage() {
   const [cmds, setCmds] = useState<Cmd[]>([]);
   const [events, setEvents] = useState<Ev[]>([]);
   const [extId, setExtId] = useState("");
+  const [sessionToken, setSessionToken] = useState("");
   const [url, setUrl] = useState("https://example.com");
   const [text, setText] = useState("");
   const [msg, setMsg] = useState("");
@@ -51,7 +52,10 @@ function CompanionPage() {
 
   useEffect(() => {
     setExtId(localStorage.getItem("companion-ext-id") ?? "");
-    supabase.auth.getUser().then(({ data }) => setUid(data.user?.id ?? ""));
+    supabase.auth.getSession().then(({ data }) => {
+      setUid(data.session?.user.id ?? "");
+      setSessionToken(data.session?.access_token ?? "");
+    });
     void loadDevices();
   }, []);
 
@@ -110,6 +114,13 @@ function CompanionPage() {
         <b>1) الربط</b>
         <Input dir="ltr" value={extId} onChange={(e) => setExtId(e.target.value.trim())} placeholder="Extension ID من chrome://extensions" />
         <Button onClick={() => void pair()}>ربط هذا المتصفح</Button>
+        <Button
+          variant="outline"
+          disabled={!sessionToken}
+          onClick={() => void navigator.clipboard.writeText(sessionToken).then(() => setMsg("تم نسخ Access token المؤقت؛ الصقه في تطبيق Oppo ثم احذفه من الحافظة بعد الربط."))}
+        >
+          نسخ Access token لتطبيق Oppo
+        </Button>
         {msg && <p className="text-sm">{msg}</p>}
       </section>
 
