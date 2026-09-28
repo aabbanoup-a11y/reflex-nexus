@@ -26,13 +26,13 @@ export const queueCompanionCommand = createServerFn({ method: "POST" })
   .inputValidator((input) => commandSchema.parse(input))
   .handler(async ({ context, data }) => {
     if (data.kind === "open_url") {
-      const url = typeof data.payload.url === "string" ? data.payload.url : "";
+      const url = typeof data.payload["url"] === "string" ? (data.payload["url"] as string) : "";
       if (!/^https?:\/\//i.test(url)) throw new Error("الرابط يجب أن يبدأ بـ http أو https");
     }
     if (
       data.kind === "type_text" &&
-      typeof data.payload.text === "string" &&
-      data.payload.text.length > 500
+      typeof data.payload["text"] === "string" &&
+      (data.payload["text"] as string).length > 500
     ) {
       throw new Error("النص أطول من الحد المسموح");
     }
@@ -42,7 +42,7 @@ export const queueCompanionCommand = createServerFn({ method: "POST" })
         device_id: data.deviceId,
         user_id: context.userId,
         kind: data.kind,
-        payload: data.payload,
+        payload: data.payload as import("@/integrations/supabase/types").Json,
         requires_approval: sensitive.has(data.kind),
         status: sensitive.has(data.kind) ? "queued" : "approved",
         approved_at: sensitive.has(data.kind) ? null : new Date().toISOString(),

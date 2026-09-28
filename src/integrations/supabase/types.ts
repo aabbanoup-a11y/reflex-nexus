@@ -86,6 +86,146 @@ export type Database = {
         }
         Relationships: []
       }
+      companion_commands: {
+        Row: {
+          approved_at: string | null
+          created_at: string
+          device_id: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          kind: string
+          payload: Json
+          requires_approval: boolean
+          started_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          created_at?: string
+          device_id: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          kind: string
+          payload?: Json
+          requires_approval?: boolean
+          started_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          created_at?: string
+          device_id?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          payload?: Json
+          requires_approval?: boolean
+          started_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companion_commands_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "companion_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      companion_devices: {
+        Row: {
+          created_at: string
+          device_name: string
+          device_public_key: string | null
+          id: string
+          last_seen_at: string | null
+          platform: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_name: string
+          device_public_key?: string | null
+          id?: string
+          last_seen_at?: string | null
+          platform?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_name?: string
+          device_public_key?: string | null
+          id?: string
+          last_seen_at?: string | null
+          platform?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      companion_events: {
+        Row: {
+          command_id: string | null
+          created_at: string
+          device_id: string
+          event_type: string
+          id: string
+          message: string | null
+          metadata: Json
+          screenshot_path: string | null
+          user_id: string
+        }
+        Insert: {
+          command_id?: string | null
+          created_at?: string
+          device_id: string
+          event_type: string
+          id?: string
+          message?: string | null
+          metadata?: Json
+          screenshot_path?: string | null
+          user_id: string
+        }
+        Update: {
+          command_id?: string | null
+          created_at?: string
+          device_id?: string
+          event_type?: string
+          id?: string
+          message?: string | null
+          metadata?: Json
+          screenshot_path?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companion_events_command_id_fkey"
+            columns: ["command_id"]
+            isOneToOne: false
+            referencedRelation: "companion_commands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "companion_events_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "companion_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           ai_model: string | null
