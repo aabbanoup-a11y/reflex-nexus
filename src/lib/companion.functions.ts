@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireCloudAuth } from "@/integrations/supabase/runtime-auth";
 
 const commandSchema = z.object({
   deviceId: z.string().uuid(),
@@ -11,7 +11,7 @@ const commandSchema = z.object({
 const sensitive = new Set(["open_url", "tap_text", "type_text"]);
 
 export const listCompanionDevices = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireCloudAuth])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("companion_devices")
@@ -22,7 +22,7 @@ export const listCompanionDevices = createServerFn({ method: "POST" })
   });
 
 export const queueCompanionCommand = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireCloudAuth])
   .inputValidator((input) => commandSchema.parse(input))
   .handler(async ({ context, data }) => {
     if (data.kind === "open_url") {
@@ -54,7 +54,7 @@ export const queueCompanionCommand = createServerFn({ method: "POST" })
   });
 
 export const stopCompanion = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireCloudAuth])
   .inputValidator((input) => z.object({ deviceId: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
     const { error } = await context.supabase

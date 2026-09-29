@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Chrome, Eye, EyeOff, KeyRound, Loader2, Mail, UserRound } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/runtime-client";
 import { lovable } from "@/integrations/lovable/index";
 import { ensureUserProfile } from "@/lib/profile";
 import { Button } from "@/components/ui/button";

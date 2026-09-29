@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Trash2, Pencil, Check, X, LogOut } from "lucide-react";
 import { getMemoryState, setMemorySettings, saveMemory, deleteMemory } from "@/lib/memory.functions";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/runtime-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";

@@ -8,7 +8,7 @@ import { browsePage } from "@/lib/agent.functions";
 import { getMemoryState, saveMemory, suggestMemories } from "@/lib/memory.functions";
 import { logRun, notifyDone, requestNotifyPermission } from "@/lib/activity";
 import { hasCrisisSignal, EMERGENCY_CONTACTS } from "@/lib/safety";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/runtime-client";
 import { useAuth } from "@/hooks/useAuth";
 import { ASSISTANTS, MODELS, QUICK_LINKS, chainFor, getAssistant, type AssistantKey } from "@/lib/assistants";
 import { Button } from "@/components/ui/button";
