@@ -1,6 +1,6 @@
 // Browser helpers: persist every AI run + notify when a task finishes.
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/runtime-client";
 
 export type RunLog = {
   agent_kind: "assistant" | "employee" | "team";

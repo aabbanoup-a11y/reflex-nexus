@@ -16,6 +16,7 @@ import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as NetworkRouteImport } from './routes/network'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedCompanionRouteImport } from './routes/_authenticated/companion'
 import { Route as AuthenticatedMemoryRouteImport } from './routes/_authenticated/memory'
 
@@ -53,6 +54,11 @@ const NetworkRoute = NetworkRouteImport.update({
   path: '/network',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedCompanionRoute = AuthenticatedCompanionRouteImport.update({
   id: '/companion',
   path: '/companion',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
   '/network': typeof NetworkRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/companion': typeof AuthenticatedCompanionRoute
   '/memory': typeof AuthenticatedMemoryRoute
 }
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
   '/network': typeof NetworkRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/companion': typeof AuthenticatedCompanionRoute
   '/memory': typeof AuthenticatedMemoryRoute
 }
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
   '/network': typeof NetworkRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/companion': typeof AuthenticatedCompanionRoute
   '/_authenticated/memory': typeof AuthenticatedMemoryRoute
 }
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/history'
     | '/network'
+    | '/reset-password'
     | '/companion'
     | '/memory'
   fileRoutesByTo: FileRoutesByTo
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/history'
     | '/network'
+    | '/reset-password'
     | '/companion'
     | '/memory'
   id:
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/history'
     | '/network'
+    | '/reset-password'
     | '/_authenticated/companion'
     | '/_authenticated/memory'
   fileRoutesById: FileRoutesById
@@ -138,6 +150,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   HistoryRoute: typeof HistoryRoute
   NetworkRoute: typeof NetworkRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NetworkRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/companion': {
       id: '/_authenticated/companion'
       path: '/companion'
@@ -229,6 +249,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   HistoryRoute: HistoryRoute,
   NetworkRoute: NetworkRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

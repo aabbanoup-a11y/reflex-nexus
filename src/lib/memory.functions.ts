@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireCloudAuth } from "@/integrations/supabase/runtime-auth";
 
 async function getKey() {
   const secret = process.env["MEMORY_ENCRYPTION_KEY"];
@@ -26,7 +26,7 @@ export type Memory = { id: string; category: string; content: string; created_at
 const Category = z.enum(["preference", "trait", "goal", "habit"]);
 
 export const getMemoryState = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireCloudAuth])
   .handler(async ({ context }) => {
     const { data: s } = await context.supabase.from("memory_settings").select("*").eq("user_id", context.userId).maybeSingle();
     const { data: rows } = await context.supabase.from("user_memories").select("*").eq("user_id", context.userId).order("created_at", { ascending: false });
@@ -42,7 +42,7 @@ export const getMemoryState = createServerFn({ method: "POST" })
   });
 
 export const setMemorySettings = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireCloudAuth])
   .inputValidator((i: unknown) => z.object({ consent: z.boolean(), enabled: z.boolean() }).parse(i))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
@@ -53,7 +53,7 @@ export const setMemorySettings = createServerFn({ method: "POST" })
   });
 
 export const saveMemory = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireCloudAuth])
   .inputValidator((i: unknown) =>
     z.object({ id: z.string().uuid().nullable(), category: Category, content: z.string().min(1).max(500) }).parse(i),
   )
@@ -70,7 +70,7 @@ export const saveMemory = createServerFn({ method: "POST" })
   });
 
 export const deleteMemory = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireCloudAuth])
   .inputValidator((i: unknown) => z.object({ id: z.string().uuid().nullable() }).parse(i))
   .handler(async ({ data, context }) => {
     const q = context.supabase.from("user_memories").delete().eq("user_id", context.userId);
@@ -81,7 +81,7 @@ export const deleteMemory = createServerFn({ method: "POST" })
 
 // يقترح ذكريات من المحادثة — لا يحفظ شيء إلا بموافقة المستخدم.
 export const suggestMemories = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireCloudAuth])
   .inputValidator((i: unknown) => z.object({ text: z.string().min(1).max(8000) }).parse(i))
   .handler(async ({ data }) => {
     const key = process.env["LOVABLE_API_KEY"];
