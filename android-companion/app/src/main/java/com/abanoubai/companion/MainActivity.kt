@@ -18,7 +18,8 @@ class MainActivity : AppCompatActivity() {
         val accessToken = EditText(this).apply { hint = "Access token (يُحفظ محليًا فقط)"; setSingleLine(true); setText(prefs.getString("access_token", "")); setPadding(32, 12, 32, 12) }
         val connect = Button(this).apply { text = "حفظ والاتصال"; setOnClickListener { val id = deviceId.text.toString().trim(); val token = accessToken.text.toString().trim(); if (id.isEmpty() || token.isEmpty()) { title.text = "أدخل Device ID وAccess token أولًا." } else { prefs.edit().putString("device_id", id).putString("access_token", token).putBoolean("enabled", true).apply(); CompanionRuntime.start(this@MainActivity); title.text = "تم حفظ البيانات محليًا. فعّل Accessibility ثم اختبر أمرًا آمنًا." } } }
         val settings = Button(this).apply { text = "فتح إعدادات إمكانية الوصول"; setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) } }
+        val dashboard = Button(this).apply { text = "فتح لوحة AbanoubAI داخل التطبيق"; setOnClickListener { startActivity(Intent(this@MainActivity, DashboardActivity::class.java)) } }
         val stop = Button(this).apply { text = "إيقاف الاتصال"; setOnClickListener { CompanionRuntime.stop(this@MainActivity); title.text = "تم إيقاف الاتصال. لا ينفذ التطبيق أي أمر الآن." } }
-        setContentView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(title); addView(deviceId); addView(accessToken); addView(connect); addView(settings); addView(stop) })
+        setContentView(LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(title); addView(deviceId); addView(accessToken); addView(connect); addView(dashboard); addView(settings); addView(stop) })
     }
 }
