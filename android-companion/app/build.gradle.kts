@@ -13,8 +13,8 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
-        buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL") ?: "https://eoiriqngponsbnqgcmmg.supabase.co"}\"")
-        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY") ?: "sb_publishable_kdg9IVixJQ0P1c-n5QDZbA_wf8UWSo-"}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL") ?: "https://wobfdslqlmvlatyrtgkd.supabase.co"}\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY") ?: "sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ"}\"")
     }
     buildTypes { release { isMinifyEnabled = false } }
     buildFeatures { buildConfig = true }

@@ -23,6 +23,9 @@ type Cmd = { id: string; kind: string; status: string; requires_approval: boolea
 type Ev = { id: string; event_type: string; message: string | null; created_at: string };
 const SENSITIVE = new Set(["open_url", "tap_text", "type_text"]);
 declare const chrome: any;
+declare global {
+  interface Window { AbanoubAI?: { savePairing: (deviceId: string, accessToken: string) => void } }
+}
 
 function CompanionPage() {
   const [uid, setUid] = useState<string>("");
@@ -101,6 +104,16 @@ function CompanionPage() {
     await loadDevices();
   }
 
+  async function sendPairingToAndroid() {
+    const { data: s } = await supabase.auth.getSession();
+    const selected = devices.find((d) => d.id === dev);
+    if (!selected || selected.platform !== "android") return setMsg("اختر جهاز Oppo أولًا");
+    if (!s.session) return setMsg("سجّل الدخول الأول");
+    if (!window.AbanoubAI?.savePairing) return setMsg("افتح لوحة التحكم من داخل تطبيق Oppo لإرسال الربط تلقائيًا");
+    window.AbanoubAI.savePairing(selected.id, s.session.access_token);
+    setMsg("تم إرسال Device ID وAccess token إلى تطبيق Oppo تلقائيًا ✓");
+  }
+
   async function send(kind: string, payload: Record<string, unknown> = {}) {
     if (!dev) return;
     const needs = SENSITIVE.has(kind);
@@ -135,6 +148,14 @@ function CompanionPage() {
         >
           نسخ Access token لتطبيق Oppo
         </Button>
+        {dev && devices.find((d) => d.id === dev)?.platform === "android" && (
+          <Button
+            variant="outline"
+            onClick={() => void sendPairingToAndroid()}
+          >
+            إرسال الربط تلقائيًا إلى تطبيق Oppo
+          </Button>
+        )}
         {dev && devices.find((d) => d.id === dev)?.platform === "android" && (
           <Button
             variant="outline"
