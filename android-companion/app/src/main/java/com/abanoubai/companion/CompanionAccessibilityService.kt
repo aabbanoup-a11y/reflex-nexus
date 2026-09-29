@@ -9,7 +9,10 @@ import kotlinx.serialization.json.contentOrNull
 
 class CompanionAccessibilityService : AccessibilityService() {
     companion object { var instance: CompanionAccessibilityService? = null }
-    override fun onServiceConnected() { instance = this }
+    override fun onServiceConnected() {
+        instance = this
+        CompanionRuntime.restart(this)
+    }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) { /* Observe only while an approved command is running. */ }
     override fun onInterrupt() { }
     override fun onDestroy() { instance = null; super.onDestroy() }

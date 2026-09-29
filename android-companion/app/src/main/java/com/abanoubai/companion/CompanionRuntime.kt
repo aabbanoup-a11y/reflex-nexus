@@ -14,9 +14,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import java.util.concurrent.TimeUnit
 
 object CompanionRuntime {
-    private val http = OkHttpClient()
+    private val http = OkHttpClient.Builder().pingInterval(20, TimeUnit.SECONDS).build()
     private var socket: WebSocket? = null
 
     fun start(context: Context) {
@@ -37,15 +38,23 @@ object CompanionRuntime {
                     put("ref", "1")
                     put("payload", JSONObject().apply {
                         put("access_token", accessToken)
-                        put("config", JSONObject().put("postgres_changes", org.json.JSONArray().put(JSONObject().apply {
+                        put("config", JSONObject().apply {
+                            put("broadcast", JSONObject().put("self", false))
+                            put("presence", JSONObject())
+                            put("postgres_changes", org.json.JSONArray().put(JSONObject().apply {
                             put("event", "*"); put("schema", "public"); put("table", "companion_commands"); put("filter", "device_id=eq.$deviceId")
-                        })))
+                            }))
+                        })
                     })
                 }.toString()
                 webSocket.send(join)
-                patchDevice(context, deviceId, accessToken, "online", null)
             }
-            override fun onMessage(webSocket: WebSocket, text: String) { handleMessage(context, text) }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                if (text.contains("\"event\":\"phx_reply\"") && text.contains("\"status\":\"ok\"")) {
+                    patchDevice(context, deviceId, accessToken, "online", null)
+                }
+                handleMessage(context, text)
+            }
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) { handleMessage(context, bytes.utf8()) }
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: okhttp3.Response?) { socket = null; patchDevice(context, deviceId, accessToken, "offline", t.message) }
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) { socket = null; patchDevice(context, deviceId, accessToken, "offline", reason) }
@@ -88,5 +97,11 @@ object CompanionRuntime {
         socket = null
         val prefs = context.getSharedPreferences("companion", Context.MODE_PRIVATE)
         prefs.edit().putBoolean("enabled", false).apply()
+    }
+
+    fun restart(context: Context) {
+        socket?.cancel()
+        socket = null
+        start(context)
     }
 }
