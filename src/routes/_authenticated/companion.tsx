@@ -63,6 +63,11 @@ function CompanionPage() {
   }, []);
 
   useEffect(() => {
+    if (!uid || !window.AbanoubAI?.savePairing || devices.some((item) => item.platform === "android")) return;
+    void createAndroidDevice();
+  }, [uid, devices]);
+
+  useEffect(() => {
     if (!dev) return;
     void loadLog(dev);
     const ch = supabase
@@ -100,7 +105,12 @@ function CompanionPage() {
       .single();
     if (error) return setMsg(error.message);
     setDev(d.id);
-    setMsg(`تم إنشاء جهاز Oppo. Device ID: ${d.id}`);
+    if (window.AbanoubAI?.savePairing && s.session) {
+      window.AbanoubAI.savePairing(d.id, s.session.access_token);
+      setMsg("تم إنشاء جهاز Oppo وإرسال بيانات الربط إلى التطبيق تلقائيًا ✓");
+    } else {
+      setMsg(`تم إنشاء جهاز Oppo. Device ID: ${d.id}`);
+    }
     await loadDevices();
   }
 
