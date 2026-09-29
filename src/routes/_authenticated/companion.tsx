@@ -38,6 +38,7 @@ function CompanionPage() {
   const [url, setUrl] = useState("https://example.com");
   const [text, setText] = useState("");
   const [msg, setMsg] = useState("");
+  const [androidInitStarted, setAndroidInitStarted] = useState(false);
 
   async function loadDevices() {
     const { data } = await supabase.from("companion_devices").select("id,device_name,platform,status").order("created_at", { ascending: false });
@@ -63,9 +64,10 @@ function CompanionPage() {
   }, []);
 
   useEffect(() => {
-    if (!uid || !window.AbanoubAI?.savePairing || devices.some((item) => item.platform === "android")) return;
+    if (!uid || androidInitStarted || !window.AbanoubAI?.savePairing || devices.some((item) => item.platform === "android")) return;
+    setAndroidInitStarted(true);
     void createAndroidDevice();
-  }, [uid, devices]);
+  }, [uid, devices, androidInitStarted]);
 
   useEffect(() => {
     if (!dev) return;
@@ -98,6 +100,7 @@ function CompanionPage() {
 
   async function createAndroidDevice() {
     if (!uid) return setMsg("سجّل الدخول الأول");
+    const { data: s } = await supabase.auth.getSession();
     const { data: d, error } = await supabase
       .from("companion_devices")
       .insert({ user_id: uid, device_name: "Oppo", platform: "android" })
