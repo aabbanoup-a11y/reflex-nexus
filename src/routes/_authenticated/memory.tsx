@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -30,6 +30,7 @@ type Cat = keyof typeof CATS;
 
 function MemoryPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const get = useServerFn(getMemoryState);
   const setS = useServerFn(setMemorySettings);
   const save = useServerFn(saveMemory);
@@ -50,6 +51,13 @@ function MemoryPage() {
   };
   const s = q.data;
 
+  async function signOut() {
+    await qc.cancelQueries();
+    qc.clear();
+    await supabase.auth.signOut();
+    await navigate({ to: "/auth", replace: true });
+  }
+
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-3xl px-4 py-6">
@@ -57,7 +65,7 @@ function MemoryPage() {
           <h1 className="text-2xl font-bold">ذاكرتي</h1>
           <div className="flex gap-2">
             <Button asChild size="sm" variant="outline"><Link to="/assistant">المساعدين</Link></Button>
-            <Button size="sm" variant="outline" onClick={() => supabase.auth.signOut().then(() => (window.location.href = "/"))}>
+            <Button size="sm" variant="outline" onClick={() => void signOut()}>
               <LogOut className="size-4" /> خروج
             </Button>
           </div>

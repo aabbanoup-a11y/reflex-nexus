@@ -6,8 +6,8 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null);
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user ?? null);
       setReady(true);
     });
     const { data } = supabase.auth.onAuthStateChange((_e, s) => setUser(s?.user ?? null));
