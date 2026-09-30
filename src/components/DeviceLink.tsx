@@ -16,7 +16,9 @@ export function useAndroidAutoPair() {
   useEffect(() => {
     const b = bridge();
     if (!b?.pairSession) return;
-    const pair = async (session: { access_token: string; refresh_token: string; user: { id: string } } | null) => {
+    let busy: Promise<void> = Promise.resolve();
+    const pair = (session: Parameters<typeof pairNow>[0]) => { busy = busy.then(() => pairNow(session)); return busy; };
+    const pairNow = async (session: { access_token: string; refresh_token: string; user: { id: string } } | null) => {
       if (!session) return;
       let id = b.getDeviceId?.() || "";
       if (id) {
