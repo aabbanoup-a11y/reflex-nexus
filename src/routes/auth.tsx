@@ -102,7 +102,13 @@ function AuthPage() {
       setNotice({ kind: "success", text: "الحساب اتعمل. افتح رسالة التأكيد في بريدك، ثم ارجع وسجّل الدخول." });
       return;
     }
-    if (result.data.user) await ensureUserProfile(result.data.user);
+    if (result.data.user) {
+      try {
+        await ensureUserProfile(result.data.user);
+      } catch (error) {
+        console.error("profile setup after sign-in failed", error);
+      }
+    }
     await navigate({ to: "/memory", replace: true });
   }
 
@@ -121,7 +127,11 @@ function AuthPage() {
     }
     const { data } = await supabase.auth.getUser();
     if (data.user) {
-      await ensureUserProfile(data.user);
+      try {
+        await ensureUserProfile(data.user);
+      } catch (error) {
+        console.error("profile setup after Google sign-in failed", error);
+      }
       await navigate({ to: "/memory", replace: true });
     }
   }

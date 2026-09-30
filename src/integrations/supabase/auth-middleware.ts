@@ -34,8 +34,11 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
     
-    const SUPABASE_URL = 'https://wobfdslqlmvlatyrtgkd.supabase.co';
-    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ';
+    const SUPABASE_URL = process.env['SUPABASE_URL'];
+    const SUPABASE_PUBLISHABLE_KEY = process.env['SUPABASE_PUBLISHABLE_KEY'];
+    if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+      throw new Error('Lovable Cloud connection is not configured');
+    }
 
     const request = getRequest();
 

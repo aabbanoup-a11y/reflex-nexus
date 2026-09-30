@@ -31,11 +31,8 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
-  // The Lovable preview environment may still expose the retired Lovable Cloud
-  // project. Keep the public project values as the last fallback so production
-  // auth and RLS always target AbanoupAi's real Supabase project.
-  const SUPABASE_URL = 'https://wobfdslqlmvlatyrtgkd.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ';
+  const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'] || (typeof process !== 'undefined' ? process.env['SUPABASE_URL'] : undefined);
+  const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || (typeof process !== 'undefined' ? process.env['SUPABASE_PUBLISHABLE_KEY'] : undefined);
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
