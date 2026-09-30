@@ -114,7 +114,7 @@ function Network() {
         <h1 className="text-2xl font-bold">شبكة الـ30 نموذج</h1>
         <div className="flex gap-2">
           <Button asChild variant="outline" size="sm"><Link to="/">الرئيسية</Link></Button>
-          <Button variant="outline" size="sm" onClick={() => { if (confirm("مسح المحادثة المشتركة؟")) { ref.current = []; setThread([]); localStorage.removeItem(KEY); } }}>مسح</Button>
+          <Button variant="outline" size="sm" onClick={() => { if (confirm("مسح المحادثة المشتركة؟")) { ref.current = []; setThread([]); localStorage.removeItem(KEY); if (uid) void supabase.from("network_messages").delete().eq("user_id", uid); } }}>مسح</Button>
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
