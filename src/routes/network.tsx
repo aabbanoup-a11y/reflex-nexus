@@ -67,10 +67,13 @@ function Network() {
   const push = (e: Entry) => {
     ref.current = [...ref.current, e];
     setThread(ref.current);
-    if (uid) {
-      const tools = (e.tools ?? []).map(({ shot: _s, ...t }) => t);
-      void supabase.from("network_messages").insert({ user_id: uid, who: e.who, content: e.text.slice(0, 50000), tools: tools as never, is_error: !!e.err }).then(({ error }) => { if (error) console.error("save failed", error.message); });
-    }
+    const tools = (e.tools ?? []).map(({ shot: _s, ...t }) => t);
+    void supabase.auth.getSession().then(async ({ data }) => {
+      const id = data.session?.user.id;
+      if (!id) return;
+      const { error } = await supabase.from("network_messages").insert({ user_id: id, who: e.who, content: e.text.slice(0, 50000), tools: tools as never, is_error: !!e.err });
+      if (error) console.error("save failed", error.message);
+    });
   };
 
   async function round(models: string[]) {
