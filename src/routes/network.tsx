@@ -33,21 +33,43 @@ function Network() {
   const stop = useRef(false);
   const ref = useRef<Entry[]>([]);
 
+  const [uid, setUid] = useState<string | null | undefined>(undefined);
+
   useEffect(() => {
-    try {
-      const s = JSON.parse(localStorage.getItem(KEY) ?? "[]") as Entry[];
-      setThread(s);
+    void (async () => {
+      const { data } = await supabase.auth.getUser();
+      const id = data.user?.id ?? null;
+      setUid(id);
+      if (!id) return;
+      const { data: rows } = await supabase
+        .from("network_messages")
+        .select("id,who,content,tools,is_error")
+        .order("created_at", { ascending: true })
+        .limit(300);
+      let s: Entry[] = (rows ?? []).map((r) => ({ id: r.id, who: r.who, text: r.content, tools: (r.tools as unknown as ToolEvent[]) ?? [], err: r.is_error }));
+      // one-time move of old browser-only conversation into the account
+      if (!s.length) {
+        try {
+          const old = JSON.parse(localStorage.getItem(KEY) ?? "[]") as Entry[];
+          if (old.length) {
+            await supabase.from("network_messages").insert(old.slice(-200).map((e) => ({ user_id: id, who: e.who, content: e.text, tools: (e.tools ?? []) as never, is_error: !!e.err })));
+            s = old;
+            localStorage.removeItem(KEY);
+          }
+        } catch { /* ignore */ }
+      }
       ref.current = s;
-    } catch {
-      /* ignore */
-    }
+      setThread(s);
+    })();
   }, []);
 
   const push = (e: Entry) => {
     ref.current = [...ref.current, e];
     setThread(ref.current);
-    const slim = ref.current.map((x) => ({ ...x, tools: x.tools?.map(({ shot: _s, ...t }) => t) }));
-    localStorage.setItem(KEY, JSON.stringify(slim.slice(-200)));
+    if (uid) {
+      const tools = (e.tools ?? []).map(({ shot: _s, ...t }) => t);
+      void supabase.from("network_messages").insert({ user_id: uid, who: e.who, content: e.text.slice(0, 50000), tools: tools as never, is_error: !!e.err });
+    }
   };
 
   async function round(models: string[]) {
