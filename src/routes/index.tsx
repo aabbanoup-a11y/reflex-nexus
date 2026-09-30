@@ -1,3 +1,4 @@
+import { DeviceStatusCard } from "@/components/DeviceLink";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -133,7 +134,8 @@ function Home() {
               <Link to="/companion">التحكم في Chrome</Link>
             </Button>
           </div>
-          <h1 className="text-3xl font-bold sm:text-4xl">منصة إدارة الموظفين</h1>
+          <DeviceStatusCard />
+          <h1 className="mt-4 text-3xl font-bold sm:text-4xl">منصة إدارة الموظفين</h1>
           <p className="mt-3 max-w-xl text-muted-foreground">
             دليل كامل لفريق العمل مع مساعد ذكاء اصطناعي يكتب مهام جاهزة لكل موظف ويحفظها فوراً.
           </p>
