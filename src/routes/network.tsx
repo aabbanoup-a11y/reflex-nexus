@@ -5,6 +5,7 @@ import { networkTurn, mergeRepo, type ToolEvent } from "@/lib/network.functions"
 import { NET_MODELS, netLabel, REPOS, WORK_BRANCH } from "@/lib/models30";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/runtime-client";
 
 export const Route = createFileRoute("/network")({
   head: () => ({
@@ -33,21 +34,46 @@ function Network() {
   const stop = useRef(false);
   const ref = useRef<Entry[]>([]);
 
+  const [uid, setUid] = useState<string | null | undefined>(undefined);
+
   useEffect(() => {
-    try {
-      const s = JSON.parse(localStorage.getItem(KEY) ?? "[]") as Entry[];
-      setThread(s);
+    void (async () => {
+      const { data } = await supabase.auth.getUser();
+      const id = data.user?.id ?? null;
+      setUid(id);
+      if (!id) return;
+      const { data: rows } = await supabase
+        .from("network_messages")
+        .select("id,who,content,tools,is_error")
+        .order("created_at", { ascending: true })
+        .limit(300);
+      let s: Entry[] = (rows ?? []).map((r) => ({ id: r.id, who: r.who, text: r.content, tools: (r.tools as unknown as ToolEvent[]) ?? [], err: r.is_error }));
+      // one-time move of old browser-only conversation into the account
+      if (!s.length) {
+        try {
+          const old = JSON.parse(localStorage.getItem(KEY) ?? "[]") as Entry[];
+          if (old.length) {
+            await supabase.from("network_messages").insert(old.slice(-200).map((e) => ({ user_id: id, who: e.who, content: e.text, tools: (e.tools ?? []) as never, is_error: !!e.err })));
+            s = old;
+            localStorage.removeItem(KEY);
+          }
+        } catch { /* ignore */ }
+      }
       ref.current = s;
-    } catch {
-      /* ignore */
-    }
+      setThread(s);
+    })();
   }, []);
 
   const push = (e: Entry) => {
     ref.current = [...ref.current, e];
     setThread(ref.current);
-    const slim = ref.current.map((x) => ({ ...x, tools: x.tools?.map(({ shot: _s, ...t }) => t) }));
-    localStorage.setItem(KEY, JSON.stringify(slim.slice(-200)));
+    const tools = (e.tools ?? []).map(({ shot: _s, ...t }) => t);
+    void supabase.auth.getSession().then(async ({ data }) => {
+      const id = data.session?.user.id;
+      if (!id) return;
+      const { error } = await supabase.from("network_messages").insert({ user_id: id, who: e.who, content: e.text.slice(0, 50000), tools: tools as never, is_error: !!e.err });
+      if (error) console.error("save failed", error.message);
+    });
   };
 
   async function round(models: string[]) {
@@ -91,7 +117,7 @@ function Network() {
         <h1 className="text-2xl font-bold">شبكة الـ30 نموذج</h1>
         <div className="flex gap-2">
           <Button asChild variant="outline" size="sm"><Link to="/">الرئيسية</Link></Button>
-          <Button variant="outline" size="sm" onClick={() => { if (confirm("مسح المحادثة المشتركة؟")) { ref.current = []; setThread([]); localStorage.removeItem(KEY); } }}>مسح</Button>
+          <Button variant="outline" size="sm" onClick={() => { if (confirm("مسح المحادثة المشتركة؟")) { ref.current = []; setThread([]); localStorage.removeItem(KEY); if (uid) void supabase.from("network_messages").delete().eq("user_id", uid).then(() => undefined); } }}>مسح</Button>
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
@@ -109,6 +135,12 @@ function Network() {
         <Button size="sm" variant="ghost" onClick={() => setPicked([])}>ولا واحد</Button>
       </section>
 
+      {uid === null && (
+        <section className="rounded-lg border bg-card p-4 text-sm">
+          لازم تسجّل دخول عشان الـ30 نموذج يشتغلوا على حسابك وتتحفظ المحادثة عندك.{" "}
+          <Link to="/auth" className="font-semibold text-primary underline">تسجيل الدخول</Link>
+        </section>
+      )}
       <section className="space-y-3 rounded-lg border bg-card p-3">
         {thread.length === 0 && <p className="text-sm text-muted-foreground">ابدأ برسالة. مثال: "افتحوا https://example.com وقولولي فيها إيه، وكل واحد يعلّق على رد اللي قبله".</p>}
         {thread.map((e) => (

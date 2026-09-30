@@ -313,6 +313,36 @@ export type Database = {
         }
         Relationships: []
       }
+      network_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_error: boolean
+          tools: Json
+          user_id: string
+          who: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_error?: boolean
+          tools?: Json
+          user_id: string
+          who: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_error?: boolean
+          tools?: Json
+          user_id?: string
+          who?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

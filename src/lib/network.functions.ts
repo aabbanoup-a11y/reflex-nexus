@@ -24,6 +24,7 @@ const HINT = (me: string) => `إنت "${me}" واحد من شبكة 30 نموذ�
 استخدم الأدوات بس لما الطلب محتاجها.`;
 
 export const networkTurn = createServerFn({ method: "POST" })
+  .middleware([requireCloudAuth])
   .inputValidator((i: unknown) => Turn.parse(i))
   .handler(async ({ data }): Promise<TurnReply> => {
     const n = await import("./network.server");
