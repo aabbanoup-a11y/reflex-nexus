@@ -131,6 +131,12 @@ function Network() {
         <Button size="sm" variant="ghost" onClick={() => setPicked([])}>ولا واحد</Button>
       </section>
 
+      {uid === null && (
+        <section className="rounded-lg border bg-card p-4 text-sm">
+          لازم تسجّل دخول عشان الـ30 نموذج يشتغلوا على حسابك وتتحفظ المحادثة عندك.{" "}
+          <Link to="/auth" className="font-semibold text-primary underline">تسجيل الدخول</Link>
+        </section>
+      )}
       <section className="space-y-3 rounded-lg border bg-card p-3">
         {thread.length === 0 && <p className="text-sm text-muted-foreground">ابدأ برسالة. مثال: "افتحوا https://example.com وقولولي فيها إيه، وكل واحد يعلّق على رد اللي قبله".</p>}
         {thread.map((e) => (
