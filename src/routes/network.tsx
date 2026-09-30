@@ -69,7 +69,7 @@ function Network() {
     setThread(ref.current);
     if (uid) {
       const tools = (e.tools ?? []).map(({ shot: _s, ...t }) => t);
-      void supabase.from("network_messages").insert({ user_id: uid, who: e.who, content: e.text.slice(0, 50000), tools: tools as never, is_error: !!e.err });
+      void supabase.from("network_messages").insert({ user_id: uid, who: e.who, content: e.text.slice(0, 50000), tools: tools as never, is_error: !!e.err }).then(({ error }) => { if (error) console.error("save failed", error.message); });
     }
   };
 
@@ -114,7 +114,7 @@ function Network() {
         <h1 className="text-2xl font-bold">شبكة الـ30 نموذج</h1>
         <div className="flex gap-2">
           <Button asChild variant="outline" size="sm"><Link to="/">الرئيسية</Link></Button>
-          <Button variant="outline" size="sm" onClick={() => { if (confirm("مسح المحادثة المشتركة؟")) { ref.current = []; setThread([]); localStorage.removeItem(KEY); if (uid) void supabase.from("network_messages").delete().eq("user_id", uid); } }}>مسح</Button>
+          <Button variant="outline" size="sm" onClick={() => { if (confirm("مسح المحادثة المشتركة؟")) { ref.current = []; setThread([]); localStorage.removeItem(KEY); if (uid) void supabase.from("network_messages").delete().eq("user_id", uid).then(() => undefined); } }}>مسح</Button>
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
