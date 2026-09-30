@@ -15,13 +15,18 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import java.util.concurrent.TimeUnit
+import android.os.Handler
+import android.os.Looper
 
 object CompanionRuntime {
     private val http = OkHttpClient.Builder().pingInterval(20, TimeUnit.SECONDS).build()
     private var socket: WebSocket? = null
+    private var stopped = false
+    private val retryHandler = Handler(Looper.getMainLooper())
 
     fun start(context: Context) {
         if (socket != null) return
+        stopped = false
         val prefs = context.getSharedPreferences("companion", Context.MODE_PRIVATE)
         val deviceId = prefs.getString("device_id", null) ?: return
         val accessToken = prefs.getString("access_token", null) ?: return
@@ -56,9 +61,23 @@ object CompanionRuntime {
                 handleMessage(context, text)
             }
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) { handleMessage(context, bytes.utf8()) }
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: okhttp3.Response?) { socket = null; patchDevice(context, deviceId, accessToken, "offline", t.message) }
-            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) { socket = null; patchDevice(context, deviceId, accessToken, "offline", reason) }
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: okhttp3.Response?) {
+                socket = null
+                patchDevice(context, deviceId, accessToken, "offline", t.message)
+                scheduleRetry(context)
+            }
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                socket = null
+                patchDevice(context, deviceId, accessToken, "offline", reason)
+                scheduleRetry(context)
+            }
         })
+    }
+
+    private fun scheduleRetry(context: Context) {
+        if (stopped) return
+        retryHandler.removeCallbacksAndMessages(null)
+        retryHandler.postDelayed({ if (!stopped) start(context.applicationContext) }, 5000)
     }
 
     private fun handleMessage(context: Context, text: String) {
@@ -93,6 +112,8 @@ object CompanionRuntime {
     private fun event(context: Context, record: JsonObject, type: String, message: String) = context.getSharedPreferences("companion", Context.MODE_PRIVATE).getString("access_token", null)?.let { token -> val deviceId = context.getSharedPreferences("companion", Context.MODE_PRIVATE).getString("device_id", "") ?: ""; request(context, "companion_events", token, "POST", JSONObject().apply { put("command_id", record["id"]?.jsonPrimitive?.contentOrNull); put("device_id", deviceId); put("event_type", type); put("message", message.take(2000)) }) }
 
     fun stop(context: Context) {
+        stopped = true
+        retryHandler.removeCallbacksAndMessages(null)
         socket?.close(1000, "user_stop")
         socket = null
         val prefs = context.getSharedPreferences("companion", Context.MODE_PRIVATE)
