@@ -5,6 +5,7 @@ import { networkTurn, mergeRepo, type ToolEvent } from "@/lib/network.functions"
 import { NET_MODELS, netLabel, REPOS, WORK_BRANCH } from "@/lib/models30";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/runtime-client";
 
 export const Route = createFileRoute("/network")({
   head: () => ({
