@@ -21,12 +21,13 @@ const HINT = (me: string) => `إنت "${me}" واحد من شبكة 30 نموذ�
 المحتوى الكامل للملف
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
 [[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى موافقة أبانوب بزرار.
+[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. kind = open_chrome أو open_url (arg رابط) أو back أو tap_text (arg نص الزر) أو type_text (arg نص) أو screenshot. الحساس بيستنى موافقته.
 استخدم الأدوات بس لما الطلب محتاجها.`;
 
 export const networkTurn = createServerFn({ method: "POST" })
   .middleware([requireCloudAuth])
   .inputValidator((i: unknown) => Turn.parse(i))
-  .handler(async ({ data }): Promise<TurnReply> => {
+  .handler(async ({ data, context }): Promise<TurnReply> => {
     const n = await import("./network.server");
     if (!n.knownModel(data.model)) throw new Error("نموذج غير معروف");
     const me = NET_MODELS.find((m) => m.id === data.model)!;
@@ -88,6 +89,30 @@ export const networkTurn = createServerFn({ method: "POST" })
     }
     for (const m of text.matchAll(/\[\[MERGE:\s*([^\]]+?)\s*\]\]/g)) {
       tools.push({ tool: `🔀 طلب دمج ${m[1]}`, ok: true, text: `MERGE_REQUEST:${n.checkRepo(m[1]!)}` });
+    }
+    const PHONE_KINDS = new Set(["open_chrome", "open_url", "back", "tap_text", "type_text", "screenshot"]);
+    const SENSITIVE = new Set(["type_text", "tap_text", "screenshot"]);
+    for (const m of text.matchAll(/\[\[PHONE:\s*([a-z_]+)\s*\|?([^\]]*)\]\]/g)) {
+      if (jobs++ >= 12) break;
+      const kind = m[1]!;
+      const arg = (m[2] ?? "").trim();
+      await run(`📱 الهاتف: ${kind}`, async () => {
+        if (!PHONE_KINDS.has(kind)) throw new Error("أمر غير مسموح");
+        const { data: dev } = await context.supabase
+          .from("companion_devices").select("id,status").eq("user_id", context.userId).eq("platform", "android")
+          .order("last_seen_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
+        if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
+        if (kind === "open_url" && !/^https?:\/\//.test(arg)) throw new Error("الرابط لازم يبدأ بـ https://");
+        const payload = kind === "open_url" ? { url: arg } : kind === "tap_text" || kind === "type_text" ? { text: arg.slice(0, 500) } : {};
+        const sensitive = SENSITIVE.has(kind);
+        const { error } = await context.supabase.from("companion_commands").insert({
+          device_id: dev.id, user_id: context.userId, kind, payload,
+          requires_approval: sensitive, status: sensitive ? "queued" : "approved",
+          approved_at: sensitive ? null : new Date().toISOString(),
+        });
+        if (error) throw new Error(error.message);
+        return { text: sensitive ? "مستني موافقتك في صفحة التحكم" : `اتبعت للهاتف (${dev.status})`, link: sensitive ? "/companion" : undefined };
+      });
     }
     const clean = text.replace(/\[\[GH_WRITE:[\s\S]*?\[\[\/GH_WRITE\]\]/g, "[تعديل ملف]").trim();
     return { model: data.model, usedModel: used, text: clean, tools };
