@@ -54,12 +54,18 @@ class MainActivity : AppCompatActivity() {
             settings.databaseEnabled = true
             settings.allowFileAccess = false
             settings.allowContentAccess = false
+            // Google blocks sign-in inside embedded WebViews identified by "; wv"; present as regular Chrome.
+            settings.userAgentString = settings.userAgentString.replace("; wv)", ")").replace(Regex("Version/\\S+ "), "")
+            settings.javaScriptCanOpenWindowsAutomatically = true
             addJavascriptInterface(Bridge(), "AbanoubAI")
             webChromeClient = WebChromeClient()
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
                     val host = Uri.parse(url).host.orEmpty()
-                    if (host == SITE_HOST || host.endsWith(".lovable.app") || host.endsWith(".lovable.cloud")) return false
+                    val keep = host == SITE_HOST || host.endsWith(".lovable.app") || host.endsWith(".lovable.cloud") ||
+                        host.endsWith(".lovable.dev") || host == "lovable.dev" || host == "accounts.google.com" ||
+                        host.endsWith(".google.com") || host.endsWith(".gstatic.com") || host.endsWith(".googleusercontent.com")
+                    if (keep) return false
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     return true
                 }

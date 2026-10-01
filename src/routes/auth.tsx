@@ -112,12 +112,12 @@ function AuthPage() {
     await navigate({ to: "/memory", replace: true });
   }
 
-  async function googleAuth() {
+  async function googleAuth(provider: "google" | "lovable" = "google") {
     setNotice(null);
     setBusy(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
+    const result = await lovable.auth.signInWithOAuth(provider, {
       redirect_uri: `${window.location.origin}/auth`,
-      extraParams: { prompt: "select_account" },
+      ...(provider === "google" ? { extraParams: { prompt: "select_account" } } : {}),
     });
     if (result.redirected) return;
     setBusy(false);
@@ -161,9 +161,14 @@ function AuthPage() {
         </p>
 
         {mode !== "forgot" && (
-          <Button className="mt-7 h-12 w-full gap-2" variant="outline" disabled={busy} onClick={() => void googleAuth()}>
-            <Chrome className="size-5" /> المتابعة باستخدام Google
-          </Button>
+          <>
+            <Button className="mt-7 h-12 w-full gap-2" variant="outline" disabled={busy} onClick={() => void googleAuth()}>
+              <Chrome className="size-5" /> المتابعة باستخدام Google
+            </Button>
+            <Button className="mt-3 h-12 w-full gap-2" variant="outline" disabled={busy} onClick={() => void googleAuth("lovable")}>
+              المتابعة بحساب Lovable
+            </Button>
+          </>
         )}
 
         {mode !== "forgot" && (
