@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.webkit.JavascriptInterface
+import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -45,9 +46,12 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CookieManager.getInstance().setAcceptCookie(true)
         web = WebView(this).apply {
+            CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+            settings.databaseEnabled = true
             settings.allowFileAccess = false
             settings.allowContentAccess = false
             addJavascriptInterface(Bridge(), "AbanoubAI")
@@ -67,6 +71,11 @@ class MainActivity : AppCompatActivity() {
         })
         CompanionRuntime.start(this)
         web.loadUrl("https://$SITE_HOST/")
+    }
+
+    override fun onPause() {
+        CookieManager.getInstance().flush()
+        super.onPause()
     }
 
     companion object { const val SITE_HOST = "reflex-nexus.lovable.app" }
