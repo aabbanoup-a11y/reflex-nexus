@@ -9,6 +9,7 @@ import okio.ByteString
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import org.json.JSONArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -23,6 +24,8 @@ object CompanionRuntime {
     private var socket: WebSocket? = null
     private var stopped = false
     private val retryHandler = Handler(Looper.getMainLooper())
+    private val pollHandler = Handler(Looper.getMainLooper())
+    private val seenCommands = mutableSetOf<String>()
 
     fun start(context: Context) {
         if (socket != null) return
@@ -72,6 +75,59 @@ object CompanionRuntime {
                 scheduleRetry(context)
             }
         })
+        startApprovedCommandPolling(context.applicationContext)
+    }
+
+    private fun startApprovedCommandPolling(context: Context) {
+        pollHandler.removeCallbacksAndMessages(null)
+        pollHandler.post(object : Runnable {
+            override fun run() {
+                if (!stopped) {
+                    pollApprovedCommands(context)
+                    pollHandler.postDelayed(this, 4000)
+                }
+            }
+        })
+    }
+
+    private fun pollApprovedCommands(context: Context) {
+        val prefs = context.getSharedPreferences("companion", Context.MODE_PRIVATE)
+        val deviceId = prefs.getString("device_id", null) ?: return
+        val token = prefs.getString("access_token", null) ?: return
+        val url = BuildConfig.SUPABASE_URL.trimEnd() + "/rest/v1/companion_commands?device_id=eq.$deviceId&status=eq.approved&order=created_at.asc&limit=10"
+        val request = Request.Builder().url(url)
+            .get()
+            .addHeader("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
+            .addHeader("Authorization", "Bearer $token")
+            .build()
+        http.newCall(request).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: java.io.IOException) = Unit
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                response.use {
+                    if (!it.isSuccessful) return
+                    runCatching {
+                        val rows = JSONArray(it.body?.string().orEmpty())
+                        for (index in 0 until rows.length()) {
+                            val row = rows.getJSONObject(index)
+                            val id = row.optString("id")
+                            if (id.isBlank() || !seenCommands.add(id)) continue
+                            val record = Json.parseToJsonElement(row.toString()).jsonObject
+                            val kind = row.optString("kind")
+                            patchCommand(context, id, "running", null)
+                            runCatching { CommandExecutor.execute(context, kind, record) }
+                                .onSuccess { result ->
+                                    patchCommand(context, id, "succeeded", "تم التنفيذ")
+                                    event(context, record, if (kind.endsWith("inventory")) "inventory" else "done", result.take(12000))
+                                }
+                                .onFailure { error ->
+                                    patchCommand(context, id, "failed", error.message ?: "فشل التنفيذ")
+                                    event(context, record, "error", error.message ?: "فشل التنفيذ")
+                                }
+                        }
+                    }
+                }
+            }
+        })
     }
 
     private fun scheduleRetry(context: Context) {
@@ -88,6 +144,7 @@ object CompanionRuntime {
             val kind = record["kind"]?.jsonPrimitive?.contentOrNull ?: return
             val id = record["id"]?.jsonPrimitive?.contentOrNull ?: return
             if (record["status"]?.jsonPrimitive?.contentOrNull != "approved") return
+            if (!seenCommands.add(id)) return
             patchCommand(context, id, "running", null)
             runCatching { CommandExecutor.execute(context, kind, record) }
                 .onSuccess { result ->
@@ -134,6 +191,8 @@ object CompanionRuntime {
     fun stop(context: Context) {
         stopped = true
         retryHandler.removeCallbacksAndMessages(null)
+        pollHandler.removeCallbacksAndMessages(null)
+        seenCommands.clear()
         socket?.close(1000, "user_stop")
         socket = null
         val prefs = context.getSharedPreferences("companion", Context.MODE_PRIVATE)
