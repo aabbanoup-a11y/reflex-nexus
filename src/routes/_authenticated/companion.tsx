@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/companion")({
 type Device = { id: string; device_name: string; platform: string; status: string };
 type Cmd = { id: string; kind: string; status: string; requires_approval: boolean; payload: any; created_at: string; error: string | null };
 type Ev = { id: string; event_type: string; message: string | null; created_at: string };
-const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "device_inventory", "app_inventory", "notification_inventory"]);
+const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "device_inventory", "app_inventory", "notification_inventory"]);
 declare const chrome: any;
 declare global {
   interface Window { AbanoubAI?: { savePairing: (deviceId: string, accessToken: string) => void } }
@@ -195,6 +195,10 @@ function CompanionPage() {
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => void send("open_url", { url })}>فتح الرابط</Button>
             <Button onClick={() => void send("open_app", { package: appPackage })}>فتح أي تطبيق</Button>
+            <Button onClick={() => void send("open_camera")}>فتح الكاميرا</Button>
+            <Button onClick={() => void send("download_file", { url })}>تنزيل الرابط</Button>
+            <Button onClick={() => void send("speak", { text })}>نطق النص</Button>
+            <Button onClick={() => void send("listen")}>استمع من الميكروفون</Button>
             <Button variant="outline" onClick={() => void send("open_settings", { setting: "accessibility" })}>إعدادات Accessibility</Button>
             <Button variant="outline" onClick={() => void send("back")}>رجوع</Button>
             <Button variant="outline" onClick={() => void send("home")}>الرئيسية</Button>

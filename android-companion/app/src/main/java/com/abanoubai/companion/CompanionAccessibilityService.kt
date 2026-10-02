@@ -2,8 +2,11 @@ package com.abanoubai.companion
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.graphics.Bitmap
 import android.graphics.Path
+import android.os.Build
 import android.os.Bundle
+import android.view.Display
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.serialization.json.JsonObject
@@ -47,7 +50,23 @@ class CompanionAccessibilityService : AccessibilityService() {
                 val gesture = GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, duration)).build()
                 require(dispatchGesture(gesture, null, null)) { "تعذر تنفيذ السحب" }
             }
-            "screenshot" -> throw IllegalStateException("لقطة الشاشة تحتاج MediaProjection وموافقة النظام ولم تُفعّل بعد")
+            "screenshot" -> {
+                require(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) { "لقطة الشاشة تحتاج Android 11 أو أحدث" }
+                takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {
+                    override fun onSuccess(result: ScreenshotResult) {
+                        val bitmap = Bitmap.wrapHardwareBuffer(result.hardwareBuffer, result.colorSpace)
+                            ?: return CompanionRuntime.reportScreenshotError(this@CompanionAccessibilityService, record, "تعذر تحويل لقطة الشاشة")
+                        val out = java.io.ByteArrayOutputStream()
+                        bitmap.copy(Bitmap.Config.ARGB_8888, false).compress(Bitmap.CompressFormat.JPEG, 65, out)
+                        bitmap.recycle()
+                        val data = "data:image/jpeg;base64," + android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP)
+                        CompanionRuntime.reportScreenshot(this@CompanionAccessibilityService, record, data)
+                    }
+                    override fun onFailure(errorCode: Int) {
+                        CompanionRuntime.reportScreenshotError(this@CompanionAccessibilityService, record, "فشل التقاط الشاشة: $errorCode")
+                    }
+                })
+            }
         }
     }
 }

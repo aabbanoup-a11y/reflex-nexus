@@ -115,6 +115,22 @@ object CompanionRuntime {
     private fun patchCommand(context: Context, id: String, status: String, error: String?) = context.getSharedPreferences("companion", Context.MODE_PRIVATE).getString("access_token", null)?.let { token -> request(context, "companion_commands?id=eq.$id", token, "PATCH", JSONObject().apply { put("status", status); if (status == "running") put("started_at", java.time.Instant.now().toString()); if (status == "succeeded" || status == "failed") put("finished_at", java.time.Instant.now().toString()); if (error != null) put("error", error.take(1000)) }) }
     private fun event(context: Context, record: JsonObject, type: String, message: String) = context.getSharedPreferences("companion", Context.MODE_PRIVATE).getString("access_token", null)?.let { token -> val deviceId = context.getSharedPreferences("companion", Context.MODE_PRIVATE).getString("device_id", "") ?: ""; request(context, "companion_events", token, "POST", JSONObject().apply { put("command_id", record["id"]?.jsonPrimitive?.contentOrNull); put("device_id", deviceId); put("event_type", type); put("message", message.take(2000)) }) }
 
+    fun reportScreenshot(context: Context, record: JsonObject, dataUrl: String) {
+        event(context, record, "screenshot", dataUrl.take(1_900_000))
+    }
+
+    fun reportScreenshotError(context: Context, record: JsonObject, message: String) {
+        event(context, record, "error", message)
+    }
+
+    fun reportVoice(context: Context, record: JsonObject, text: String) {
+        event(context, record, "voice_transcript", text)
+    }
+
+    fun reportVoiceError(context: Context, record: JsonObject, message: String) {
+        event(context, record, "error", message)
+    }
+
     fun stop(context: Context) {
         stopped = true
         retryHandler.removeCallbacksAndMessages(null)
