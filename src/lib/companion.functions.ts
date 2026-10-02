@@ -4,11 +4,11 @@ import { requireCloudAuth } from "@/integrations/supabase/runtime-auth";
 
 const commandSchema = z.object({
   deviceId: z.string().uuid(),
-  kind: z.enum(["open_chrome", "open_url", "back", "tap_text", "type_text", "screenshot", "stop"]),
+  kind: z.enum(["open_chrome", "open_url", "back", "tap_text", "type_text", "screenshot", "stop", "device_inventory", "app_inventory", "notification_inventory"]),
   payload: z.record(z.string(), z.unknown()).default({}),
 });
 
-const sensitive = new Set(["open_url", "tap_text", "type_text"]);
+  const sensitive = new Set(["open_url", "tap_text", "type_text", "screenshot", "device_inventory", "app_inventory", "notification_inventory"]);
 
 export const listCompanionDevices = createServerFn({ method: "POST" })
   .middleware([requireCloudAuth])

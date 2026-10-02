@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/companion")({
 type Device = { id: string; device_name: string; platform: string; status: string };
 type Cmd = { id: string; kind: string; status: string; requires_approval: boolean; payload: any; created_at: string; error: string | null };
 type Ev = { id: string; event_type: string; message: string | null; created_at: string };
-const SENSITIVE = new Set(["open_url", "tap_text", "type_text"]);
+const SENSITIVE = new Set(["open_url", "tap_text", "type_text", "screenshot", "device_inventory", "app_inventory", "notification_inventory"]);
 declare const chrome: any;
 declare global {
   interface Window { AbanoubAI?: { savePairing: (deviceId: string, accessToken: string) => void } }
@@ -196,6 +196,9 @@ function CompanionPage() {
             <Button variant="outline" onClick={() => void send("tap_text", { text })}>انقر على النص</Button>
             <Button variant="outline" onClick={() => void send("type_text", { text })}>اكتب النص</Button>
             <Button variant="outline" onClick={() => void send("screenshot")}>لقطة شاشة</Button>
+            <Button variant="outline" onClick={() => void send("device_inventory")}>معلومات الجهاز</Button>
+            <Button variant="outline" onClick={() => void send("app_inventory")}>قائمة التطبيقات</Button>
+            <Button variant="outline" onClick={() => void send("notification_inventory")}>قراءة الإشعارات</Button>
             <Button variant="destructive" onClick={() => void send("stop")}>إيقاف طارئ</Button>
           </div>
         </section>

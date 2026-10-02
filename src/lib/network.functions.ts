@@ -21,7 +21,7 @@ const HINT = (me: string) => `إنت "${me}" واحد من شبكة 30 نموذ�
 المحتوى الكامل للملف
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
 [[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى موافقة أبانوب بزرار.
-[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. kind = open_chrome أو open_url (arg رابط) أو back أو tap_text (arg نص الزر) أو type_text (arg نص) أو screenshot. الحساس بيستنى موافقته.
+[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. kind = open_chrome أو open_url (arg رابط) أو back أو tap_text (arg نص الزر) أو type_text (arg نص) أو screenshot أو device_inventory أو app_inventory أو notification_inventory. الجرد والإشعارات يحتاجان موافقته وصلاحية Android المناسبة.
 استخدم الأدوات بس لما الطلب محتاجها.`;
 
 export const networkTurn = createServerFn({ method: "POST" })
@@ -90,8 +90,8 @@ export const networkTurn = createServerFn({ method: "POST" })
     for (const m of text.matchAll(/\[\[MERGE:\s*([^\]]+?)\s*\]\]/g)) {
       tools.push({ tool: `🔀 طلب دمج ${m[1]}`, ok: true, text: `MERGE_REQUEST:${n.checkRepo(m[1]!)}` });
     }
-    const PHONE_KINDS = new Set(["open_chrome", "open_url", "back", "tap_text", "type_text", "screenshot"]);
-    const SENSITIVE = new Set(["type_text", "tap_text", "screenshot"]);
+    const PHONE_KINDS = new Set(["open_chrome", "open_url", "back", "tap_text", "type_text", "screenshot", "device_inventory", "app_inventory", "notification_inventory"]);
+    const SENSITIVE = new Set(["type_text", "tap_text", "screenshot", "device_inventory", "app_inventory", "notification_inventory"]);
     for (const m of text.matchAll(/\[\[PHONE:\s*([a-z_]+)\s*\|?([^\]]*)\]\]/g)) {
       if (jobs++ >= 12) break;
       const kind = m[1]!;
@@ -103,6 +103,7 @@ export const networkTurn = createServerFn({ method: "POST" })
           .order("last_seen_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
         if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
         if (kind === "open_url" && !/^https?:\/\//.test(arg)) throw new Error("الرابط لازم يبدأ بـ https://");
+        if (kind.endsWith("inventory") && arg) throw new Error("أمر الجرد لا يقبل بيانات إضافية");
         const payload = kind === "open_url" ? { url: arg } : kind === "tap_text" || kind === "type_text" ? { text: arg.slice(0, 500) } : {};
         const sensitive = SENSITIVE.has(kind);
         const { error } = await context.supabase.from("companion_commands").insert({

@@ -90,7 +90,11 @@ object CompanionRuntime {
             if (record["status"]?.jsonPrimitive?.contentOrNull != "approved") return
             patchCommand(context, id, "running", null)
             runCatching { CommandExecutor.execute(context, kind, record) }
-                .onSuccess { patchCommand(context, id, "succeeded", "تم التنفيذ") ; event(context, record, "done", "تم تنفيذ $kind") }
+                .onSuccess { result ->
+                    val bounded = result.take(12000)
+                    patchCommand(context, id, "succeeded", "تم التنفيذ")
+                    event(context, record, if (kind.endsWith("inventory")) "inventory" else "done", bounded)
+                }
                 .onFailure { patchCommand(context, id, "failed", it.message ?: "فشل التنفيذ"); event(context, record, "error", it.message ?: "فشل التنفيذ") }
         }
     }
