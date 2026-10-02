@@ -35,19 +35,7 @@ export const networkTurn = createServerFn({ method: "POST" })
     if (!n.knownModel(data.model)) throw new Error("نموذج غير معروف");
     const isManager = data.model === MANAGER_ID;
     const me = isManager ? { label: MANAGER_LABEL } : NET_MODELS.find((m) => m.id === data.model)!;
-    const baseMemory = await loadConsentedMemoryContext(context.supabase, context.userId);
-    // Device knowledge from this user's own phone (latest results), shared with all 30 models.
-    const { data: devEvents } = await context.supabase
-      .from("companion_events")
-      .select("event_type,message,created_at")
-      .eq("user_id", context.userId)
-      .in("event_type", ["inventory", "done", "voice_transcript", "error"])
-      .order("created_at", { ascending: false })
-      .limit(8);
-    const deviceInfo = (devEvents ?? [])
-      .map((e) => `- [${e.event_type} ${e.created_at}] ${(e.message ?? "").slice(0, 1500)}`)
-      .join("\n");
-    const sharedMemory = `${baseMemory}\n\nمعلومات الهاتف الأخيرة (من حساب أبانوب):\n${deviceInfo || "لا يوجد بعد"}`;
+    const sharedMemory = await loadConsentedMemoryContext(context.supabase, context.userId);
     const history = data.thread.slice(-30).map((t) => ({
       role: (t.who === "me" ? "user" : "assistant") as "user" | "assistant",
       content: (t.who === "me" ? "أبانوب: " : `[${t.who}]: `) + t.text.slice(0, 2500),
