@@ -35,6 +35,7 @@ function Network() {
   const [busy, setBusy] = useState("");
   const [voiceOn, setVoiceOn] = useState(false);
   const voice = useRef<{ stop: () => void } | null>(null);
+  const [networkMode] = useState(() => localStorage.getItem("companion-mode") ?? "balanced");
   const stop = useRef(false);
   const ref = useRef<Entry[]>([]);
 
@@ -82,7 +83,8 @@ function Network() {
 
   async function round(models: string[]) {
     stop.current = false;
-    for (const m of models) {
+    const effective = networkMode === "economic" ? models.slice(0, 1) : networkMode === "balanced" ? models.slice(0, 3) : models;
+    for (const m of effective) {
       if (stop.current) break;
       setBusy(netLabel(m));
       try {

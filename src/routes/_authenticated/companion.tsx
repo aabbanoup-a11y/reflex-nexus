@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/companion")({
   component: CompanionPage,
 });
 
-type Device = { id: string; device_name: string; platform: string; status: string };
+type Device = { id: string; device_name: string; platform: string; status: string; last_seen_at?: string | null };
 type Cmd = { id: string; kind: string; status: string; requires_approval: boolean; payload: any; created_at: string; error: string | null };
 type Ev = { id: string; event_type: string; message: string | null; created_at: string };
 const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "device_inventory", "app_inventory", "notification_inventory"]);
@@ -38,11 +38,13 @@ function CompanionPage() {
   const [url, setUrl] = useState("https://example.com");
   const [appPackage, setAppPackage] = useState("");
   const [text, setText] = useState("");
+  const [action, setAction] = useState("open_url");
+  const [mode, setMode] = useState(() => localStorage.getItem("companion-mode") ?? "balanced");
   const [msg, setMsg] = useState("");
   const [androidInitStarted, setAndroidInitStarted] = useState(false);
 
   async function loadDevices() {
-    const { data } = await supabase.from("companion_devices").select("id,device_name,platform,status").order("created_at", { ascending: false });
+    const { data } = await supabase.from("companion_devices").select("id,device_name,platform,status,last_seen_at").order("created_at", { ascending: false });
     setDevices(data ?? []);
     if (!dev && data?.[0]) setDev(data[0].id);
   }
@@ -60,6 +62,9 @@ function CompanionPage() {
     supabase.auth.getSession().then(({ data }) => {
       setUid(data.session?.user.id ?? "");
       setSessionToken(data.session?.access_token ?? "");
+      if (data.session?.user.id) void (supabase as any).from("companion_settings").select("mode,emergency_stopped").eq("user_id", data.session.user.id).maybeSingle().then(({ data: settings }: any) => {
+        if (settings?.mode) { setMode(settings.mode); localStorage.setItem("companion-mode", settings.mode); }
+      });
     });
     void loadDevices();
   }, []);
@@ -132,10 +137,30 @@ function CompanionPage() {
     if (!dev) return;
     const needs = SENSITIVE.has(kind);
     const { error } = await supabase.from("companion_commands").insert({
-      device_id: dev, user_id: uid, kind, payload: payload as any,
+      device_id: dev, user_id: uid, kind, payload: { ...payload, run_mode: mode } as any,
       requires_approval: needs, status: needs ? "queued" : "approved", approved_at: needs ? null : new Date().toISOString(),
     });
+    if (!error && kind === "stop") await (supabase as any).from("companion_settings").upsert({ user_id: uid, emergency_stopped: true, updated_at: new Date().toISOString() });
     setMsg(error ? error.message : needs ? "الأمر حساس — وافق عليه من السجل" : "اتبعت");
+  }
+  async function resumeSystem() {
+    await (supabase as any).from("companion_settings").upsert({ user_id: uid, emergency_stopped: false, updated_at: new Date().toISOString() });
+    setMsg("تم رفع حالة الطوارئ. افتح تطبيق Oppo إذا كان الاتصال قد أوقف يدويًا.");
+  }
+  async function sendSelected() {
+    const value = text.trim();
+    const payload = action === "open_url" || action === "download_file" ? { url: url.trim() } :
+      action === "open_app" ? { package: appPackage.trim() } :
+      action === "open_settings" ? { setting: value || "accessibility" } :
+      action === "speak" ? { text: value } :
+      action === "tap_text" || action === "type_text" ? { text: value } : {};
+    await send(action, payload);
+  }
+  async function runScan() {
+    await send("device_inventory");
+    await send("app_inventory");
+    await send("notification_inventory");
+    setMsg("تم إرسال فحص شامل؛ راقب الموافقات وسجل التدقيق");
   }
   async function approve(id: string, ok: boolean) {
     await supabase.from("companion_commands").update(ok ? { status: "approved", approved_at: new Date().toISOString() } : { status: "rejected" }).eq("id", id);
@@ -183,33 +208,37 @@ function CompanionPage() {
 
       {devices.length > 0 && (
         <section className="space-y-3 rounded-lg border bg-card p-4">
-          <b>2) الأوامر</b>
+          <b>2) نظام الهاتف الموحد</b>
           <select className="w-full rounded border bg-background p-2" value={dev} onChange={(e) => setDev(e.target.value)}>
             {devices.map((d) => (
               <option key={d.id} value={d.id}>{d.device_name} · {d.platform} · {d.status === "online" ? "متصل" : "غير متصل"}</option>
             ))}
           </select>
-          <Input dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)} />
-          <Input dir="ltr" value={appPackage} onChange={(e) => setAppPackage(e.target.value.trim())} placeholder="اسم حزمة التطبيق مثل com.google.android.youtube" />
-          <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="نص للنقر عليه أو كتابته" />
+          {(() => { const selected = devices.find((d) => d.id === dev); return <div className="rounded border bg-muted p-3 text-sm">
+            <b>الحالة: {selected?.status === "online" ? "متصل" : "غير متصل"}</b>
+            <span className="mx-2">·</span>
+            آخر اتصال: {selected?.last_seen_at ? new Date(selected.last_seen_at).toLocaleString("ar-EG") : "غير معروف"}
+            <div className="mt-1 text-xs text-muted-foreground">الوضع: {mode === "economic" ? "اقتصادي" : mode === "smart" ? "أقصى قدرات" : "متوازن"}</div>
+          </div>; })()}
+          <select className="w-full rounded border bg-background p-2" value={mode} onChange={(e) => { const next = e.target.value; setMode(next); localStorage.setItem("companion-mode", next); void (supabase as any).from("companion_settings").upsert({ user_id: uid, mode: next, updated_at: new Date().toISOString() }); }}>
+            <option value="economic">الوضع الاقتصادي — أقل شبكة</option>
+            <option value="balanced">الوضع المتوازن</option>
+            <option value="smart">أقصى قدرات — نماذج وأدوات أكثر</option>
+          </select>
+          <select className="w-full rounded border bg-background p-2" value={action} onChange={(e) => setAction(e.target.value)}>
+            <option value="open_url">فتح رابط</option><option value="open_app">فتح تطبيق</option><option value="open_settings">فتح إعدادات</option>
+            <option value="open_camera">فتح الكاميرا</option><option value="download_file">تنزيل رابط</option><option value="speak">نطق نص</option><option value="listen">استماع من الميكروفون</option>
+            <option value="back">رجوع</option><option value="home">الرئيسية</option><option value="recents">التطبيقات الأخيرة</option><option value="tap_text">ضغط نص</option><option value="type_text">كتابة نص</option>
+            <option value="screenshot">لقطة شاشة</option><option value="device_inventory">معلومات الجهاز</option><option value="app_inventory">قائمة التطبيقات</option><option value="notification_inventory">قراءة الإشعارات</option>
+          </select>
+          {(action === "open_url" || action === "download_file") && <Input dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />}
+          {action === "open_app" && <Input dir="ltr" value={appPackage} onChange={(e) => setAppPackage(e.target.value.trim())} placeholder="com.google.android.youtube" />}
+          {["open_settings", "speak", "tap_text", "type_text"].includes(action) && <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="القيمة أو النص" />}
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => void send("open_url", { url })}>فتح الرابط</Button>
-            <Button onClick={() => void send("open_app", { package: appPackage })}>فتح أي تطبيق</Button>
-            <Button onClick={() => void send("open_camera")}>فتح الكاميرا</Button>
-            <Button onClick={() => void send("download_file", { url })}>تنزيل الرابط</Button>
-            <Button onClick={() => void send("speak", { text })}>نطق النص</Button>
-            <Button onClick={() => void send("listen")}>استمع من الميكروفون</Button>
-            <Button variant="outline" onClick={() => void send("open_settings", { setting: "accessibility" })}>إعدادات Accessibility</Button>
-            <Button variant="outline" onClick={() => void send("back")}>رجوع</Button>
-            <Button variant="outline" onClick={() => void send("home")}>الرئيسية</Button>
-            <Button variant="outline" onClick={() => void send("recents")}>التطبيقات الأخيرة</Button>
-            <Button variant="outline" onClick={() => void send("tap_text", { text })}>انقر على النص</Button>
-            <Button variant="outline" onClick={() => void send("type_text", { text })}>اكتب النص</Button>
-            <Button variant="outline" onClick={() => void send("screenshot")}>لقطة شاشة</Button>
-            <Button variant="outline" onClick={() => void send("device_inventory")}>معلومات الجهاز</Button>
-            <Button variant="outline" onClick={() => void send("app_inventory")}>قائمة التطبيقات</Button>
-            <Button variant="outline" onClick={() => void send("notification_inventory")}>قراءة الإشعارات</Button>
+            <Button onClick={() => void sendSelected()}>تنفيذ الأمر</Button>
+            <Button variant="outline" onClick={() => void runScan()}>فحص شامل</Button>
             <Button variant="destructive" onClick={() => void send("stop")}>إيقاف طارئ</Button>
+            <Button variant="outline" onClick={() => void resumeSystem()}>رفع الطوارئ</Button>
           </div>
         </section>
       )}
