@@ -2,9 +2,13 @@ package com.abanoubai.companion
 
 import android.annotation.SuppressLint
 import android.Manifest
+import android.app.AppOpsManager
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -91,6 +95,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupItem(title: String, detail: String, enabled: Boolean?, onClick: () -> Unit): View {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16, 10, 16, 10)
+            setBackgroundColor(0xff202124.toInt())
+            layoutParams = LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 8, 0, 8) }
+        }
+        val state = when (enabled) { true -> "الحالة: مفعّل"; false -> "الحالة: غير مفعّل"; null -> "الحالة: غير قابل للتحقق تلقائيًا" }
+        box.addView(TextView(this).apply { text = "$title\n$state"; textSize = 17f; setTextColor(if (enabled == true) 0xff9be7a1.toInt() else 0xffffd180.toInt()) })
+        box.addView(TextView(this).apply { text = detail; textSize = 13f; setTextColor(0xffdddddd.toInt()); setPadding(0, 6, 0, 4) })
+        box.addView(button("فتح إعداد $title") { onClick() })
+        return box
+    }
+
+    private fun notificationAccessOn(): Boolean {
+        val component = ComponentName(this, CompanionNotificationListener::class.java).flattenToString()
+        return Settings.Secure.getString(contentResolver, "enabled_notification_listeners").orEmpty().split(':').contains(component)
+    }
+
+    private fun usageAccessOn(): Boolean {
+        val appOps = getSystemService(APP_OPS_SERVICE) as AppOpsManager
+        @Suppress("DEPRECATION")
+        return appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName) == AppOpsManager.MODE_ALLOWED
+    }
+
     private fun showSetupHub() {
         showingDashboard = false
         val root = LinearLayout(this).apply {
@@ -114,38 +143,42 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(title)
         root.addView(subtitle)
-        root.addView(button("1  تفعيل Accessibility (مطلوب للتحكم)") {
+        root.addView(setupItem("1  Accessibility", "مطلوبة للتحكم المرئي: فتح التطبيقات، الضغط، الكتابة والتنقل. لا يتم تفعيلها من التطبيق.", CompanionAccessibilityService.instance != null) {
             openSettings(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         })
-        root.addView(button("2  إعداد البطارية والعمل في الخلفية") {
+        val power = getSystemService(POWER_SERVICE) as PowerManager
+        root.addView(setupItem("2  البطارية والعمل في الخلفية", "تمنع Oppo من إيقاف الاتصال. اختر AbanoubAI يدويًا ثم اجعله بدون قيود.", if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) power.isIgnoringBatteryOptimizations(packageName) else null) {
             openSettings(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
         })
-        root.addView(button("3  التشغيل التلقائي وإعدادات التطبيق") {
+        root.addView(setupItem("3  التشغيل التلقائي وإعدادات التطبيق", "التشغيل التلقائي خاص بـ ColorOS وقد لا يمكن للتطبيق قراءته. فعّله يدويًا من App Launch.", null) {
             openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
         })
-        root.addView(button("4  الوصول إلى الإشعارات (اختياري وحساس)") {
+        root.addView(setupItem("4  الوصول إلى الإشعارات", "اختياري وحساس: يسمح بقراءة الإشعارات التي يختار Android تمريرها. لا يتم تفعيله تلقائيًا.", notificationAccessOn()) {
             openSettings("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
         })
-        root.addView(button("5  Usage Access — إحصاءات استخدام التطبيقات (اختياري)") {
+        root.addView(setupItem("5  Usage Access", "اختياري: يعرض إحصاءات استخدام التطبيقات فقط، ولا يمنح قراءة كلمات المرور أو قواعد بيانات التطبيقات.", usageAccessOn()) {
             openSettings(Settings.ACTION_USAGE_ACCESS_SETTINGS)
         })
-        root.addView(button("6  الملفات والصور — اختيار يدوي من النظام") {
+        root.addView(setupItem("6  الملفات والصور", "لا يوجد وصول شامل تلقائي. يفتح Android منتقي الملفات ويختار المستخدم الملف يدويًا.", null) {
             startActivity(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 type = "*/*"
                 addCategory(Intent.CATEGORY_OPENABLE)
             })
         })
-        root.addView(button("7  السماح بالكاميرا — عند الحاجة فقط") {
+        root.addView(setupItem("7  الكاميرا", "تُطلب عند فتح الكاميرا فقط، ويمكن إيقافها من إعدادات التطبيق في أي وقت.", ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA)
         })
-        root.addView(button("8  السماح بالميكروفون — عند الحاجة فقط") {
+        root.addView(setupItem("8  الميكروفون", "مطلوب للاستماع الصوتي عند تشغيله فقط. لا يتم تسجيل الصوت من دون تشغيل وضع الاستماع.", ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_MIC)
         })
-        root.addView(button("9  السماح بالموقع — عند الحاجة فقط") {
+        root.addView(setupItem("9  الموقع", "اختياري ولا علاقة له بالتحكم المرئي. فعّله فقط إذا أضفت ميزة تعتمد على الموقع.", ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), REQUEST_LOCATION)
         })
+        root.addView(setupItem("10  إدارة الجهاز (Device Admin)", "ليست تجاوزًا لحماية Android. هذا مسار مؤسسي اختياري، ولا نفعّله لأن التطبيق لا يحتاج امتلاك الهاتف أو منع إزالته.", null) {
+            openSettings("android.app.action.DEVICE_ADMIN_SETTINGS")
+        })
         val note = TextView(this).apply {
-            text = "مهم: لا توجد صلاحية واحدة تمنح تحكمًا كاملًا. لا تمنح الإشعارات أو الموقع أو الكاميرا أو الميكروفون إلا عند الحاجة. التطبيق لا يطلب قراءة كلمات المرور أو بيانات التطبيقات الخاصة."
+            text = "مهم: العناصر أعلاه لا تُفعّل تلقائيًا؛ الحالة المعروضة تقرأ ما فعّلته أنت في Android. لا توجد صلاحية واحدة تمنح تحكمًا كاملًا. لا تمنح الإشعارات أو الموقع أو الكاميرا أو الميكروفون إلا عند الحاجة. التطبيق لا يقرأ كلمات المرور أو قواعد بيانات التطبيقات الخاصة."
             textSize = 14f
             setTextColor(0xffffd180.toInt())
             setPadding(0, 18, 0, 12)
@@ -168,6 +201,11 @@ class MainActivity : AppCompatActivity() {
             else -> "الصلاحية"
         }
         Toast.makeText(this, if (grantResults.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED) "تم السماح بـ $label" else "لم يتم السماح بـ $label", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!showingDashboard && !::web.isInitialized) showSetupHub()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
