@@ -24,7 +24,7 @@ ${memory}
 المحتوى الكامل للملف
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
 [[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى موافقة أبانوب بزرار.
-[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. يدعم فتح التطبيقات والإعدادات، Chrome، الروابط والتنزيلات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
+[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. يدعم فتح التطبيقات والإعدادات، Chrome، الروابط والتنزيلات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. عند فتح تطبيق استخدم الاسم أو الحزمة، مثل [[PHONE:open_app|YouTube]] أو [[PHONE:open_app|com.google.android.youtube]]. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
 استخدم الأدوات بس لما الطلب محتاجها.`;
 
 export const networkTurn = createServerFn({ method: "POST" })
@@ -132,6 +132,12 @@ export const networkTurn = createServerFn({ method: "POST" })
     }
     const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "device_inventory", "app_inventory", "notification_inventory"]);
     const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "type_text", "tap_text", "tap_coordinates", "long_press", "swipe", "screenshot", "device_inventory", "app_inventory", "notification_inventory"]);
+    const appPackages: Record<string, string> = {
+      youtube: "com.google.android.youtube", "يوتيوب": "com.google.android.youtube",
+      chrome: "com.android.chrome", "جوجل كروم": "com.android.chrome", "كروم": "com.android.chrome",
+      whatsapp: "com.whatsapp", "واتساب": "com.whatsapp", telegram: "org.telegram.messenger", "تليجرام": "org.telegram.messenger",
+      gmail: "com.google.android.gm", "جيميل": "com.google.android.gm", settings: "com.android.settings", "الإعدادات": "com.android.settings",
+    };
     for (const m of text.matchAll(/\[\[PHONE:\s*([a-z_]+)\s*\|?([^\]]*)\]\]/g)) {
       if (jobs++ >= 12) break;
       const kind = m[1]!;
@@ -144,7 +150,9 @@ export const networkTurn = createServerFn({ method: "POST" })
         if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
         if (["open_url", "download_file"].includes(kind) && !/^https:\/\//.test(arg)) throw new Error("الرابط لازم يبدأ بـ https://");
         if (kind.endsWith("inventory") && arg) throw new Error("أمر الجرد لا يقبل بيانات إضافية");
-        const payload = kind === "open_url" || kind === "download_file" ? { url: arg } : kind === "open_app" ? { package: arg } : kind === "open_settings" ? { setting: arg } : kind === "speak" ? { text: arg.slice(0, 4000) } : kind === "tap_text" || kind === "type_text" ? { text: arg.slice(0, 500) } : {};
+        const appArg = kind === "open_app" ? (appPackages[arg.trim().toLowerCase()] ?? arg.trim()) : arg;
+        const urlArg = kind === "open_url" && /^www\./i.test(arg) ? `https://${arg}` : arg;
+        const payload = kind === "open_url" || kind === "download_file" ? { url: urlArg } : kind === "open_app" ? { package: appArg } : kind === "open_settings" ? { setting: arg } : kind === "speak" ? { text: arg.slice(0, 4000) } : kind === "tap_text" || kind === "type_text" ? { text: arg.slice(0, 500) } : {};
         const sensitive = SENSITIVE.has(kind);
         const { error } = await context.supabase.from("companion_commands").insert({
           device_id: dev.id, user_id: context.userId, kind, payload,
