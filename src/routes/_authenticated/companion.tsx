@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/companion")({
 type Device = { id: string; device_name: string; platform: string; status: string };
 type Cmd = { id: string; kind: string; status: string; requires_approval: boolean; payload: any; created_at: string; error: string | null };
 type Ev = { id: string; event_type: string; message: string | null; created_at: string };
-const SENSITIVE = new Set(["open_url", "tap_text", "type_text", "screenshot", "device_inventory", "app_inventory", "notification_inventory"]);
+const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "device_inventory", "app_inventory", "notification_inventory"]);
 declare const chrome: any;
 declare global {
   interface Window { AbanoubAI?: { savePairing: (deviceId: string, accessToken: string) => void } }
@@ -36,6 +36,7 @@ function CompanionPage() {
   const [extId, setExtId] = useState("");
   const [sessionToken, setSessionToken] = useState("");
   const [url, setUrl] = useState("https://example.com");
+  const [appPackage, setAppPackage] = useState("");
   const [text, setText] = useState("");
   const [msg, setMsg] = useState("");
   const [androidInitStarted, setAndroidInitStarted] = useState(false);
@@ -189,10 +190,15 @@ function CompanionPage() {
             ))}
           </select>
           <Input dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)} />
+          <Input dir="ltr" value={appPackage} onChange={(e) => setAppPackage(e.target.value.trim())} placeholder="اسم حزمة التطبيق مثل com.google.android.youtube" />
           <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="نص للنقر عليه أو كتابته" />
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => void send("open_url", { url })}>فتح الرابط</Button>
+            <Button onClick={() => void send("open_app", { package: appPackage })}>فتح أي تطبيق</Button>
+            <Button variant="outline" onClick={() => void send("open_settings", { setting: "accessibility" })}>إعدادات Accessibility</Button>
             <Button variant="outline" onClick={() => void send("back")}>رجوع</Button>
+            <Button variant="outline" onClick={() => void send("home")}>الرئيسية</Button>
+            <Button variant="outline" onClick={() => void send("recents")}>التطبيقات الأخيرة</Button>
             <Button variant="outline" onClick={() => void send("tap_text", { text })}>انقر على النص</Button>
             <Button variant="outline" onClick={() => void send("type_text", { text })}>اكتب النص</Button>
             <Button variant="outline" onClick={() => void send("screenshot")}>لقطة شاشة</Button>
