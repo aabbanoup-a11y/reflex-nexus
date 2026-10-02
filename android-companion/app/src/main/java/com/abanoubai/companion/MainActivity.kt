@@ -1,6 +1,7 @@
 package com.abanoubai.companion
 
 import android.annotation.SuppressLint
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -16,6 +17,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -123,10 +125,19 @@ class MainActivity : AppCompatActivity() {
             openSettings(Settings.ACTION_USAGE_ACCESS_SETTINGS)
         })
         root.addView(button("6  الملفات والصور — اختيار يدوي من النظام") {
-            openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+            startActivity(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                type = "*/*"
+                addCategory(Intent.CATEGORY_OPENABLE)
+            })
         })
-        root.addView(button("إعدادات الكاميرا والميكروفون والموقع") {
-            openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+        root.addView(button("7  السماح بالكاميرا — عند الحاجة فقط") {
+            requestPermissions(arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA)
+        })
+        root.addView(button("8  السماح بالميكروفون — عند الحاجة فقط") {
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_MIC)
+        })
+        root.addView(button("9  السماح بالموقع — عند الحاجة فقط") {
+            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), REQUEST_LOCATION)
         })
         val note = TextView(this).apply {
             text = "مهم: لا توجد صلاحية واحدة تمنح تحكمًا كاملًا. لا تمنح الإشعارات أو الموقع أو الكاميرا أو الميكروفون إلا عند الحاجة. التطبيق لا يطلب قراءة كلمات المرور أو بيانات التطبيقات الخاصة."
@@ -141,6 +152,17 @@ class MainActivity : AppCompatActivity() {
         })
         val scroll = ScrollView(this).apply { addView(root) }
         setContentView(scroll)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        val label = when (requestCode) {
+            REQUEST_CAMERA -> "الكاميرا"
+            REQUEST_MIC -> "الميكروفون"
+            REQUEST_LOCATION -> "الموقع"
+            else -> "الصلاحية"
+        }
+        Toast.makeText(this, if (grantResults.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED) "تم السماح بـ $label" else "لم يتم السماح بـ $label", Toast.LENGTH_SHORT).show()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -179,5 +201,10 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
     }
 
-    companion object { const val SITE_HOST = "reflex-nexus.lovable.app" }
+    companion object {
+        const val SITE_HOST = "reflex-nexus.lovable.app"
+        private const val REQUEST_CAMERA = 1001
+        private const val REQUEST_MIC = 1002
+        private const val REQUEST_LOCATION = 1003
+    }
 }
