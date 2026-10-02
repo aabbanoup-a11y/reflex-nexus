@@ -5,21 +5,29 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.webkit.JavascriptInterface
+import android.view.Gravity
+import android.view.View
 import android.webkit.CookieManager
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 
 /**
- * The app IS the AbanoubAI website. After the user signs in, the page calls
- * AbanoubAI.pairSession(...) so this phone is linked to the account automatically.
- * Commands still require the user to enable Accessibility once, and sensitive ones need approval on the page.
+ * AbanoubAI Companion starts with a local setup hub. The hub only opens Android's
+ * own settings pages; the user remains in control of every sensitive permission.
+ * The dashboard is opened explicitly after setup.
  */
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
+    private var showingDashboard = false
 
     inner class Bridge {
         private val prefs get() = getSharedPreferences("companion", MODE_PRIVATE)
@@ -33,7 +41,7 @@ class MainActivity : AppCompatActivity() {
             if (changed) runOnUiThread { CompanionRuntime.restart(this@MainActivity) }
         }
 
-        @JavascriptInterface fun openAccessibility() = runOnUiThread { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        @JavascriptInterface fun openAccessibility() = runOnUiThread { openSettings(Settings.ACTION_ACCESSIBILITY_SETTINGS) }
 
         @JavascriptInterface fun isAccessibilityOn(): Boolean = CompanionAccessibilityService.instance != null
 
@@ -43,9 +51,101 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        showSetupHub()
+        CompanionRuntime.start(this)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (showingDashboard && web.canGoBack()) web.goBack()
+                else if (showingDashboard) showSetupHub()
+                else finish()
+            }
+        })
+    }
+
+    private fun openSettings(action: String, data: Uri? = null) {
+        runCatching {
+            val intent = Intent(action).apply { if (data != null) this.data = data }
+            startActivity(intent)
+        }.onFailure {
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+        }
+    }
+
+    private fun button(label: String, onClick: () -> Unit): Button = Button(this).apply {
+        text = label
+        textSize = 16f
+        isAllCaps = false
+        setPadding(20, 14, 20, 14)
+        setOnClickListener { onClick() }
+        layoutParams = LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            setMargins(0, 8, 0, 8)
+        }
+    }
+
+    private fun showSetupHub() {
+        showingDashboard = false
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(28, 24, 28, 24)
+            setBackgroundColor(ContextCompat.getColor(this@MainActivity, android.R.color.background_dark))
+        }
+        val title = TextView(this).apply {
+            text = "AbanoubAI Companion"
+            textSize = 28f
+            gravity = Gravity.CENTER
+            setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.white))
+            setPadding(0, 12, 0, 8)
+        }
+        val subtitle = TextView(this).apply {
+            text = "مركز إعداد الهاتف\nفعّل ما تحتاجه فقط، وستظل كل الموافقات بيدك."
+            textSize = 17f
+            gravity = Gravity.CENTER
+            setTextColor(0xffdddddd.toInt())
+            setPadding(0, 0, 0, 18)
+        }
+        root.addView(title)
+        root.addView(subtitle)
+        root.addView(button("1  تفعيل Accessibility (مطلوب للتحكم)") {
+            openSettings(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        })
+        root.addView(button("2  إعداد البطارية والعمل في الخلفية") {
+            openSettings(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        })
+        root.addView(button("3  التشغيل التلقائي وإعدادات التطبيق") {
+            openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+        })
+        root.addView(button("4  الوصول إلى الإشعارات (اختياري وحساس)") {
+            openSettings("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+        })
+        root.addView(button("5  Usage Access — إحصاءات استخدام التطبيقات (اختياري)") {
+            openSettings(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+        })
+        root.addView(button("6  الملفات والصور — اختيار يدوي من النظام") {
+            openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+        })
+        root.addView(button("إعدادات الكاميرا والميكروفون والموقع") {
+            openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+        })
+        val note = TextView(this).apply {
+            text = "مهم: لا توجد صلاحية واحدة تمنح تحكمًا كاملًا. لا تمنح الإشعارات أو الموقع أو الكاميرا أو الميكروفون إلا عند الحاجة. التطبيق لا يطلب قراءة كلمات المرور أو بيانات التطبيقات الخاصة."
+            textSize = 14f
+            setTextColor(0xffffd180.toInt())
+            setPadding(0, 18, 0, 12)
+        }
+        root.addView(note)
+        root.addView(button("فتح لوحة AbanoubAI وتسجيل الدخول") { showDashboard() })
+        root.addView(button("فتح إعدادات التطبيق مباشرة") {
+            openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+        })
+        val scroll = ScrollView(this).apply { addView(root) }
+        setContentView(scroll)
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun showDashboard() {
+        showingDashboard = true
         CookieManager.getInstance().setAcceptCookie(true)
         web = WebView(this).apply {
             CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
@@ -54,7 +154,6 @@ class MainActivity : AppCompatActivity() {
             settings.databaseEnabled = true
             settings.allowFileAccess = false
             settings.allowContentAccess = false
-            // Google blocks sign-in inside embedded WebViews identified by "; wv"; present as regular Chrome.
             settings.userAgentString = settings.userAgentString.replace("; wv)", ")").replace(Regex("Version/\\S+ "), "")
             settings.javaScriptCanOpenWindowsAutomatically = true
             addJavascriptInterface(Bridge(), "AbanoubAI")
@@ -72,15 +171,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
         setContentView(web)
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() { if (web.canGoBack()) web.goBack() else finish() }
-        })
-        CompanionRuntime.start(this)
         web.loadUrl("https://$SITE_HOST/")
     }
 
     override fun onPause() {
-        CookieManager.getInstance().flush()
+        if (::web.isInitialized) CookieManager.getInstance().flush()
         super.onPause()
     }
 
