@@ -22,6 +22,27 @@ async function decrypt(enc: string) {
   return new TextDecoder().decode(pt);
 }
 
+// Server-only helper: every model receives the same bounded, consented memory.
+export async function loadConsentedMemoryContext(db: any, userId: string) {
+  const { data: setting } = await db.from("memory_settings").select("consent,enabled").eq("user_id", userId).maybeSingle();
+  if (!setting?.consent || !setting?.enabled) return "لا توجد ذاكرة مشتركة مفعلة بموافقة المستخدم.";
+  const { data: rows } = await db
+    .from("user_memories")
+    .select("category,content_enc,created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(40);
+  const items: string[] = [];
+  for (const row of rows ?? []) {
+    try {
+      items.push(`- ${String(row.category)}: ${(await decrypt(String(row.content_enc))).slice(0, 500)}`);
+    } catch {
+      /* skip unreadable memories */
+    }
+  }
+  return items.length ? items.join("\n") : "لا توجد ذكريات محفوظة.";
+}
+
 export type Memory = { id: string; category: string; content: string; created_at: string };
 const Category = z.enum(["preference", "trait", "goal", "habit"]);
 

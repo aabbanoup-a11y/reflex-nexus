@@ -8,6 +8,9 @@ export type NetModel = {
   browser?: boolean;
 };
 
+export const MANAGER_ID = "abanoupai/manager";
+export const MANAGER_LABEL = "AbanoupAi — المدير";
+
 export const NET_MODELS: NetModel[] = [
   // 12 Cloudflare (your account)
   { id: "cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast", label: "Llama 3.3 70B", provider: "cloudflare" },
@@ -43,7 +46,7 @@ export const NET_MODELS: NetModel[] = [
   { id: "anthropic/claude-sonnet-5", label: "كلود سونيت", provider: "anthropic" },
 ];
 
-export const netLabel = (id: string) => NET_MODELS.find((m) => m.id === id)?.label ?? id;
+export const netLabel = (id: string) => id === MANAGER_ID ? MANAGER_LABEL : NET_MODELS.find((m) => m.id === id)?.label ?? id;
 
 // Deterministic spread of the 30 models over employees / assistants.
 export function modelForKey(key: string) {

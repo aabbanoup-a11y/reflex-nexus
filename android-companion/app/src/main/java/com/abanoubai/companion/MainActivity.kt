@@ -11,6 +11,7 @@ import android.view.View
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
+import android.webkit.PermissionRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
@@ -40,6 +41,7 @@ class MainActivity : AppCompatActivity() {
             val changed = prefs.getString("access_token", null) != accessToken || prefs.getString("device_id", null) != deviceId
             prefs.edit().putString("device_id", deviceId).putString("access_token", accessToken)
                 .putString("refresh_token", refreshToken).putBoolean("enabled", true).apply()
+            ContextCompat.startForegroundService(this@MainActivity, Intent(this@MainActivity, CompanionForegroundService::class.java))
             if (changed) runOnUiThread { CompanionRuntime.restart(this@MainActivity) }
         }
 
@@ -57,6 +59,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         showSetupHub()
         CompanionRuntime.start(this)
+        if (getSharedPreferences("companion", MODE_PRIVATE).getBoolean("enabled", false)) {
+            ContextCompat.startForegroundService(this, Intent(this, CompanionForegroundService::class.java))
+        }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (showingDashboard && web.canGoBack()) web.goBack()
@@ -179,7 +184,14 @@ class MainActivity : AppCompatActivity() {
             settings.userAgentString = settings.userAgentString.replace("; wv)", ")").replace(Regex("Version/\\S+ "), "")
             settings.javaScriptCanOpenWindowsAutomatically = true
             addJavascriptInterface(Bridge(), "AbanoubAI")
-            webChromeClient = WebChromeClient()
+            webChromeClient = object : WebChromeClient() {
+                override fun onPermissionRequest(request: PermissionRequest) {
+                    runOnUiThread {
+                        val allowed = request.resources.filter { it == PermissionRequest.RESOURCE_AUDIO_CAPTURE }.toTypedArray()
+                        if (allowed.isNotEmpty()) request.grant(allowed) else request.deny()
+                    }
+                }
+            }
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
                     val host = Uri.parse(url).host.orEmpty()

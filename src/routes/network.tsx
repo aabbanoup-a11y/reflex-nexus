@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { networkTurn, mergeRepo, type ToolEvent } from "@/lib/network.functions";
-import { NET_MODELS, netLabel, REPOS, WORK_BRANCH } from "@/lib/models30";
+import { MANAGER_ID, MANAGER_LABEL, NET_MODELS, netLabel, REPOS, WORK_BRANCH } from "@/lib/models30";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/runtime-client";
@@ -23,14 +23,18 @@ export const Route = createFileRoute("/network")({
 
 type Entry = { id: string; who: string; text: string; tools?: ToolEvent[]; err?: boolean };
 const KEY = "network-thread-v1";
+type SpeechCtor = new () => { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: any) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void };
+declare global { interface Window { SpeechRecognition?: SpeechCtor; webkitSpeechRecognition?: SpeechCtor } }
 
 function Network() {
   const turn = useServerFn(networkTurn);
   const merge = useServerFn(mergeRepo);
   const [thread, setThread] = useState<Entry[]>([]);
-  const [picked, setPicked] = useState<string[]>([NET_MODELS[0]!.id, "google/gemini-3.8-flash", NET_MODELS[6]!.id]);
+  const [picked, setPicked] = useState<string[]>([MANAGER_ID, NET_MODELS[0]!.id, "google/gemini-3.8-flash"]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState("");
+  const [voiceOn, setVoiceOn] = useState(false);
+  const voice = useRef<{ stop: () => void } | null>(null);
   const stop = useRef(false);
   const ref = useRef<Entry[]>([]);
 
@@ -91,12 +95,33 @@ function Network() {
     setBusy("");
   }
 
-  async function send() {
-    const t = input.trim();
+  async function sendText(value: string) {
+    const t = value.trim();
     if (!t || busy) return;
     setInput("");
     push({ id: crypto.randomUUID(), who: "me", text: t });
     await round(picked);
+  }
+  async function send() { await sendText(input); }
+
+  function toggleVoice() {
+    if (voiceOn) { voice.current?.stop(); voice.current = null; setVoiceOn(false); return; }
+    const Ctor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!Ctor) return setInput("التعرف الصوتي غير مدعوم في هذا WebView");
+    const r = new Ctor();
+    r.lang = "ar-EG"; r.continuous = true; r.interimResults = false;
+    r.onresult = (e: any) => {
+      const last = e.results?.[e.results.length - 1]?.[0]?.transcript?.trim() ?? "";
+      if (!last) return;
+      const normalized = last.toLowerCase();
+      const wake = normalized.includes("abanoupai") || last.includes("أبانوباي") || last.includes("أبانوب اي") || last.includes("ابانوباي");
+      if (wake) {
+        const command = last.replace(/abanoupai|أبانوباي|أبانوب اي|ابانوباي/gi, "").trim();
+        if (command) void sendText(command);
+      }
+    };
+    r.onend = () => { if (voiceOn) { try { r.start(); } catch { /* already listening */ } } };
+    voice.current = r; setVoiceOn(true); r.start();
   }
 
   async function doMerge(repo: string) {
@@ -121,17 +146,21 @@ function Network() {
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
-        اختار النماذج اللي ترد. كلهم شايفين نفس المحادثة. 12 نموذج بيشتغلوا على Cloudflare بتاعك، و18 من Lovable AI. 🌐 = نموذج متصفح.
+        اختار النماذج اللي ترد، أو استخدم AbanoupAi كمدير يوزّع السؤال على الوكيل المتخصص. كلهم يشوفوا نفس المحادثة والذاكرة المصرّح بها. 12 نموذج بيشتغلوا على Cloudflare بتاعك، و18 من Lovable AI. 🌐 = نموذج متصفح.
       </p>
 
       <section className="flex flex-wrap gap-2">
+        <button onClick={() => toggle(MANAGER_ID)}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold ${picked.includes(MANAGER_ID) ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"}`}>
+          {MANAGER_LABEL}
+        </button>
         {NET_MODELS.map((m) => (
           <button key={m.id} onClick={() => toggle(m.id)}
             className={`rounded-full border px-3 py-1 text-xs ${picked.includes(m.id) ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"}`}>
             {m.browser ? "🌐 " : m.provider === "cloudflare" ? "☁️ " : ""}{m.label}
           </button>
         ))}
-        <Button size="sm" variant="ghost" onClick={() => setPicked(NET_MODELS.map((m) => m.id))}>الكل</Button>
+        <Button size="sm" variant="ghost" onClick={() => setPicked([MANAGER_ID, ...NET_MODELS.map((m) => m.id)])}>الكل</Button>
         <Button size="sm" variant="ghost" onClick={() => setPicked([])}>ولا واحد</Button>
       </section>
 
@@ -168,6 +197,7 @@ function Network() {
         <Textarea value={input} onChange={(e) => setInput(e.target.value)} placeholder="اكتب رسالتك للنماذج…" rows={3} />
         <div className="flex flex-wrap gap-2">
           <Button onClick={send} disabled={!!busy || picked.length === 0}>ابعت ({picked.length})</Button>
+          <Button variant={voiceOn ? "destructive" : "outline"} onClick={toggleVoice}>{voiceOn ? "إيقاف استدعاء AbanoupAi" : "استدعاء AbanoupAi صوتيًا"}</Button>
           <Button variant="outline" disabled={!!busy || thread.length === 0 || picked.length === 0} onClick={() => round(picked)}>خليهم يردوا على بعض</Button>
           {busy && <Button variant="destructive" onClick={() => (stop.current = true)}>إيقاف</Button>}
           {REPOS.map((r) => (

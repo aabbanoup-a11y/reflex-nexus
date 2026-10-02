@@ -1,4 +1,4 @@
-import { NET_MODELS, REPOS, WORK_BRANCH } from "./models30";
+import { MANAGER_ID, NET_MODELS, REPOS, WORK_BRANCH } from "./models30";
 
 type Msg = { role: "user" | "assistant"; content: string };
 const CF = "https://connector-gateway.lovable.dev/cloudflare/client/v4";
@@ -212,4 +212,4 @@ export async function ghMerge(repoIn: string) {
   return pr.html_url as string;
 }
 
-export const knownModel = (id: string) => NET_MODELS.some((m) => m.id === id);
+export const knownModel = (id: string) => id === MANAGER_ID || NET_MODELS.some((m) => m.id === id);
