@@ -35,8 +35,26 @@ export const networkTurn = createServerFn({ method: "POST" })
     if (!n.knownModel(data.model)) throw new Error("نموذج غير معروف");
     const isManager = data.model === MANAGER_ID;
     const me = isManager ? { label: MANAGER_LABEL } : NET_MODELS.find((m) => m.id === data.model)!;
-    const sharedMemory = await loadConsentedMemoryContext(context.supabase, context.userId);
-    const history = data.thread.slice(-30).map((t) => ({
+    const memoryText = await loadConsentedMemoryContext(context.supabase, context.userId);
+    // Shared thread is read from the user's account in the database (fallback: client copy).
+    const { data: rows } = await context.supabase
+      .from("network_messages").select("who,content,created_at").eq("user_id", context.userId)
+      .order("created_at", { ascending: false }).limit(40);
+    const dbThread = (rows ?? []).reverse().map((r) => ({ who: r.who === "me" ? "me" : (NET_MODELS.find((x) => x.id === r.who)?.label ?? r.who), text: r.content }));
+    const lastClient = data.thread[data.thread.length - 1];
+    const base = dbThread.length ? dbThread : data.thread;
+    if (lastClient && !base.some((t) => t.text === lastClient.text)) base.push(lastClient);
+    // Device info for all models: phone status + latest events.
+    const { data: devs } = await context.supabase
+      .from("companion_devices").select("id,device_name,platform,status,last_seen_at").eq("user_id", context.userId).limit(5);
+    const { data: evs } = await context.supabase
+      .from("companion_events").select("event_type,message,created_at").eq("user_id", context.userId)
+      .order("created_at", { ascending: false }).limit(8);
+    const deviceInfo = (devs ?? []).length
+      ? `أجهزة أبانوب: ${(devs ?? []).map((d) => `${d.device_name} (${d.platform}) حالته ${d.status}، آخر ظهور ${d.last_seen_at ?? "-"}`).join("؛ ")}\nآخر أحداث الجهاز:\n${(evs ?? []).map((e) => `- ${e.event_type}: ${(e.message ?? "").slice(0, 300)}`).join("\n")}`
+      : "مفيش جهاز مربوط حاليًا.";
+    const sharedMemory = `${memoryText}\n\n${deviceInfo}`;
+    const history = base.slice(-30).map((t) => ({
       role: (t.who === "me" ? "user" : "assistant") as "user" | "assistant",
       content: (t.who === "me" ? "أبانوب: " : `[${t.who}]: `) + t.text.slice(0, 2500),
     }));
