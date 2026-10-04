@@ -22,9 +22,9 @@ export async function runLocal(
     eng.catch(() => engines.delete(model));
   }
   const e = await eng;
-  const messages = [
+  const messages: { role: string; content: string }[] = [
     { role: "system", content: system },
-    ...thread.slice(-12).map((m) => ({ role: m.who === "me" ? "user" : "assistant", content: m.who === "me" ? m.text : `[${m.who}] ${m.text}` }).valueOf()),
+    ...thread.slice(-12).map((m) => ({ role: m.who === "me" ? "user" : "assistant", content: m.who === "me" ? m.text : `[${m.who}] ${m.text}` })),
   ];
   // Many small models require the last message to be from the user.
   if (messages[messages.length - 1]!.role !== "user") messages.push({ role: "user", content: "كمّل ورد على آخر رسالة." });
