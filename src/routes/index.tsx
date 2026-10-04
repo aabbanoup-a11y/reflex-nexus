@@ -76,7 +76,7 @@ function Home() {
         .select("id,code,full_name,department,job_title,hired_at,status,created_at,ai_model")
         .order("code", { ascending: true });
       if (error) throw error;
-      return data as Employee[];
+      return (data ?? []).map((e) => ({ ...e, email: "", phone: "" })) as unknown as Employee[];
     },
   });
 
