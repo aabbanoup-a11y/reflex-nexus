@@ -11,6 +11,7 @@ import { logRun, notifyDone, requestNotifyPermission } from "@/lib/activity";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { UnifiedWorkspaceNav } from "@/components/UnifiedWorkspaceNav";
 import {
   Dialog,
   DialogContent,
@@ -113,6 +114,7 @@ function Home() {
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/60">
         <div className="mx-auto max-w-6xl px-4 py-10">
+          <UnifiedWorkspaceNav />
           <div className="mb-4 flex items-center justify-between gap-3">
             <Badge>مزامنة مباشرة مع قاعدة البيانات</Badge>
             <Button asChild size="sm">

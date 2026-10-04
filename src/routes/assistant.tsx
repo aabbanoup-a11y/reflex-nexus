@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { BreathingExercise } from "@/components/BreathingExercise";
+import { UnifiedWorkspaceNav } from "@/components/UnifiedWorkspaceNav";
 
 export const Route = createFileRoute("/assistant")({
   component: AssistantPage,
@@ -243,6 +244,7 @@ function AssistantPage() {
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/60">
         <div className="mx-auto max-w-5xl px-4 py-6">
+          <UnifiedWorkspaceNav />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <Badge className="mb-2">صور وفيديو وملفات + ذاكرة + بدائل تلقائية</Badge>

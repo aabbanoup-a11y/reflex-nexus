@@ -6,6 +6,7 @@ import { MANAGER_ID, MANAGER_LABEL, NET_MODELS, isLocal, netLabel, REPOS, WORK_B
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/runtime-client";
+import { UnifiedWorkspaceNav } from "@/components/UnifiedWorkspaceNav";
 
 export const Route = createFileRoute("/network")({
   head: () => ({
@@ -169,6 +170,7 @@ function Network() {
 
   return (
     <main dir="rtl" className="mx-auto max-w-5xl space-y-4 p-4">
+      <UnifiedWorkspaceNav />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">شبكة الـ30 نموذج</h1>
         <div className="flex gap-2">

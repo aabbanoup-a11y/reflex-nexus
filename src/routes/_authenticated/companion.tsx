@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/runtime-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { UnifiedWorkspaceNav } from "@/components/UnifiedWorkspaceNav";
 
 export const Route = createFileRoute("/_authenticated/companion")({
   head: () => ({
@@ -168,6 +169,7 @@ function CompanionPage() {
 
   return (
     <main dir="rtl" className="mx-auto max-w-3xl space-y-5 p-5">
+      <UnifiedWorkspaceNav />
       <header>
         <h1 className="text-2xl font-bold">التحكم في Chrome</h1>
         <p className="text-sm text-muted-foreground">
