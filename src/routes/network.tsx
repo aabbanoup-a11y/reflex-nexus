@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { networkTurn, mergeRepo, type ToolEvent } from "@/lib/network.functions";
-import { MANAGER_ID, MANAGER_LABEL, NET_MODELS, netLabel, REPOS, WORK_BRANCH } from "@/lib/models30";
+import { MANAGER_ID, MANAGER_LABEL, NET_MODELS, isLocal, netLabel, REPOS, WORK_BRANCH } from "@/lib/models30";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/runtime-client";
@@ -88,6 +88,12 @@ function Network() {
       if (stop.current) break;
       setBusy(netLabel(m));
       try {
+        if (isLocal(m)) {
+          const { runLocal } = await import("@/lib/local-llm");
+          const text = await runLocal(m, "أنت نموذج ذكاء اصطناعي شغال أوفلاين على جهاز المستخدم ضمن فريق نماذج. رد بالعربية المصرية باختصار.", ref.current.map((e) => ({ who: e.who === "me" ? "me" : netLabel(e.who), text: e.text })), (p) => setBusy(`${netLabel(m)} — ${p.slice(0, 60)}`));
+          push({ id: crypto.randomUUID(), who: m, text });
+          continue;
+        }
         const r = await turn({ data: { model: m, thread: ref.current.map((e) => ({ who: e.who === "me" ? "me" : netLabel(e.who), text: e.text + (e.tools?.length ? "\n" + e.tools.map((t) => `${t.tool}: ${t.text.slice(0, 1500)}`).join("\n") : "") })) } });
         push({ id: crypto.randomUUID(), who: m, text: r.usedModel !== m ? `${r.text}\n(اتحوّل لـ ${netLabel(r.usedModel)} عشان الأصلي فشل)` : r.text, tools: r.tools });
       } catch (e) {

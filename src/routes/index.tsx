@@ -73,7 +73,7 @@ function Home() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employees")
-        .select("*")
+        .select("id,code,full_name,department,job_title,hired_at,status,created_at,ai_model")
         .order("code", { ascending: true });
       if (error) throw error;
       return data as Employee[];

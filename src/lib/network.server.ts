@@ -49,6 +49,7 @@ async function sse(body: ReadableStream<Uint8Array>, on: (e: any) => void) {
 }
 
 export async function callModel(id: string, system: string, messages: Msg[]): Promise<string> {
+  if (id.startsWith("local/")) id = "cf/@cf/meta/llama-3.1-8b-instruct-fast";
   const key = env("LOVABLE_API_KEY");
   let text = "";
   if (id.startsWith("cf/")) {
