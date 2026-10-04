@@ -114,7 +114,12 @@ function AssistantPage() {
         continue;
       }
       const ext = f.name.split(".").pop() || "bin";
-      const path = `u/${crypto.randomUUID()}.${ext}`;
+      const { data: who } = await supabase.auth.getUser();
+      if (!who.user) {
+        toast.error("سجّل دخول الأول عشان ترفع ملفات");
+        break;
+      }
+      const path = `${who.user.id}/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage.from("chat-uploads").upload(path, f, { contentType: f.type || "application/octet-stream" });
       if (error) {
         toast.error(`فشل رفع ${f.name}`);
