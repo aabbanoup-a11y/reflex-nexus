@@ -73,8 +73,10 @@ export const LOCAL_SERVER_FALLBACK = "cf/@cf/meta/llama-3.1-8b-instruct-fast";
 
 export const netLabel = (id: string) => id === MANAGER_ID ? MANAGER_LABEL : NET_MODELS.find((m) => m.id === id)?.label ?? id;
 
-// Deterministic spread of the 30 models over employees / assistants.
+// Even spread of the 50 models over the 162 employees (by employee number), hash otherwise.
 export function modelForKey(key: string) {
+  const n = key.match(/\d+/)?.[0];
+  if (n) return NET_MODELS[(Number(n) - 1 + NET_MODELS.length) % NET_MODELS.length]!.id;
   let h = 0;
   for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return NET_MODELS[h % NET_MODELS.length]!.id;
