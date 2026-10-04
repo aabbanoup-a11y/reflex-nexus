@@ -12,6 +12,15 @@ const Turn = z.object({
 export type ToolEvent = { tool: string; ok: boolean; text: string; link?: string | undefined; shot?: string | undefined };
 export type TurnReply = { model: string; text: string; tools: ToolEvent[]; usedModel: string };
 
+function inferPhoneTag(input: string) {
+  const text = input.trim();
+  const url = text.match(/https?:\/\/\S+|www\.\S+/i)?.[0]?.replace(/[،.,)]+$/g, "");
+  if (url && /(افتح|شغل|اذهب|رابط|open|go)/i.test(text)) return `[[PHONE:open_url|${url.startsWith("www.") ? `https://${url}` : url}]]`;
+  if (!/(افتح|شغل|شغّل|open|launch)/i.test(text)) return "";
+  const app = text.match(/(يوتيوب|youtube|كروم|chrome|واتساب|whatsapp|تليجرام|telegram|جيميل|gmail|الإعدادات|settings)/i)?.[0];
+  return app ? `[[PHONE:open_app|${app}]]` : "";
+}
+
 const HINT = (me: string, memory: string, manager: boolean) => `${manager ? `إنت ${MANAGER_LABEL}. أنت نقطة الدخول والمنسق: افهم طلب أبانوب، حدد الوكيل المتخصص المناسب، واكتب وسم [[DELEGATE:health|السؤال]] أو [[DELEGATE:karate|السؤال]] أو [[DELEGATE:general|السؤال]] عندما تحتاج رأيًا متخصصًا. لا تدّعي تنفيذ مهمة قبل استخدام أداة الهاتف أو ظهور نتيجتها.` : `إنت "${me}" واحد من شبكة 30 نموذج ذكاء اصطناعي`} بتشتغل مع أبانوب في محادثة واحدة مشتركة. كل الردود (بتاعته وبتاعت باقي النماذج) قدامك تحت وبتتحفظ عند الكل.
 الذاكرة المشتركة المصرّح بها من أبانوب:
 ${memory}
@@ -24,7 +33,7 @@ ${memory}
 المحتوى الكامل للملف
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
 [[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى موافقة أبانوب بزرار.
-[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. يدعم فتح التطبيقات والإعدادات، Chrome، الروابط والتنزيلات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. عند فتح تطبيق استخدم الاسم أو الحزمة، مثل [[PHONE:open_app|YouTube]] أو [[PHONE:open_app|com.google.android.youtube]]. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
+[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. إذا قال أبانوب "افتح/شغل يوتيوب أو Chrome أو واتساب" أخرج الوسم فورًا: [[PHONE:open_app|اسم التطبيق أو الحزمة]]. وإذا أعطى رابطًا أخرج [[PHONE:open_url|https://...]]. لا تكتفِ بشرح الخطوات ولا تقل إنك لا تملك الهاتف؛ أخرج الوسم وانتظر نتيجة الأداة. يدعم أيضًا الإعدادات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
 استخدم الأدوات بس لما الطلب محتاجها.`;
 
 export const networkTurn = createServerFn({ method: "POST" })
@@ -73,6 +82,8 @@ export const networkTurn = createServerFn({ method: "POST" })
       used = fallback;
       text = await n.callModel(fallback, HINT(me.label, sharedMemory, isManager), msgs);
     }
+    const inferredPhone = inferPhoneTag(lastClient?.text ?? "");
+    if (inferredPhone && !text.includes("[[PHONE:")) text = `${text}\n${inferredPhone}`;
 
     const tools: ToolEvent[] = [];
     const run = async (tool: string, f: () => Promise<Omit<ToolEvent, "tool" | "ok">>) => {
@@ -147,11 +158,11 @@ export const networkTurn = createServerFn({ method: "POST" })
         const { data: dev } = await context.supabase
           .from("companion_devices").select("id,status").eq("user_id", context.userId).eq("platform", "android")
           .order("last_seen_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
-        if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
-        if (["open_url", "download_file"].includes(kind) && !/^https:\/\//.test(arg)) throw new Error("الرابط لازم يبدأ بـ https://");
-        if (kind.endsWith("inventory") && arg) throw new Error("أمر الجرد لا يقبل بيانات إضافية");
         const appArg = kind === "open_app" ? (appPackages[arg.trim().toLowerCase()] ?? arg.trim()) : arg;
         const urlArg = kind === "open_url" && /^www\./i.test(arg) ? `https://${arg}` : arg;
+        if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
+        if (["open_url", "download_file"].includes(kind) && !/^https:\/\//.test(urlArg)) throw new Error("الرابط لازم يبدأ بـ https://");
+        if (kind.endsWith("inventory") && arg) throw new Error("أمر الجرد لا يقبل بيانات إضافية");
         const payload = kind === "open_url" || kind === "download_file" ? { url: urlArg } : kind === "open_app" ? { package: appArg } : kind === "open_settings" ? { setting: arg } : kind === "speak" ? { text: arg.slice(0, 4000) } : kind === "tap_text" || kind === "type_text" ? { text: arg.slice(0, 500) } : {};
         const sensitive = SENSITIVE.has(kind);
         const { error } = await context.supabase.from("companion_commands").insert({

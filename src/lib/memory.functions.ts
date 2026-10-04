@@ -40,7 +40,17 @@ export async function loadConsentedMemoryContext(db: any, userId: string) {
       /* skip unreadable memories */
     }
   }
-  return items.length ? items.join("\n") : "لا توجد ذكريات محفوظة.";
+  const { data: events } = await db
+    .from("companion_events")
+    .select("event_type,message,created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(12);
+  const log = (events ?? [])
+    .map((event: any) => `- سجل الهاتف ${String(event.event_type)}: ${String(event.message ?? "").slice(0, 300)}`)
+    .join("\n");
+  const memory = items.length ? items.join("\n") : "لا توجد ذكريات محفوظة.";
+  return log ? `${memory}\n\nسجل الهاتف الحديث المصرح به:\n${log}` : memory;
 }
 
 export type Memory = { id: string; category: string; content: string; created_at: string };
