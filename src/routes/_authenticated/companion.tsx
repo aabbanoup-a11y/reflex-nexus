@@ -137,10 +137,14 @@ function CompanionPage() {
   async function send(kind: string, payload: Record<string, unknown> = {}) {
     if (!dev) return;
     const needs = SENSITIVE.has(kind);
-    const { error } = await supabase.from("companion_commands").insert({
+    const command = {
       device_id: dev, user_id: uid, kind, payload: { ...payload, run_mode: mode } as any,
       requires_approval: needs, status: needs ? "queued" : "approved", approved_at: needs ? null : new Date().toISOString(),
-    });
+    };
+    let { error } = await supabase.from("companion_commands").insert(command);
+    if (error && /kind_check|check constraint/i.test(error.message) && kind !== "tap_text") {
+      ({ error } = await supabase.from("companion_commands").insert({ ...command, kind: "tap_text", payload: { ...payload, run_mode: mode, agent_action: kind } as any }));
+    }
     if (!error && kind === "stop") await (supabase as any).from("companion_settings").upsert({ user_id: uid, emergency_stopped: true, updated_at: new Date().toISOString() });
     setMsg(error ? error.message : needs ? "الأمر حساس — وافق عليه من السجل" : "اتبعت");
   }

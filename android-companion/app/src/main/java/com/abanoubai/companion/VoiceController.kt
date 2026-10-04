@@ -14,6 +14,34 @@ object VoiceController {
     private var tts: TextToSpeech? = null
     private var recognizer: SpeechRecognizer? = null
 
+    fun listenLocal(context: Context, onText: (String) -> Unit, onError: (String) -> Unit) {
+        require(ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) { "فعّل إذن الميكروفون أولًا" }
+        require(SpeechRecognizer.isRecognitionAvailable(context)) { "خدمة التعرف الصوتي غير متاحة" }
+        recognizer?.destroy()
+        recognizer = SpeechRecognizer.createSpeechRecognizer(context.applicationContext).apply {
+            setRecognitionListener(object : RecognitionListener {
+                override fun onResults(results: android.os.Bundle) {
+                    val text = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
+                    if (text.isBlank()) onError("لم يتم التعرف على كلام") else onText(text)
+                    destroy(); recognizer = null
+                }
+                override fun onError(error: Int) { onError("فشل التعرف الصوتي: $error"); destroy(); recognizer = null }
+                override fun onReadyForSpeech(params: android.os.Bundle?) = Unit
+                override fun onBeginningOfSpeech() = Unit
+                override fun onRmsChanged(rmsdB: Float) = Unit
+                override fun onBufferReceived(buffer: ByteArray?) = Unit
+                override fun onEndOfSpeech() = Unit
+                override fun onPartialResults(partialResults: android.os.Bundle?) = Unit
+                override fun onEvent(eventType: Int, params: android.os.Bundle?) = Unit
+            })
+            startListening(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            })
+        }
+    }
+
     fun speak(context: Context, text: String) {
         val bounded = text.take(4000)
         val current = tts

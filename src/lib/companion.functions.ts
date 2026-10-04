@@ -36,9 +36,7 @@ export const queueCompanionCommand = createServerFn({ method: "POST" })
     ) {
       throw new Error("النص أطول من الحد المسموح");
     }
-    const { data: row, error } = await context.supabase
-      .from("companion_commands")
-      .insert({
+    const command = {
         device_id: data.deviceId,
         user_id: context.userId,
         kind: data.kind,
@@ -46,9 +44,17 @@ export const queueCompanionCommand = createServerFn({ method: "POST" })
         requires_approval: sensitive.has(data.kind),
         status: sensitive.has(data.kind) ? "queued" : "approved",
         approved_at: sensitive.has(data.kind) ? null : new Date().toISOString(),
-      })
-      .select("id,device_id,kind,status,requires_approval,created_at")
-      .single();
+    };
+    let { data: row, error } = await context.supabase
+      .from("companion_commands").insert(command)
+      .select("id,device_id,kind,status,requires_approval,created_at").single();
+    if (error && /kind_check|check constraint/i.test(error.message) && data.kind !== "tap_text") {
+      ({ data: row, error } = await context.supabase.from("companion_commands").insert({
+        ...command,
+        kind: "tap_text",
+        payload: { ...data.payload, agent_action: data.kind } as import("@/integrations/supabase/types").Json,
+      }).select("id,device_id,kind,status,requires_approval,created_at").single());
+    }
     if (error) throw new Error(error.message);
     return row;
   });

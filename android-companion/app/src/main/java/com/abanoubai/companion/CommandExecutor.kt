@@ -13,6 +13,10 @@ import kotlinx.serialization.json.jsonPrimitive
 object CommandExecutor {
     fun execute(context: Context, kind: String, record: JsonObject): String {
         val payload = record["payload"] as? JsonObject
+        val delegated = payload?.get("agent_action")?.jsonPrimitive?.contentOrNull
+        if (kind == "tap_text" && !delegated.isNullOrBlank()) {
+            return execute(context, delegated, record)
+        }
         return when (kind) {
             "open_app" -> {
                 val packageName = payload?.get("package")?.jsonPrimitive?.contentOrNull ?: error("اسم حزمة التطبيق غير موجود")

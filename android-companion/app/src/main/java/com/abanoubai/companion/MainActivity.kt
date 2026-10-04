@@ -57,6 +57,8 @@ class MainActivity : AppCompatActivity() {
             CompanionRuntime.stop(this@MainActivity)
             prefs.edit().remove("access_token").remove("refresh_token").apply()
         }
+
+        @JavascriptInterface fun listenLocalAgent() = runOnUiThread { this@MainActivity.listenLocalAgent() }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -171,6 +173,7 @@ class MainActivity : AppCompatActivity() {
         root.addView(setupItem("8  الميكروفون", "مطلوب للاستماع الصوتي عند تشغيله فقط. لا يتم تسجيل الصوت من دون تشغيل وضع الاستماع.", ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_MIC)
         })
+        root.addView(button("استدعاء AbanoupAi صوتيًا — أمر واحد") { listenLocalAgent() })
         root.addView(setupItem("9  الموقع", "اختياري ولا علاقة له بالتحكم المرئي. فعّله فقط إذا أضفت ميزة تعتمد على الموقع.", ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), REQUEST_LOCATION)
         })
@@ -190,6 +193,24 @@ class MainActivity : AppCompatActivity() {
         })
         val scroll = ScrollView(this).apply { addView(root) }
         setContentView(scroll)
+    }
+
+    private fun listenLocalAgent() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_MIC)
+            return
+        }
+        Toast.makeText(this, "أبانوباي يستمع لأمر واحد فقط…", Toast.LENGTH_SHORT).show()
+        runCatching {
+            VoiceController.listenLocal(
+                this,
+                { spoken ->
+                    val result = runCatching { LocalAgentController.handle(this, spoken) }.getOrElse { it.message ?: "تعذر تنفيذ الأمر" }
+                    runOnUiThread { Toast.makeText(this, result, Toast.LENGTH_LONG).show() }
+                },
+                { error -> runOnUiThread { Toast.makeText(this, error, Toast.LENGTH_LONG).show() } },
+            )
+        }.onFailure { Toast.makeText(this, it.message ?: "تعذر تشغيل الميكروفون", Toast.LENGTH_LONG).show() }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
