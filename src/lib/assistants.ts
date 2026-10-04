@@ -8,11 +8,11 @@ export type ModelOption = {
 
 import { NET_MODELS, modelForKey } from "./models30";
 
-// الـ30 نموذج — Cloudflare الأول (على حسابك) وبعدين Lovable AI.
+// الـ50 نموذج — Cloudflare الأول (على حسابك) وبعدين Lovable AI.
 export const MODELS: ModelOption[] = NET_MODELS.map((m) => ({
   id: m.id,
   label: m.label,
-  note: m.provider === "cloudflare" ? "Cloudflare (حسابك)" : "Lovable AI",
+  note: m.provider === "cloudflare" ? "Cloudflare (حسابك)" : m.provider === "local" ? "أوفلاين (على السيرفر بديل سحابي)" : "Lovable AI",
 }));
 
 export const DEFAULT_MODEL = "google/gemini-3.8-flash";
@@ -265,7 +265,7 @@ export const ASSISTANTS: Assistant[] = [
   },
 ];
 
-// توزيع الـ30 نموذج على المساعدين (كل مساعد نموذج مختلف).
+// توزيع الـ50 نموذج على المساعدين (كل مساعد نموذج مختلف).
 ASSISTANTS.forEach((a, i) => {
   a.model = NET_MODELS[(i * 7) % NET_MODELS.length]!.id;
 });
