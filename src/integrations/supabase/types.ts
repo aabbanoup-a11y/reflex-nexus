@@ -61,6 +61,7 @@ export type Database = {
           prompt: string
           reply: string | null
           status: string
+          user_id: string | null
         }
         Insert: {
           agent_key: string
@@ -72,6 +73,7 @@ export type Database = {
           prompt: string
           reply?: string | null
           status?: string
+          user_id?: string | null
         }
         Update: {
           agent_key?: string
@@ -83,6 +85,7 @@ export type Database = {
           prompt?: string
           reply?: string | null
           status?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -379,6 +382,7 @@ export type Database = {
           priority: string
           status: string
           title: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -388,6 +392,7 @@ export type Database = {
           priority?: string
           status?: string
           title: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -397,6 +402,7 @@ export type Database = {
           priority?: string
           status?: string
           title?: string
+          user_id?: string | null
         }
         Relationships: [
           {
