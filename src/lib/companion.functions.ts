@@ -4,7 +4,7 @@ import { requireCloudAuth } from "@/integrations/supabase/runtime-auth";
 
 const commandSchema = z.object({
   deviceId: z.string().uuid(),
-  kind: z.enum(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "stop", "device_inventory", "app_inventory", "notification_inventory"]),
+  kind: z.enum(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "stop", "device_inventory", "app_inventory", "notification_inventory", "read_screen", "tap_node", "scroll", "wait"]),
   payload: z.record(z.string(), z.unknown()).default({}),
 });
 
@@ -41,9 +41,9 @@ export const queueCompanionCommand = createServerFn({ method: "POST" })
         user_id: context.userId,
         kind: data.kind,
         payload: data.payload as import("@/integrations/supabase/types").Json,
-        requires_approval: sensitive.has(data.kind),
-        status: sensitive.has(data.kind) ? "queued" : "approved",
-        approved_at: sensitive.has(data.kind) ? null : new Date().toISOString(),
+        requires_approval: false,
+        status: "approved",
+        approved_at: new Date().toISOString(),
     };
     let { data: row, error } = await context.supabase
       .from("companion_commands").insert(command)
