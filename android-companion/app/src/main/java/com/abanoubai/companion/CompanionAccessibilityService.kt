@@ -20,6 +20,30 @@ class CompanionAccessibilityService : AccessibilityService() {
     override fun onInterrupt() { }
     override fun onDestroy() { instance = null; super.onDestroy() }
 
+    private val nodeIndex = mutableListOf<AccessibilityNodeInfo>()
+
+    fun dumpScreen(): String {
+        nodeIndex.clear()
+        val root = rootInActiveWindow ?: error("مفيش شاشة متاحة")
+        val out = StringBuilder("عناصر الشاشة (الرقم = id للضغط):\n")
+        fun walk(node: AccessibilityNodeInfo?, depth: Int) {
+            if (node == null || nodeIndex.size >= 120 || depth > 25) return
+            val text = (node.text?.toString() ?: node.contentDescription?.toString() ?: "").trim()
+            val usable = node.isClickable || node.isEditable || text.isNotEmpty()
+            if (usable) {
+                val b = android.graphics.Rect().also { node.getBoundsInScreen(it) }
+                val id = nodeIndex.size
+                nodeIndex.add(node)
+                out.append("[").append(id).append("] ")
+                    .append(if (node.isEditable) "حقل" else if (node.isClickable) "زر" else "نص")
+                    .append(" \"").append(text.take(80)).append("\" @").append(b.centerX()).append(",").append(b.centerY()).append("\n")
+            }
+            for (i in 0 until node.childCount) walk(node.getChild(i), depth + 1)
+        }
+        walk(root, 0)
+        return out.toString().take(9000)
+    }
+
     fun handleScopedCommand(kind: String, record: JsonObject) {
         if (kind == "stop") return
         val payload = record["payload"] as? JsonObject ?: return
@@ -39,6 +63,29 @@ class CompanionAccessibilityService : AccessibilityService() {
                 val node = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: error("لم يتم العثور على حقل إدخال")
                 val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text.take(500)) }
                 require(node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) { "تعذر كتابة النص" }
+            }
+            "tap_node" -> {
+                val id = payload["id"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: error("رقم العنصر مفقود")
+                if (nodeIndex.isEmpty()) dumpScreen()
+                val node = nodeIndex.getOrNull(id) ?: error("العنصر رقم $id مش موجود — اقرأ الشاشة تاني")
+                var target: AccessibilityNodeInfo? = node
+                while (target != null && !target.isClickable) target = target.parent
+                require((target ?: node).performAction(AccessibilityNodeInfo.ACTION_CLICK)) { "تعذر الضغط على العنصر" }
+            }
+            "scroll" -> {
+                val dir = payload["dir"]?.jsonPrimitive?.contentOrNull ?: "down"
+                val m = resources.displayMetrics
+                val cx = m.widthPixels / 2f
+                val path = Path().apply {
+                    when (dir) {
+                        "up" -> { moveTo(cx, m.heightPixels * 0.3f); lineTo(cx, m.heightPixels * 0.75f) }
+                        "left" -> { moveTo(m.widthPixels * 0.8f, m.heightPixels / 2f); lineTo(m.widthPixels * 0.2f, m.heightPixels / 2f) }
+                        "right" -> { moveTo(m.widthPixels * 0.2f, m.heightPixels / 2f); lineTo(m.widthPixels * 0.8f, m.heightPixels / 2f) }
+                        else -> { moveTo(cx, m.heightPixels * 0.75f); lineTo(cx, m.heightPixels * 0.3f) }
+                    }
+                }
+                val g = GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 350)).build()
+                require(dispatchGesture(g, null, null)) { "تعذر السحب" }
             }
             "swipe" -> {
                 val x1 = payload["x1"]?.jsonPrimitive?.contentOrNull?.toFloatOrNull() ?: error("x1 مفقود")
