@@ -1,7 +1,7 @@
 // AbanoubAI Companion — Chrome extension service worker.
-// Listens to Lovable Cloud Realtime for approved commands on this device only (RLS-scoped via user token).
-const SUPABASE_URL = "https://c--f343cb8e-77bb-41d3-b7e1-5d6f7dc4998f-prod.lovable.cloud";
-const KEY = "sb_publishable_F8v4MSocHPMF0RSQpbZFvw_-DivRfUB";
+// Listens to Supabase Realtime for approved commands on this device only (RLS-scoped via user token).
+const SUPABASE_URL = "https://wobfdslqlmvlatyrtgkd.supabase.co";
+const KEY = "sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ";
 let ws = null, hb = null, ref = 1;
 
 const get = () => chrome.storage.local.get(["session", "deviceId", "enabled"]);
