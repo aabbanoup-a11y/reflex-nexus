@@ -19,6 +19,7 @@ import android.webkit.PermissionRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -213,6 +214,64 @@ class MainActivity : AppCompatActivity() {
         }.onFailure { Toast.makeText(this, it.message ?: "تعذر تشغيل الميكروفون", Toast.LENGTH_LONG).show() }
     }
 
+    private fun showOfflineHub() {
+        showingDashboard = false
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24, 24, 24, 24)
+            setBackgroundColor(ContextCompat.getColor(this@MainActivity, android.R.color.background_dark))
+        }
+        root.addView(TextView(this).apply {
+            text = "AbanoupAi — الوضع المحلي"
+            textSize = 26f
+            gravity = Gravity.CENTER
+            setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.white))
+        })
+        root.addView(TextView(this).apply {
+            text = "لا يوجد اتصال بالإنترنت. يمكنك تنفيذ أوامر الهاتف الأساسية هنا. النماذج السحابية ستعود تلقائيًا عند رجوع الاتصال."
+            textSize = 16f
+            setTextColor(0xffffd180.toInt())
+            setPadding(0, 12, 0, 16)
+        })
+        val input = EditText(this).apply {
+            hint = "اكتب: أبانوباي افتح Chrome"
+            setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.white))
+            setHintTextColor(0xffbbbbbb.toInt())
+            minLines = 2
+            setPadding(16, 12, 16, 12)
+        }
+        val reply = TextView(this).apply {
+            text = "جاهز. الأوامر المحلية: فتح تطبيق، فتح رابط، رجوع، الرئيسية، التطبيقات الأخيرة."
+            textSize = 16f
+            setTextColor(0xff9be7a1.toInt())
+            setPadding(0, 16, 0, 16)
+        }
+        fun submit() {
+            val command = input.text.toString().trim()
+            if (command.isBlank()) return
+            reply.text = runCatching { LocalAgentController.handle(this, command) }.getOrElse { it.message ?: "تعذر تنفيذ الأمر" }
+            input.text.clear()
+        }
+        root.addView(input)
+        root.addView(reply)
+        root.addView(button("تنفيذ الأمر المحلي") { submit() })
+        root.addView(button("استمع لأمر صوتي واحد") {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_MIC)
+            } else {
+                reply.text = "أبانوباي يستمع…"
+                runCatching {
+                    VoiceController.listenLocal(this, { spoken ->
+                        val result = runCatching { LocalAgentController.handle(this, spoken) }.getOrElse { it.message ?: "تعذر تنفيذ الأمر" }
+                        runOnUiThread { reply.text = "قلت: $spoken\n\n$result" }
+                    }, { error -> runOnUiThread { reply.text = error } })
+                }.onFailure { reply.text = it.message ?: "تعذر تشغيل الميكروفون" }
+            }
+        })
+        root.addView(button("إعادة فتح لوحة AbanoupAi عند توفر الإنترنت") { showDashboard() })
+        setContentView(ScrollView(this).apply { addView(root) })
+    }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         val label = when (requestCode) {
@@ -252,6 +311,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             webViewClient = object : WebViewClient() {
+                @Suppress("DEPRECATION")
+                override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
+                    super.onReceivedError(view, errorCode, description, failingUrl)
+                    if (failingUrl?.contains(SITE_HOST) == true) runOnUiThread { showOfflineHub() }
+                }
                 override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
                     val host = Uri.parse(url).host.orEmpty()
                     val keep = host == SITE_HOST || host.endsWith(".lovable.app") || host.endsWith(".lovable.cloud") ||
