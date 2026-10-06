@@ -45,7 +45,7 @@ object CommandExecutor {
             "back" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK, "تم الرجوع")
             "home" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME, "تم فتح الشاشة الرئيسية")
             "recents" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS, "تم فتح التطبيقات الأخيرة")
-            "tap_text", "tap_coordinates", "long_press", "type_text", "screenshot", "swipe" -> {
+            "tap_text", "tap_coordinates", "long_press", "type_text", "screenshot", "screen_text", "swipe" -> {
                 CompanionAccessibilityService.instance?.handleScopedCommand(kind, record) ?: error("Accessibility غير مفعّلة")
                 "تم إرسال أمر $kind"
             }

@@ -34,6 +34,8 @@ ${memory}
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
 [[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى موافقة أبانوب بزرار.
 [[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. إذا قال أبانوب "افتح/شغل يوتيوب أو Chrome أو واتساب" أخرج الوسم فورًا: [[PHONE:open_app|اسم التطبيق أو الحزمة]]. وإذا أعطى رابطًا أخرج [[PHONE:open_url|https://...]]. لا تكتفِ بشرح الخطوات ولا تقل إنك لا تملك الهاتف؛ أخرج الوسم وانتظر نتيجة الأداة. يدعم أيضًا الإعدادات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
+[[DB_READ:table]] يقرأ بيانات الحساب من جدول مسموح به وبحد أقصى 50 صفًا: tasks أو employees أو network_messages أو companion_events.
+[[WORKSPACE_WRITE|note أو task أو proposal|العنوان|التفاصيل]] يسجل تعديلًا مقترحًا في مساحة عمل حسابك لمراجعته. لا يوجد حذف أو تعديل شامل من النموذج.
 استخدم الأدوات بس لما الطلب محتاجها.`;
 
 export const networkTurn = createServerFn({ method: "POST" })
@@ -138,11 +140,35 @@ export const networkTurn = createServerFn({ method: "POST" })
         return { text: "اتحفظ في الفرع التجريبي", link };
       });
     }
+    const dbReadTables = new Set(["tasks", "employees", "network_messages", "companion_events", "agent_workspace_actions"]);
+    for (const m of text.matchAll(/\[\[DB_READ:\s*([^\]]+?)\s*\]\]/g)) {
+      if (jobs++ >= 10) break;
+      await run(`🗄️ قراءة قاعدة البيانات: ${m[1]}`, async () => {
+        const table = m[1]!.trim();
+        if (!dbReadTables.has(table)) throw new Error("الجدول غير مسموح للوكيل");
+        const columns = table === "tasks" ? "id,title,details,priority,status,created_at" : table === "employees" ? "id,code,full_name,department,job_title,status" : table === "network_messages" ? "id,who,content,created_at" : table === "companion_events" ? "id,event_type,message,created_at" : "id,action_type,title,content,status,created_at";
+        const db = context.supabase as any;
+        const q = db.from(table).select(columns).limit(50);
+        const scoped = table === "employees" ? q : q.eq("user_id", context.userId);
+        const { data, error } = await scoped;
+        if (error) throw new Error(error.message);
+        return { text: JSON.stringify(data ?? []).slice(0, 12000) };
+      });
+    }
+    for (const m of text.matchAll(/\[\[WORKSPACE_WRITE\s*\|\s*(note|task|proposal)\s*\|\s*([^|\]]+)\s*\|\s*([\s\S]*?)\]\]/g)) {
+      if (jobs++ >= 10) break;
+      await run("🗄️ تسجيل تعديل في مساحة عمل الحساب", async () => {
+        const db = context.supabase as any;
+        const { data, error } = await db.from("agent_workspace_actions").insert({ user_id: context.userId, action_type: m[1], title: m[2]!.trim().slice(0, 200), content: m[3]!.trim().slice(0, 4000), status: "proposed" }).select("id,action_type,title,status").single();
+        if (error) throw new Error(error.message);
+        return { text: `تم تسجيل التعديل كمقترح ${JSON.stringify(data)} — راجعه قبل اعتماده.` };
+      });
+    }
     for (const m of text.matchAll(/\[\[MERGE:\s*([^\]]+?)\s*\]\]/g)) {
       tools.push({ tool: `🔀 طلب دمج ${m[1]}`, ok: true, text: `MERGE_REQUEST:${n.checkRepo(m[1]!)}` });
     }
-    const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "device_inventory", "app_inventory", "notification_inventory"]);
-    const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "type_text", "tap_text", "tap_coordinates", "long_press", "swipe", "screenshot", "device_inventory", "app_inventory", "notification_inventory"]);
+    const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
+    const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "type_text", "tap_text", "tap_coordinates", "long_press", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
     const appPackages: Record<string, string> = {
       youtube: "com.google.android.youtube", "يوتيوب": "com.google.android.youtube",
       chrome: "com.android.chrome", "جوجل كروم": "com.android.chrome", "كروم": "com.android.chrome",

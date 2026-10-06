@@ -180,6 +180,10 @@ object CompanionRuntime {
         event(context, record, "error", message)
     }
 
+    fun reportScreenText(context: Context, record: JsonObject, text: String) {
+        event(context, record, "screen_text", text)
+    }
+
     fun reportVoice(context: Context, record: JsonObject, text: String) {
         event(context, record, "voice_transcript", text)
     }

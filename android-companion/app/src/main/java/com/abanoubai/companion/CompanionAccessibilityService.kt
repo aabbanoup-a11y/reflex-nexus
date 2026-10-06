@@ -89,6 +89,10 @@ class CompanionAccessibilityService : AccessibilityService() {
         fun f(k: String) = s(k)?.toFloatOrNull() ?: error("$k مفقود")
         return when (kind) {
             "read_screen" -> readScreen()
+            "screen_text" -> {
+                CompanionRuntime.reportScreenText(this, record, readScreen())
+                "جاري إرسال النص الظاهر"
+            }
             "tap_text" -> {
                 val text = s("text") ?: error("النص مفقود")
                 clickNode(find(text) ?: error("لم أجد \"$text\" على الشاشة"))
