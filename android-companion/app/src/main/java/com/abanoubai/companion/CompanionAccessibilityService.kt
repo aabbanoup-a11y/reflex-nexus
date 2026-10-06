@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Bitmap
 import android.graphics.Path
+import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
 import android.view.Display
@@ -12,52 +13,130 @@ import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import org.json.JSONArray
+import org.json.JSONObject
 
 class CompanionAccessibilityService : AccessibilityService() {
     companion object { var instance: CompanionAccessibilityService? = null }
     override fun onServiceConnected() { instance = this; CompanionRuntime.restart(this) }
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) { /* Observe only while an approved command is running. */ }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) { }
     override fun onInterrupt() { }
     override fun onDestroy() { instance = null; super.onDestroy() }
 
-    fun handleScopedCommand(kind: String, record: JsonObject) {
-        if (kind == "stop") return
-        val payload = record["payload"] as? JsonObject ?: return
-        when (kind) {
-            "tap_text" -> payload["text"]?.jsonPrimitive?.contentOrNull?.let { text ->
-                rootInActiveWindow?.findAccessibilityNodeInfosByText(text)?.firstOrNull()?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+    private fun roots(): List<AccessibilityNodeInfo> {
+        val list = windows.mapNotNull { it.root }.toMutableList()
+        rootInActiveWindow?.let { if (list.none { r -> r == it }) list.add(0, it) }
+        return list
+    }
+
+    /** Reads every visible element (text, description, bounds, clickable) so models can "see" the screen. */
+    fun readScreen(): String {
+        val items = JSONArray()
+        val pkg = rootInActiveWindow?.packageName?.toString().orEmpty()
+        fun walk(n: AccessibilityNodeInfo?, depth: Int) {
+            if (n == null || depth > 40 || items.length() >= 250) return
+            val text = n.text?.toString().orEmpty().trim()
+            val desc = n.contentDescription?.toString().orEmpty().trim()
+            if ((text.isNotEmpty() || desc.isNotEmpty() || n.isEditable) && n.isVisibleToUser) {
+                val r = Rect(); n.getBoundsInScreen(r)
+                items.put(JSONObject().put("t", text.take(160)).put("d", desc.take(120))
+                    .put("x", r.centerX()).put("y", r.centerY())
+                    .put("click", n.isClickable || n.parent?.isClickable == true)
+                    .put("edit", n.isEditable).put("id", n.viewIdResourceName?.substringAfter("/") ?: ""))
             }
-            "tap_coordinates", "long_press" -> {
-                val x = payload["x"]?.jsonPrimitive?.contentOrNull?.toFloatOrNull() ?: error("x مفقود")
-                val y = payload["y"]?.jsonPrimitive?.contentOrNull?.toFloatOrNull() ?: error("y مفقود")
-                val duration = if (kind == "long_press") 700L else 80L
-                val path = Path().apply { moveTo(x, y); lineTo(x, y) }
-                val gesture = GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, duration)).build()
-                require(dispatchGesture(gesture, null, null)) { "تعذر تنفيذ الضغط" }
+            for (i in 0 until n.childCount) walk(n.getChild(i), depth + 1)
+        }
+        roots().forEach { walk(it, 0) }
+        val dm = resources.displayMetrics
+        return JSONObject().put("app", pkg).put("w", dm.widthPixels).put("h", dm.heightPixels).put("items", items).toString()
+    }
+
+    private fun find(text: String): AccessibilityNodeInfo? {
+        val q = text.trim().lowercase()
+        var best: AccessibilityNodeInfo? = null
+        fun walk(n: AccessibilityNodeInfo?, depth: Int) {
+            if (n == null || depth > 40 || best != null) return
+            val t = n.text?.toString()?.lowercase().orEmpty()
+            val d = n.contentDescription?.toString()?.lowercase().orEmpty()
+            val id = n.viewIdResourceName?.lowercase().orEmpty()
+            if (n.isVisibleToUser && (t == q || d == q || t.contains(q) || d.contains(q) || id.endsWith("/$q"))) { best = n; return }
+            for (i in 0 until n.childCount) walk(n.getChild(i), depth + 1)
+        }
+        roots().forEach { walk(it, 0) }
+        return best
+    }
+
+    private fun tapAt(x: Float, y: Float, duration: Long = 80L) {
+        val path = Path().apply { moveTo(x, y); lineTo(x, y) }
+        val g = GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, duration)).build()
+        require(dispatchGesture(g, null, null)) { "تعذر تنفيذ الضغط" }
+    }
+
+    private fun clickNode(node: AccessibilityNodeInfo): String {
+        var n: AccessibilityNodeInfo? = node
+        while (n != null) {
+            if (n.isClickable && n.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return "ضغطت على: ${node.text ?: node.contentDescription}"
+            n = n.parent
+        }
+        val r = Rect(); node.getBoundsInScreen(r)
+        tapAt(r.exactCenterX(), r.exactCenterY())
+        return "ضغطت على موقع العنصر (${r.centerX()},${r.centerY()})"
+    }
+
+    fun handleScopedCommand(kind: String, record: JsonObject): String {
+        val payload = record["payload"] as? JsonObject
+        fun s(k: String) = payload?.get(k)?.jsonPrimitive?.contentOrNull
+        fun f(k: String) = s(k)?.toFloatOrNull() ?: error("$k مفقود")
+        return when (kind) {
+            "read_screen" -> readScreen()
+            "tap_text" -> {
+                val text = s("text") ?: error("النص مفقود")
+                clickNode(find(text) ?: error("لم أجد \"$text\" على الشاشة"))
             }
-            "type_text" -> payload["text"]?.jsonPrimitive?.contentOrNull?.let { text ->
-                val node = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: error("لم يتم العثور على حقل إدخال")
-                val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text.take(500)) }
+            "tap_coordinates", "long_press" -> { tapAt(f("x"), f("y"), if (kind == "long_press") 700L else 80L); "تم الضغط" }
+            "type_text" -> {
+                val text = (s("text") ?: error("النص مفقود")).take(1000)
+                val target = s("target")?.let { find(it) }
+                var node = target ?: rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                if (node == null) {
+                    fun firstEdit(n: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
+                        if (n == null) return null
+                        if (n.isEditable) return n
+                        for (i in 0 until n.childCount) firstEdit(n.getChild(i))?.let { return it }
+                        return null
+                    }
+                    node = roots().firstNotNullOfOrNull { firstEdit(it) }
+                }
+                node ?: error("لا يوجد حقل كتابة على الشاشة")
+                node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
                 require(node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) { "تعذر كتابة النص" }
+                if (s("submit") == "true") node.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+                "كتبت: $text"
             }
-            "swipe" -> {
-                val x1 = payload["x1"]?.jsonPrimitive?.contentOrNull?.toFloatOrNull() ?: error("x1 مفقود")
-                val y1 = payload["y1"]?.jsonPrimitive?.contentOrNull?.toFloatOrNull() ?: error("y1 مفقود")
-                val x2 = payload["x2"]?.jsonPrimitive?.contentOrNull?.toFloatOrNull() ?: error("x2 مفقود")
-                val y2 = payload["y2"]?.jsonPrimitive?.contentOrNull?.toFloatOrNull() ?: error("y2 مفقود")
-                val duration = (payload["duration"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 400L).coerceIn(100L, 2000L)
-                val path = Path().apply { moveTo(x1, y1); lineTo(x2, y2) }
-                val gesture = GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, duration)).build()
-                require(dispatchGesture(gesture, null, null)) { "تعذر تنفيذ السحب" }
+            "scroll" -> {
+                val dm = resources.displayMetrics
+                val w = dm.widthPixels.toFloat(); val h = dm.heightPixels.toFloat()
+                val dir = s("dir") ?: "down"
+                val (x1, y1, x2, y2) = when (dir) {
+                    "up" -> listOf(w / 2, h * 0.3f, w / 2, h * 0.75f)
+                    "left" -> listOf(w * 0.2f, h / 2, w * 0.8f, h / 2)
+                    "right" -> listOf(w * 0.8f, h / 2, w * 0.2f, h / 2)
+                    else -> listOf(w / 2, h * 0.75f, w / 2, h * 0.3f)
+                }
+                swipe(x1, y1, x2, y2, 350L); "سحبت $dir"
             }
+            "swipe" -> { swipe(f("x1"), f("y1"), f("x2"), f("y2"), (s("duration")?.toLongOrNull() ?: 400L).coerceIn(100L, 2000L)); "تم السحب" }
             "screenshot" -> {
                 require(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) { "لقطة الشاشة تحتاج Android 11 أو أحدث" }
                 takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {
                     override fun onSuccess(result: ScreenshotResult) {
                         val bitmap = Bitmap.wrapHardwareBuffer(result.hardwareBuffer, result.colorSpace)
                             ?: return CompanionRuntime.reportScreenshotError(this@CompanionAccessibilityService, record, "تعذر تحويل لقطة الشاشة")
+                        val soft = bitmap.copy(Bitmap.Config.ARGB_8888, false)
+                        val scaled = Bitmap.createScaledBitmap(soft, soft.width / 2, soft.height / 2, true)
                         val out = java.io.ByteArrayOutputStream()
-                        bitmap.copy(Bitmap.Config.ARGB_8888, false).compress(Bitmap.CompressFormat.JPEG, 65, out)
+                        scaled.compress(Bitmap.CompressFormat.JPEG, 55, out)
                         bitmap.recycle()
                         val data = "data:image/jpeg;base64," + android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP)
                         CompanionRuntime.reportScreenshot(this@CompanionAccessibilityService, record, data)
@@ -66,7 +145,15 @@ class CompanionAccessibilityService : AccessibilityService() {
                         CompanionRuntime.reportScreenshotError(this@CompanionAccessibilityService, record, "فشل التقاط الشاشة: $errorCode")
                     }
                 })
+                "جاري التقاط الشاشة"
             }
+            else -> error("أمر غير معروف")
         }
+    }
+
+    private fun swipe(x1: Float, y1: Float, x2: Float, y2: Float, d: Long) {
+        val path = Path().apply { moveTo(x1, y1); lineTo(x2, y2) }
+        val g = GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, d)).build()
+        require(dispatchGesture(g, null, null)) { "تعذر تنفيذ السحب" }
     }
 }
