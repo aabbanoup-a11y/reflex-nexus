@@ -57,6 +57,13 @@
       "when": 1791146098310,
       "tag": "0007_hide_employee_contacts",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791289453514,
+      "tag": "0008_agent_full_control_and_daily_reports",
+      "breakpoints": true
     }
   ]
 }

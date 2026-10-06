@@ -229,6 +229,30 @@ export type Database = {
           },
         ]
       }
+      daily_reports: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          report_date: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          report_date?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          report_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       employees: {
         Row: {
           ai_model: string | null
