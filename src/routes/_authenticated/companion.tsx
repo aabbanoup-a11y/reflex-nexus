@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_authenticated/companion")({
   head: () => ({
     meta: [
       { title: "التحكم في Chrome — AbanoubAI Companion" },
-      { name: "description", content: "اربط متصفح Chrome وتحكم فيه بموافقتك مع سجل وزر إيقاف." },
+      { name: "description", content: "اربط متصفح Chrome وتحكم فيه تلقائيًا مع سجل وزر إيقاف." },
       { property: "og:title", content: "AbanoubAI Companion" },
       { property: "og:description", content: "تحكم آمن في Chrome من لوحة AbanoubAI." },
       { property: "og:type", content: "website" },
@@ -22,7 +22,6 @@ export const Route = createFileRoute("/_authenticated/companion")({
 type Device = { id: string; device_name: string; platform: string; status: string; last_seen_at?: string | null };
 type Cmd = { id: string; kind: string; status: string; requires_approval: boolean; payload: any; created_at: string; error: string | null };
 type Ev = { id: string; event_type: string; message: string | null; created_at: string };
-const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
 declare const chrome: any;
 declare global {
   interface Window { AbanoubAI?: { savePairing?: (deviceId: string, accessToken: string) => void; startVoiceRecognition?: () => void; stopVoiceRecognition?: () => void } }
@@ -136,17 +135,16 @@ function CompanionPage() {
 
   async function send(kind: string, payload: Record<string, unknown> = {}) {
     if (!dev) return;
-    const needs = SENSITIVE.has(kind);
     const command = {
       device_id: dev, user_id: uid, kind, payload: { ...payload, run_mode: mode } as any,
-      requires_approval: needs, status: needs ? "queued" : "approved", approved_at: needs ? null : new Date().toISOString(),
+      requires_approval: false, status: "approved", approved_at: new Date().toISOString(),
     };
     let { error } = await supabase.from("companion_commands").insert(command);
     if (error && /kind_check|check constraint/i.test(error.message) && kind !== "tap_text") {
       ({ error } = await supabase.from("companion_commands").insert({ ...command, kind: "tap_text", payload: { ...payload, run_mode: mode, agent_action: kind } as any }));
     }
     if (!error && kind === "stop") await (supabase as any).from("companion_settings").upsert({ user_id: uid, emergency_stopped: true, updated_at: new Date().toISOString() });
-    setMsg(error ? error.message : needs ? "الأمر حساس — وافق عليه من السجل" : "اتبعت");
+    setMsg(error ? error.message : "اتنفذ تلقائيًا");
   }
   async function resumeSystem() {
     await (supabase as any).from("companion_settings").upsert({ user_id: uid, emergency_stopped: false, updated_at: new Date().toISOString() });
@@ -165,10 +163,7 @@ function CompanionPage() {
     await send("device_inventory");
     await send("app_inventory");
     await send("notification_inventory");
-    setMsg("تم إرسال فحص شامل؛ راقب الموافقات وسجل التدقيق");
-  }
-  async function approve(id: string, ok: boolean) {
-    await supabase.from("companion_commands").update(ok ? { status: "approved", approved_at: new Date().toISOString() } : { status: "rejected" }).eq("id", id);
+    setMsg("تم إرسال الفحص الشامل تلقائيًا؛ راجع سجل التنفيذ");
   }
 
   return (
@@ -177,7 +172,7 @@ function CompanionPage() {
       <header>
         <h1 className="text-2xl font-bold">التحكم في Chrome</h1>
         <p className="text-sm text-muted-foreground">
-          ثبّت إضافة AbanoubAI Companion في Chrome، ثم اربطها هنا. الأوامر الحساسة لا تُنفَّذ إلا بموافقتك.
+          ثبّت إضافة AbanoubAI Companion في Chrome، ثم اربطها هنا. النماذج تنفذ الأوامر المسموحة تلقائيًا مع سجل تنفيذ وزر إيقاف طارئ.
         </p>
       </header>
 
@@ -255,12 +250,6 @@ function CompanionPage() {
           {cmds.map((c) => (
             <div key={c.id} className="flex items-center justify-between gap-2 border-b py-1 text-sm">
               <span>{c.kind} {c.payload?.url ?? c.payload?.text ?? ""} — {c.status}{c.error ? ` (${c.error})` : ""}</span>
-              {c.status === "queued" && (
-                <span className="flex gap-1">
-                  <Button size="sm" onClick={() => void approve(c.id, true)}>موافقة</Button>
-                  <Button size="sm" variant="outline" onClick={() => void approve(c.id, false)}>رفض</Button>
-                </span>
-              )}
             </div>
           ))}
           {events.map((e) => (

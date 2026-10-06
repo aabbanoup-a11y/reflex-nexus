@@ -14,11 +14,11 @@ class CompanionForegroundService : Service() {
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(NotificationChannel(CHANNEL, "AbanoubAI Companion", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "اتصال الهاتف والموافقة على أوامر AbanoubAI"
+                description = "اتصال الهاتف وتنفيذ أوامر AbanoubAI مع الإيقاف الطارئ"
             })
         }
         val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, CHANNEL).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("AbanoubAI Companion يعمل").setContentText("الاتصال والموافقات تحت إشرافك").setOngoing(true).build()
+            Notification.Builder(this, CHANNEL).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("AbanoubAI Companion يعمل").setContentText("التنفيذ التلقائي تحت إشرافك ويمكن إيقافه طارئًا").setOngoing(true).build()
         } else Notification.Builder(this).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("AbanoubAI Companion يعمل").setOngoing(true).build()
         startForeground(NOTIFICATION_ID, notification)
     }

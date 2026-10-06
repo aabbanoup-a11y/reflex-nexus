@@ -32,7 +32,7 @@ object CommandExecutor {
                 "تم فتح إعدادات: $setting"
             }
             "open_chrome" -> { openChrome(context); "تم فتح Chrome" }
-            "open_camera" -> { openCamera(context); "تم فتح الكاميرا بعد موافقتك" }
+            "open_camera" -> { openCamera(context); "تم فتح الكاميرا" }
             "open_url" -> {
                 val url = payload?.get("url")?.jsonPrimitive?.contentOrNull ?: error("الرابط غير موجود")
                 require(url.startsWith("https://") || url.startsWith("http://")) { "الرابط غير مسموح" }

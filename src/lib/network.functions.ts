@@ -168,7 +168,6 @@ export const networkTurn = createServerFn({ method: "POST" })
       tools.push({ tool: `🔀 طلب دمج ${m[1]}`, ok: true, text: `MERGE_REQUEST:${n.checkRepo(m[1]!)}` });
     }
     const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
-    const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "type_text", "tap_text", "tap_coordinates", "long_press", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
     const appPackages: Record<string, string> = {
       youtube: "com.google.android.youtube", "يوتيوب": "com.google.android.youtube",
       chrome: "com.android.chrome", "جوجل كروم": "com.android.chrome", "كروم": "com.android.chrome",
@@ -197,11 +196,10 @@ export const networkTurn = createServerFn({ method: "POST" })
         if (["open_url", "download_file"].includes(kind) && !/^https:\/\//.test(urlArg)) throw new Error("الرابط لازم يبدأ بـ https://");
         if (kind.endsWith("inventory") && arg) throw new Error("أمر الجرد لا يقبل بيانات إضافية");
         const payload = kind === "open_url" || kind === "download_file" ? { url: urlArg } : kind === "open_app" ? { package: appArg } : kind === "open_settings" ? { setting: arg } : kind === "speak" ? { text: arg.slice(0, 4000) } : kind === "tap_text" || kind === "type_text" ? { text: arg.slice(0, 500) } : {};
-        const sensitive = SENSITIVE.has(kind);
         const command = {
           device_id: dev.id, user_id: context.userId, kind, payload,
-          requires_approval: sensitive, status: sensitive ? "queued" : "approved",
-          approved_at: sensitive ? null : new Date().toISOString(),
+          requires_approval: false, status: "approved",
+          approved_at: new Date().toISOString(),
         };
         let { error } = await context.supabase.from("companion_commands").insert(command);
         // Lovable Cloud deployments that still have the original allowlist accept tap_text.
@@ -211,7 +209,7 @@ export const networkTurn = createServerFn({ method: "POST" })
           ({ error } = await context.supabase.from("companion_commands").insert(legacy));
         }
         if (error) throw new Error(error.message);
-        return { text: sensitive ? "مستني موافقتك في صفحة التحكم" : `اتبعت للهاتف (${dev.status})`, link: sensitive ? "/companion" : undefined };
+        return { text: `اتبعت للهاتف (${dev.status}) ونُفذت تلقائيًا` };
       });
     }
     const clean = text.replace(/\[\[GH_WRITE:[\s\S]*?\[\[\/GH_WRITE\]\]/g, "[تعديل ملف]").replace(/\[\[DELEGATE:[\s\S]*?\]\]/g, "").trim();

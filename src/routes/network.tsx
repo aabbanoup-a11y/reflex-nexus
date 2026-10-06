@@ -24,7 +24,6 @@ export const Route = createFileRoute("/network")({
 
 type Entry = { id: string; who: string; text: string; tools?: ToolEvent[]; err?: boolean };
 type PhoneDevice = { id: string; device_name: string; status: string; last_seen_at: string | null };
-type PendingPhoneCommand = { id: string; kind: string; payload: { url?: string; package?: string; text?: string } };
 const KEY = "network-thread-v1";
 type SpeechCtor = new () => { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: any) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void };
 declare global { interface Window { SpeechRecognition?: SpeechCtor; webkitSpeechRecognition?: SpeechCtor; AbanoubAI?: { savePairing?: (deviceId: string, accessToken: string) => void; startVoiceRecognition?: () => void; stopVoiceRecognition?: () => void }; __abanoupaiVoiceResult?: (text: string) => void; __abanoupaiVoiceError?: (text: string) => void } }
@@ -50,7 +49,6 @@ function Network() {
 
   const [uid, setUid] = useState<string | null | undefined>(undefined);
   const [phone, setPhone] = useState<PhoneDevice | null>(null);
-  const [pendingPhone, setPendingPhone] = useState<PendingPhoneCommand[]>([]);
 
   useEffect(() => {
     void (async () => {
@@ -59,12 +57,10 @@ function Network() {
       setUid(id);
       if (!id) return;
       const loadPhone = async () => {
-        const [{ data: device }, { data: pending }] = await Promise.all([
+        const [{ data: device }] = await Promise.all([
           supabase.from("companion_devices").select("id,device_name,status,last_seen_at").eq("user_id", id).eq("platform", "android").order("last_seen_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle(),
-          supabase.from("companion_commands").select("id,kind,payload").eq("user_id", id).eq("status", "queued").order("created_at", { ascending: false }).limit(5),
         ]);
         setPhone(device as PhoneDevice | null);
-        setPendingPhone((pending ?? []) as PendingPhoneCommand[]);
       };
       void loadPhone();
       const phoneChannel = supabase.channel(`network-phone-${id}`)
@@ -93,11 +89,6 @@ function Network() {
       return () => { void supabase.removeChannel(phoneChannel); };
     })();
   }, []);
-
-  async function approvePhone(id: string, approve: boolean) {
-    await supabase.from("companion_commands").update(approve ? { status: "approved", approved_at: new Date().toISOString() } : { status: "rejected" }).eq("id", id);
-    setPendingPhone((items) => items.filter((item) => item.id !== id));
-  }
 
   const push = (e: Entry) => {
     ref.current = [...ref.current, e];
@@ -198,13 +189,6 @@ function Network() {
           <span><b>هاتف Oppo:</b> {phone.status === "online" ? "متصل" : "غير متصل"} · {phone.last_seen_at ? new Date(phone.last_seen_at).toLocaleTimeString("ar-EG") : "لا يوجد اتصال سابق"}</span>
           <Link to="/companion" className="text-primary underline">تفاصيل التحكم</Link>
         </div>
-        {pendingPhone.length > 0 && <div className="mt-2 space-y-2">
-          <p className="text-xs text-muted-foreground">أوامر هاتف تنتظر موافقتك:</p>
-          {pendingPhone.map((cmd) => <div key={cmd.id} className="flex flex-wrap items-center justify-between gap-2 rounded border p-2">
-            <span dir="ltr" className="text-xs">{cmd.kind} {cmd.payload?.url ?? cmd.payload?.package ?? cmd.payload?.text ?? ""}</span>
-            <span className="flex gap-1"><Button size="sm" onClick={() => void approvePhone(cmd.id, true)}>موافقة</Button><Button size="sm" variant="outline" onClick={() => void approvePhone(cmd.id, false)}>رفض</Button></span>
-          </div>)}
-        </div>}
       </section>}
 
       <section className="flex flex-wrap gap-2">

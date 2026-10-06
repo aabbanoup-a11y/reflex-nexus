@@ -1,6 +1,6 @@
 # AbanoubAI Companion
 
-تطبيق Android مستقل للهاتف، وليس تحويلًا للوحة الويب إلى WebView. يتصل بلوحة Lovable عبر Supabase Realtime ويستخدم `AccessibilityService` لتنفيذ أوامر محدودة على Chrome بعد موافقة المستخدم.
+تطبيق Android مستقل للهاتف، وليس تحويلًا للوحة الويب إلى WebView. يتصل بلوحة Lovable عبر Supabase Realtime ويستخدم `AccessibilityService` لتنفيذ أوامر محدودة على Chrome تلقائيًا بعد تسجيل الدخول وربط الجهاز.
 
 ## الحالة الحالية
 

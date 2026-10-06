@@ -8,8 +8,6 @@ const commandSchema = z.object({
   payload: z.record(z.string(), z.unknown()).default({}),
 });
 
-  const sensitive = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
-
 export const listCompanionDevices = createServerFn({ method: "POST" })
   .middleware([requireCloudAuth])
   .handler(async ({ context }) => {
@@ -41,9 +39,9 @@ export const queueCompanionCommand = createServerFn({ method: "POST" })
         user_id: context.userId,
         kind: data.kind,
         payload: data.payload as import("@/integrations/supabase/types").Json,
-        requires_approval: sensitive.has(data.kind),
-        status: sensitive.has(data.kind) ? "queued" : "approved",
-        approved_at: sensitive.has(data.kind) ? null : new Date().toISOString(),
+        requires_approval: false,
+        status: "approved",
+        approved_at: new Date().toISOString(),
     };
     let { data: row, error } = await context.supabase
       .from("companion_commands").insert(command)

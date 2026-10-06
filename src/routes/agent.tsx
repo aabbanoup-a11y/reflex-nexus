@@ -10,9 +10,9 @@ export const Route = createFileRoute("/agent")({
   head: () => ({
     meta: [
       { title: "وكيل المتصفح السحابي | Abanoup" },
-      { name: "description", content: "وكيل ذكي يفتح المواقع في متصفح سحابي، يخطط، يصوّر الشاشة، ويطلب موافقتك قبل أي خطوة حساسة." },
+      { name: "description", content: "وكيل ذكي يفتح المواقع في متصفح سحابي، يخطط وينفذ المهمة مع سجل وزر إيقاف." },
       { property: "og:title", content: "وكيل المتصفح السحابي | Abanoup" },
-      { property: "og:description", content: "خطة تنفيذ، لقطات شاشة، سجل حي، موافقة، وزر إيقاف." },
+      { property: "og:description", content: "خطة تنفيذ، لقطات شاشة، سجل حي، وزر إيقاف." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/agent")({
 });
 
 type Log = { t: string; msg: string; kind: "info" | "ok" | "warn" | "err" };
-type Status = "idle" | "planning" | "ready" | "running" | "awaiting" | "done" | "stopped";
+type Status = "idle" | "planning" | "ready" | "running" | "done" | "stopped";
 
 function Agent() {
   const plan = useServerFn(planRun);
@@ -56,15 +56,11 @@ function Agent() {
     }
   }
 
-  async function execute(from: number, approved = false) {
+  async function execute(from: number) {
     setStatus("running");
     for (let i = from; i < steps.length; i++) {
       if (stopRef.current) { log("تم الإيقاف بواسطتك", "warn"); setStatus("stopped"); return; }
       const s = steps[i]!;
-      if (s.sensitive && !(approved && i === from)) {
-        log(`الخطوة ${i + 1} حساسة: "${s.title}" — في انتظار موافقتك`, "warn");
-        setDone(i); setStatus("awaiting"); return;
-      }
       log(`تنفيذ الخطوة ${i + 1}: ${s.title}`);
       try {
         const r = await step({ data: { url, goal, scripts: steps.slice(0, i + 1).map((x) => x.script) } });
@@ -90,7 +86,7 @@ function Agent() {
         <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold md:text-3xl">وكيل المتصفح السحابي</h1>
-            <p className="text-sm text-muted-foreground">يعمل على متصفح Cloudflare الحقيقي • يطلب موافقتك قبل الخطوات الحساسة</p>
+            <p className="text-sm text-muted-foreground">يعمل على متصفح Cloudflare الحقيقي • ينفذ الخطة تلقائيًا مع زر إيقاف</p>
           </div>
           <Button variant="destructive" size="lg" onClick={stop} disabled={status === "idle" || status === "done" || status === "stopped"}>
             ■ إيقاف طارئ
@@ -118,12 +114,6 @@ function Agent() {
               ))}
             </ol>
             {status === "ready" && <Button className="mt-3 w-full" onClick={() => execute(0)}>ابدأ التنفيذ</Button>}
-            {status === "awaiting" && (
-              <div className="mt-3 flex gap-2">
-                <Button className="flex-1" onClick={() => execute(done, true)}>موافق على الخطوة {done + 1}</Button>
-                <Button variant="outline" className="flex-1" onClick={stop}>رفض وإيقاف</Button>
-              </div>
-            )}
             <h2 className="mb-2 mt-6 font-semibold">السجل الحي</h2>
             <div className="max-h-72 overflow-auto rounded-md bg-muted p-2 font-mono text-xs" aria-label="السجل">
               {logs.map((l, i) => <div key={i} className={color[l.kind]}>[{l.t}] {l.msg}</div>)}
