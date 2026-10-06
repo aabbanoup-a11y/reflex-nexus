@@ -230,7 +230,7 @@ function CompanionPage() {
             <option value="open_url">فتح رابط</option><option value="open_app">فتح تطبيق</option><option value="open_settings">فتح إعدادات</option>
             <option value="open_camera">فتح الكاميرا</option><option value="download_file">تنزيل رابط</option><option value="speak">نطق نص</option><option value="listen">استماع من الميكروفون</option>
             <option value="back">رجوع</option><option value="home">الرئيسية</option><option value="recents">التطبيقات الأخيرة</option><option value="tap_text">ضغط نص</option><option value="type_text">كتابة نص</option>
-            <option value="screenshot">لقطة شاشة</option><option value="screen_text">قراءة النص الظاهر</option><option value="device_inventory">معلومات الجهاز</option><option value="app_inventory">قائمة التطبيقات</option><option value="notification_inventory">قراءة الإشعارات</option>
+            <option value="screenshot">لقطة شاشة</option><option value="read_screen">قراءة الشاشة</option><option value="screen_text">إرسال نص الشاشة</option><option value="file_inventory">فهرس الملفات</option><option value="open_document">فتح منتقي الملفات</option><option value="device_inventory">معلومات الجهاز</option><option value="app_inventory">قائمة التطبيقات</option><option value="app_permissions">صلاحيات التطبيقات</option><option value="notification_inventory">قراءة الإشعارات</option>
           </select>
           {(action === "open_url" || action === "download_file") && <Input dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />}
           {action === "open_app" && <Input dir="ltr" value={appPackage} onChange={(e) => setAppPackage(e.target.value.trim())} placeholder="com.google.android.youtube" />}

@@ -6,6 +6,13 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.provider.Settings
+import java.io.BufferedReader
+import java.io.File
+import java.io.InputStreamReader
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -40,23 +47,45 @@ object CommandExecutor {
                 openUrl(context, url)
                 "تم فتح الرابط"
             }
+            "open_document" -> {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    type = payload?.get("mime")?.jsonPrimitive?.contentOrNull ?: "*/*"
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                "تم فتح منتقي الملفات للقراءة"
+            }
+            "open_file" -> {
+                val raw = payload?.get("uri")?.jsonPrimitive?.contentOrNull ?: error("رابط الملف غير موجود")
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(raw)).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+                require(intent.resolveActivity(context.packageManager) != null) { "لا يوجد تطبيق يفتح هذا الملف" }
+                context.startActivity(intent)
+                "تم فتح الملف"
+            }
             "download_file" -> download(context, payload)
             "speak" -> { VoiceController.speak(context, payload?.get("text")?.jsonPrimitive?.contentOrNull ?: error("النص غير موجود")); "بدأ نطق الرد" }
             "listen" -> { VoiceController.listen(context, record); "بدأ الاستماع لمدة أمر واحد" }
             "back" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK, "تم الرجوع")
             "home" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME, "تم فتح الشاشة الرئيسية")
             "recents" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS, "تم فتح التطبيقات الأخيرة")
-            "tap_text", "tap_coordinates", "long_press", "type_text", "screenshot", "screen_text", "swipe" -> {
-                CompanionAccessibilityService.instance?.handleScopedCommand(kind, record) ?: error("Accessibility غير مفعّلة")
-                "تم إرسال أمر $kind"
+            "tap_text", "tap_coordinates", "long_press", "type_text", "screenshot", "read_screen", "screen_text", "swipe", "scroll" -> {
+                val result = CompanionAccessibilityService.instance?.handleScopedCommand(kind, record) ?: error("Accessibility غير مفعّلة")
+                if (kind == "read_screen") result else "تم إرسال أمر $kind"
             }
             "device_inventory" -> DeviceInventory.device(context)
             "app_inventory" -> DeviceInventory.apps(context)
+            "app_permissions" -> DeviceInventory.permissions(context, payload?.get("package")?.jsonPrimitive?.contentOrNull)
+            "file_inventory" -> DeviceInventory.files(context)
+            "file_read" -> readFile(context, payload)
             "notification_inventory" -> {
                 require(NotificationInbox.enabled) { "فعّل الوصول إلى الإشعارات أولًا" }
                 DeviceInventory.notifications()
             }
             "stop" -> { CompanionRuntime.stop(context); "تم الإيقاف الطارئ" }
+            "wait" -> { Thread.sleep((payload?.get("ms")?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 1000L).coerceIn(0L, 10000L)); "تم الانتظار" }
+            "batch" -> executeBatch(context, payload)
             else -> error("أمر غير مسموح")
         }
     }
@@ -68,6 +97,24 @@ object CommandExecutor {
         val request = DownloadManager.Request(Uri.parse(url)).setTitle(name).setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED).setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
         context.getSystemService(DownloadManager::class.java).enqueue(request)
         return "بدأ تنزيل $name، وستظهر حالته في إشعارات Android"
+    }
+
+    private fun readFile(context: Context, payload: JsonObject?): String {
+        val raw = payload?.get("uri")?.jsonPrimitive?.contentOrNull ?: error("رابط الملف غير موجود")
+        val stream = if (raw.startsWith("content://")) context.contentResolver.openInputStream(Uri.parse(raw)) else File(raw).inputStream()
+        stream.use { input -> return BufferedReader(InputStreamReader(input)).readText().take(20000) }
+    }
+
+    private fun executeBatch(context: Context, payload: JsonObject?): String {
+        val steps = payload?.get("steps") as? JsonArray ?: error("خطة batch غير موجودة")
+        require(steps.size <= 50) { "الخطة أكبر من الحد المسموح" }
+        return steps.mapIndexed { index, item ->
+            val step = item.jsonObject
+            val kind = step["kind"]?.jsonPrimitive?.contentOrNull ?: return@mapIndexed "الخطوة ${index + 1} فشلت: الأمر مفقود"
+            val stepPayload = step["payload"] as? JsonObject ?: kotlinx.serialization.json.buildJsonObject { }
+            runCatching { execute(context, kind, kotlinx.serialization.json.buildJsonObject { put("kind", JsonPrimitive(kind)); put("payload", stepPayload) }) }
+                .getOrElse { "الخطوة ${index + 1} فشلت: ${it.message}" }
+        }.joinToString("\n")
     }
 
     private fun global(context: Context, action: Int, message: String): String {

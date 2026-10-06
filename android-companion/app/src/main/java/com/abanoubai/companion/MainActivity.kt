@@ -142,6 +142,11 @@ class MainActivity : AppCompatActivity() {
         return appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName) == AppOpsManager.MODE_ALLOWED
     }
 
+    private fun mediaAccessOn(): Boolean {
+        val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
+        return ContextCompat.checkSelfPermission(this, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
     private fun showSetupHub() {
         showingDashboard = false
         val root = LinearLayout(this).apply {
@@ -186,6 +191,10 @@ class MainActivity : AppCompatActivity() {
                 type = "*/*"
                 addCategory(Intent.CATEGORY_OPENABLE)
             })
+        })
+        root.addView(setupItem("6 أ  فهرس الوسائط", "اختياري: يسمح بفهرسة أسماء الصور والفيديو والصوت والملفات التي يعرضها MediaStore فقط.", mediaAccessOn()) {
+            val permissions = if (Build.VERSION.SDK_INT >= 33) arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_AUDIO) else arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+            requestPermissions(permissions, REQUEST_MEDIA)
         })
         root.addView(setupItem("7  الكاميرا", "تُطلب عند فتح الكاميرا فقط، ويمكن إيقافها من إعدادات التطبيق في أي وقت.", ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA)
@@ -297,6 +306,7 @@ class MainActivity : AppCompatActivity() {
             REQUEST_CAMERA -> "الكاميرا"
             REQUEST_MIC -> "الميكروفون"
             REQUEST_LOCATION -> "الموقع"
+            REQUEST_MEDIA -> "الوسائط"
             else -> "الصلاحية"
         }
         Toast.makeText(this, if (grantResults.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED) "تم السماح بـ $label" else "لم يتم السماح بـ $label", Toast.LENGTH_SHORT).show()
@@ -360,5 +370,6 @@ class MainActivity : AppCompatActivity() {
         private const val REQUEST_CAMERA = 1001
         private const val REQUEST_MIC = 1002
         private const val REQUEST_LOCATION = 1003
+        private const val REQUEST_MEDIA = 1004
     }
 }

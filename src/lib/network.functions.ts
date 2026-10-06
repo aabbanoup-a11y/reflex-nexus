@@ -30,7 +30,7 @@ function inferPhoneTag(input: string) {
   return app ? `[[PHONE:open_app|${app}]]` : "";
 }
 
-const HINT = (me: string, memory: string, manager: boolean) => `${manager ? `إنت ${MANAGER_LABEL}. أنت نقطة الدخول والمنسق: افهم طلب أبانوب، حدد الوكيل المتخصص المناسب، واكتب وسم [[DELEGATE:health|السؤال]] أو [[DELEGATE:karate|السؤال]] أو [[DELEGATE:general|السؤال]] عندما تحتاج رأيًا متخصصًا. لا تدّعي تنفيذ مهمة قبل استخدام أداة الهاتف أو ظهور نتيجتها.` : `إنت "${me}" واحد من شبكة 30 نموذج ذكاء اصطناعي`} بتشتغل مع أبانوب في محادثة واحدة مشتركة. كل الردود (بتاعته وبتاعت باقي النماذج) قدامك تحت وبتتحفظ عند الكل.
+const HINT = (me: string, memory: string, manager: boolean) => `${manager ? `إنت ${MANAGER_LABEL}. أنت نقطة الدخول والمنسق: افهم طلب أبانوب، حدد الوكيل المتخصص المناسب، واكتب وسم [[DELEGATE:health|السؤال]] أو [[DELEGATE:karate|السؤال]] أو [[DELEGATE:general|السؤال]] عندما تحتاج رأيًا متخصصًا. لا تدّعي تنفيذ مهمة قبل استخدام أداة الهاتف أو ظهور نتيجتها.` : `إنت "${me}" واحد من شبكة 50 نموذج ذكاء اصطناعي`} بتشتغل مع أبانوب في محادثة واحدة مشتركة. كل الردود (بتاعته وبتاعت باقي النماذج) قدامك تحت وبتتحفظ عند الكل.
 الذاكرة المشتركة المصرّح بها من أبانوب:
 ${memory}
 رد بالعربية المصرية، مختصر وعملي، ونص عادي من غير ** أو ##. لو نموذج تاني قال حاجة، ممكن توافق أو تصحح أو تكمل عليه.
@@ -42,7 +42,7 @@ ${memory}
 المحتوى الكامل للملف
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
 [[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى موافقة أبانوب بزرار.
-[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. مهم جدًا: اكتب دائمًا الرمز | بين kind وarg، ولا تكتب [[PHONE:open_appcom...]]. إذا قال أبانوب "افتح/شغل يوتيوب أو Chrome أو واتساب" أخرج الوسم فورًا: [[PHONE:open_app|اسم التطبيق أو الحزمة]]. وإذا أعطى رابطًا أخرج [[PHONE:open_url|https://...]]. للبحث في تطبيق: أخرج [[PHONE:open_app|youtube]] ثم [[PHONE:type_text_submit|اسم الأغنية أو البحث]]؛ النوع submit يكتب ثم يضغط Enter/بحث. للضغط: [[PHONE:tap_text|النص الظاهر]]. لا تكتفِ بشرح الخطوات ولا تقل إنك لا تملك الهاتف؛ أخرج الوسم وانتظر نتيجة الأداة. يدعم أيضًا الإعدادات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. لا يوجد تنزيل مباشر من صفحة YouTube؛ نزّل فقط رابط HTTPS مباشر مسموح به.
+[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. استخدم الأوامر الذرية أو خطة متسلسلة [[PHONE:batch|{"steps":[{"kind":"open_app","payload":{"package":"..."}},{"kind":"read_screen","payload":{}}]}]]. الأوامر: open_app/open_url/open_chrome/open_settings/open_camera/download_file/back/home/recents/tap_text/tap_coordinates/long_press/type_text/swipe/scroll/wait/screenshot/read_screen/screen_text/device_inventory/app_inventory/app_permissions/notification_inventory/file_inventory/file_read/open_file/open_document/stop. للبحث استخدم type_text_submit ثم Enter. لا تتوقف إذا فشل أمر؛ سجّل الفشل وكمل باقي الخطة. لا تدّعي التنفيذ قبل نتيجة الأداة.
 [[DB_READ:table]] يقرأ بيانات الحساب من جدول مسموح به وبحد أقصى 50 صفًا: tasks أو employees أو network_messages أو companion_events.
 [[WORKSPACE_WRITE|note أو task أو proposal|العنوان|التفاصيل]] يسجل تعديلًا مقترحًا في مساحة عمل حسابك لمراجعته. لا يوجد حذف أو تعديل شامل من النموذج.
 استخدم الأدوات بس لما الطلب محتاجها.`;
@@ -179,13 +179,27 @@ export const networkTurn = createServerFn({ method: "POST" })
     for (const m of text.matchAll(/\[\[MERGE:\s*([^\]]+?)\s*\]\]/g)) {
       tools.push({ tool: `🔀 طلب دمج ${m[1]}`, ok: true, text: `MERGE_REQUEST:${n.checkRepo(m[1]!)}` });
     }
-    const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
+    const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "scroll", "wait", "screenshot", "read_screen", "screen_text", "device_inventory", "app_inventory", "app_permissions", "notification_inventory", "file_inventory", "file_read", "open_file", "open_document", "batch"]);
     const appPackages: Record<string, string> = {
       youtube: "com.google.android.youtube", "يوتيوب": "com.google.android.youtube",
       chrome: "com.android.chrome", "جوجل كروم": "com.android.chrome", "كروم": "com.android.chrome",
       whatsapp: "com.whatsapp", "واتساب": "com.whatsapp", telegram: "org.telegram.messenger", "تليجرام": "org.telegram.messenger",
       gmail: "com.google.android.gm", "جيميل": "com.google.android.gm", settings: "com.android.settings", "الإعدادات": "com.android.settings",
     };
+    for (const m of text.matchAll(/\[\[PHONE_BATCH\|([\s\S]*?)\]\]/gi)) {
+      if (jobs++ >= 4) break;
+      await run("📱 خطة هاتف متسلسلة", async () => {
+        let payload: any;
+        try { payload = JSON.parse(m[1]!.trim()); } catch { throw new Error("خطة الهاتف ليست JSON صالحًا"); }
+        if (!Array.isArray(payload?.steps) || payload.steps.length === 0 || payload.steps.length > 50) throw new Error("خطة الهاتف يجب أن تحتوي من 1 إلى 50 خطوة");
+        const { data: dev } = await context.supabase.from("companion_devices").select("id,status").eq("user_id", context.userId).eq("platform", "android").order("last_seen_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
+        if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
+        const command = { device_id: dev.id, user_id: context.userId, kind: "batch", payload, requires_approval: false, status: "approved", approved_at: new Date().toISOString() };
+        const { error } = await context.supabase.from("companion_commands").insert(command);
+        if (error) throw new Error(error.message);
+        return { text: `اتبعت خطة من ${payload.steps.length} خطوة للهاتف (${dev.status})؛ كل خطوة تسجل نجاحها أو فشلها وتستمر الخطة.` };
+      });
+    }
     for (const m of text.matchAll(/\[\[PHONE:\s*([a-z_]+)(?:\s*\|\s*([^\]]*))?\]\]/gi)) {
       if (jobs++ >= 12) break;
       const rawKind = m[1]!.toLowerCase();
