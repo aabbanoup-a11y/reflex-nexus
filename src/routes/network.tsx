@@ -27,7 +27,7 @@ type PhoneDevice = { id: string; device_name: string; status: string; last_seen_
 type PendingPhoneCommand = { id: string; kind: string; payload: { url?: string; package?: string; text?: string } };
 const KEY = "network-thread-v1";
 type SpeechCtor = new () => { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: any) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void };
-declare global { interface Window { SpeechRecognition?: SpeechCtor; webkitSpeechRecognition?: SpeechCtor } }
+declare global { interface Window { SpeechRecognition?: SpeechCtor; webkitSpeechRecognition?: SpeechCtor; AbanoubAI?: { savePairing?: (deviceId: string, accessToken: string) => void; startVoiceRecognition?: () => void; stopVoiceRecognition?: () => void }; __abanoupaiVoiceResult?: (text: string) => void; __abanoupaiVoiceError?: (text: string) => void } }
 
 function Network() {
   const turn = useServerFn(networkTurn);
@@ -41,6 +41,12 @@ function Network() {
   const [networkMode] = useState(() => localStorage.getItem("companion-mode") ?? "balanced");
   const stop = useRef(false);
   const ref = useRef<Entry[]>([]);
+
+  useEffect(() => {
+    window.__abanoupaiVoiceResult = (text) => { setVoiceOn(false); if (text.trim()) void sendText(text); };
+    window.__abanoupaiVoiceError = (text) => { setVoiceOn(false); setInput(text); };
+    return () => { delete window.__abanoupaiVoiceResult; delete window.__abanoupaiVoiceError; };
+  });
 
   const [uid, setUid] = useState<string | null | undefined>(undefined);
   const [phone, setPhone] = useState<PhoneDevice | null>(null);
@@ -137,7 +143,12 @@ function Network() {
   async function send() { await sendText(input); }
 
   function toggleVoice() {
-    if (voiceOn) { voice.current?.stop(); voice.current = null; setVoiceOn(false); return; }
+    if (voiceOn) { if (window.AbanoubAI?.stopVoiceRecognition) window.AbanoubAI.stopVoiceRecognition(); else voice.current?.stop(); voice.current = null; setVoiceOn(false); return; }
+    if (window.AbanoubAI?.startVoiceRecognition) {
+      setVoiceOn(true);
+      window.AbanoubAI.startVoiceRecognition();
+      return;
+    }
     const Ctor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
     if (!Ctor) return setInput("التعرف الصوتي غير مدعوم في هذا WebView");
     const r = new Ctor();

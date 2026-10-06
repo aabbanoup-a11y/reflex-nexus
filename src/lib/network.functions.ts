@@ -33,7 +33,7 @@ ${memory}
 المحتوى الكامل للملف
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
 [[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى موافقة أبانوب بزرار.
-[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. إذا قال أبانوب "افتح/شغل يوتيوب أو Chrome أو واتساب" أخرج الوسم فورًا: [[PHONE:open_app|اسم التطبيق أو الحزمة]]. وإذا أعطى رابطًا أخرج [[PHONE:open_url|https://...]]. لا تكتفِ بشرح الخطوات ولا تقل إنك لا تملك الهاتف؛ أخرج الوسم وانتظر نتيجة الأداة. يدعم أيضًا الإعدادات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
+[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. مهم جدًا: اكتب دائمًا الرمز | بين kind وarg، ولا تكتب [[PHONE:open_appcom...]]. إذا قال أبانوب "افتح/شغل يوتيوب أو Chrome أو واتساب" أخرج الوسم فورًا: [[PHONE:open_app|اسم التطبيق أو الحزمة]]. وإذا أعطى رابطًا أخرج [[PHONE:open_url|https://...]]. للبحث: أخرج [[PHONE:open_app|chrome]] ثم [[PHONE:type_text|نص البحث]]. للضغط: [[PHONE:tap_text|النص الظاهر]]. لا تكتفِ بشرح الخطوات ولا تقل إنك لا تملك الهاتف؛ أخرج الوسم وانتظر نتيجة الأداة. يدعم أيضًا الإعدادات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
 [[DB_READ:table]] يقرأ بيانات الحساب من جدول مسموح به وبحد أقصى 50 صفًا: tasks أو employees أو network_messages أو companion_events.
 [[WORKSPACE_WRITE|note أو task أو proposal|العنوان|التفاصيل]] يسجل تعديلًا مقترحًا في مساحة عمل حسابك لمراجعته. لا يوجد حذف أو تعديل شامل من النموذج.
 استخدم الأدوات بس لما الطلب محتاجها.`;
@@ -175,10 +175,17 @@ export const networkTurn = createServerFn({ method: "POST" })
       whatsapp: "com.whatsapp", "واتساب": "com.whatsapp", telegram: "org.telegram.messenger", "تليجرام": "org.telegram.messenger",
       gmail: "com.google.android.gm", "جيميل": "com.google.android.gm", settings: "com.android.settings", "الإعدادات": "com.android.settings",
     };
-    for (const m of text.matchAll(/\[\[PHONE:\s*([a-z_]+)\s*\|?([^\]]*)\]\]/g)) {
+    for (const m of text.matchAll(/\[\[PHONE:\s*([a-z_]+)(?:\s*\|\s*([^\]]*))?\]\]/gi)) {
       if (jobs++ >= 12) break;
-      const kind = m[1]!;
-      const arg = (m[2] ?? "").trim();
+      const rawKind = m[1]!.toLowerCase();
+      let kind = rawKind;
+      let arg = (m[2] ?? "").trim();
+      if (rawKind.startsWith("open_app") && rawKind.length > "open_app".length && !arg) {
+        kind = "open_app";
+        arg = rawKind.slice("open_app".length);
+      }
+      const aliases: Record<string, string> = { click: "tap_text", tap: "tap_text", type: "type_text", search: "type_text", read_screen: "screen_text" };
+      kind = aliases[kind] ?? kind;
       await run(`📱 الهاتف: ${kind}`, async () => {
         if (!PHONE_KINDS.has(kind)) throw new Error("أمر غير مسموح");
         const { data: dev } = await context.supabase

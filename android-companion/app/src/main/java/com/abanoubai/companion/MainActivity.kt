@@ -24,6 +24,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import org.json.JSONObject
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -60,6 +61,24 @@ class MainActivity : AppCompatActivity() {
         }
 
         @JavascriptInterface fun listenLocalAgent() = runOnUiThread { this@MainActivity.listenLocalAgent() }
+
+        @JavascriptInterface fun startVoiceRecognition() = runOnUiThread {
+            if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_MIC)
+                return@runOnUiThread
+            }
+            runCatching {
+                VoiceController.listenLocal(this@MainActivity, { spoken ->
+                    if (::web.isInitialized) web.evaluateJavascript("window.__abanoupaiVoiceResult(${JSONObject.quote(spoken)})", null)
+                }, { error ->
+                    if (::web.isInitialized) web.evaluateJavascript("window.__abanoupaiVoiceError(${JSONObject.quote(error)})", null)
+                })
+            }.onFailure { error ->
+                if (::web.isInitialized) web.evaluateJavascript("window.__abanoupaiVoiceError(${JSONObject.quote(error.message ?: "تعذر تشغيل الصوت")})", null)
+            }
+        }
+
+        @JavascriptInterface fun stopVoiceRecognition() = VoiceController.stop()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

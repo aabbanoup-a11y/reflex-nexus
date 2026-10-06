@@ -25,7 +25,7 @@ type Ev = { id: string; event_type: string; message: string | null; created_at: 
 const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
 declare const chrome: any;
 declare global {
-  interface Window { AbanoubAI?: { savePairing: (deviceId: string, accessToken: string) => void } }
+  interface Window { AbanoubAI?: { savePairing?: (deviceId: string, accessToken: string) => void; startVoiceRecognition?: () => void; stopVoiceRecognition?: () => void } }
 }
 
 function CompanionPage() {
