@@ -42,7 +42,7 @@ ${memory}
 المحتوى الكامل للملف
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
 [[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى موافقة أبانوب بزرار.
-[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. استخدم الأوامر الذرية أو خطة متسلسلة [[PHONE_BATCH|{"steps":[{"kind":"open_app","payload":{"package":"..."}},{"kind":"wait_for_text","payload":{"text":"..."}},{"kind":"tap_description","payload":{"text":"..."}},{"kind":"read_screen","payload":{}}]}]]. الأوامر تشمل: open_app/open_url/open_chrome/open_settings/open_camera/download_file/back/home/recents/tap_text/tap_id/tap_description/tap_coordinates/long_press/type_text/clear_text/swipe/scroll/wait/wait_for_text/screenshot/read_screen/screen_text/press_back/press_home/open_notifications/quick_settings/device_inventory/app_inventory/app_permissions/notification_inventory/file_inventory/file_read/open_file/open_document/stop. داخل batch يمكن استعمال if_text أو unless_text لتخطي خطوة، وrepeat لعدد مرات، وcontinue_on_error. للبحث استخدم type_text_submit ثم Enter. لا تتوقف إذا فشل أمر؛ سجّل الفشل وكمل باقي الخطة. لا تدّعي التنفيذ قبل نتيجة الأداة.
+[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. استخدم الأوامر الذرية أو خطة متسلسلة [[PHONE_BATCH|{"steps":[{"kind":"open_app","payload":{"package":"..."}},{"kind":"wait_for_text","payload":{"text":"..."}},{"kind":"tap_description","payload":{"text":"..."}},{"kind":"read_screen","payload":{}}]}]]، أو دورة [[PHONE_WORKFLOW|{"until_text":"تم","steps":[...]}]] تكرر الملاحظة والتنفيذ حتى يظهر الهدف. الأوامر تشمل: open_app/open_url/open_chrome/open_settings/open_camera/download_file/back/home/recents/tap_text/tap_id/tap_description/tap_coordinates/long_press/type_text/clear_text/swipe/scroll/wait/wait_for_text/screenshot/read_screen/screen_text/press_back/press_home/open_notifications/quick_settings/device_inventory/app_inventory/app_permissions/notification_inventory/file_inventory/file_read/open_file/open_document/stop. داخل batch يمكن استعمال if_text أو unless_text لتخطي خطوة، وrepeat لعدد مرات. للبحث استخدم type_text_submit ثم Enter. لا تتوقف إذا فشل أمر؛ سجّل الفشل وكمل باقي الخطة. لا تدّعي التنفيذ قبل نتيجة الأداة.
 [[DB_READ:table]] يقرأ بيانات الحساب من جدول مسموح به وبحد أقصى 50 صفًا: tasks أو employees أو network_messages أو companion_events.
 [[WORKSPACE_WRITE|note أو task أو proposal|العنوان|التفاصيل]] يسجل تعديلًا مقترحًا في مساحة عمل حسابك لمراجعته. لا يوجد حذف أو تعديل شامل من النموذج.
 استخدم الأدوات بس لما الطلب محتاجها.`;
@@ -179,13 +179,27 @@ export const networkTurn = createServerFn({ method: "POST" })
     for (const m of text.matchAll(/\[\[MERGE:\s*([^\]]+?)\s*\]\]/g)) {
       tools.push({ tool: `🔀 طلب دمج ${m[1]}`, ok: true, text: `MERGE_REQUEST:${n.checkRepo(m[1]!)}` });
     }
-    const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_id", "tap_description", "tap_coordinates", "long_press", "type_text", "clear_text", "swipe", "scroll", "wait", "wait_for_text", "screenshot", "read_screen", "screen_text", "press_back", "press_home", "open_notifications", "quick_settings", "device_inventory", "app_inventory", "app_permissions", "notification_inventory", "file_inventory", "file_read", "open_file", "open_document", "batch"]);
+    const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_id", "tap_description", "tap_coordinates", "long_press", "type_text", "clear_text", "swipe", "scroll", "wait", "wait_for_text", "screenshot", "read_screen", "screen_text", "press_back", "press_home", "open_notifications", "quick_settings", "device_inventory", "app_inventory", "app_permissions", "notification_inventory", "file_inventory", "file_read", "open_file", "open_document", "batch", "workflow"]);
     const appPackages: Record<string, string> = {
       youtube: "com.google.android.youtube", "يوتيوب": "com.google.android.youtube",
       chrome: "com.android.chrome", "جوجل كروم": "com.android.chrome", "كروم": "com.android.chrome",
       whatsapp: "com.whatsapp", "واتساب": "com.whatsapp", telegram: "org.telegram.messenger", "تليجرام": "org.telegram.messenger",
       gmail: "com.google.android.gm", "جيميل": "com.google.android.gm", settings: "com.android.settings", "الإعدادات": "com.android.settings",
     };
+    for (const m of text.matchAll(/\[\[PHONE_WORKFLOW\|([\s\S]*?)\]\]/gi)) {
+      if (jobs++ >= 4) break;
+      await run("📱 دورة هاتف ذاتية", async () => {
+        let payload: any;
+        try { payload = JSON.parse(m[1]!.trim()); } catch { throw new Error("دورة الهاتف ليست JSON صالحًا"); }
+        if (!Array.isArray(payload?.steps) || payload.steps.length === 0 || payload.steps.length > 50) throw new Error("الدورة تحتاج خطوات");
+        if (payload.max_cycles !== undefined && (!Number.isInteger(payload.max_cycles) || payload.max_cycles < 1 || payload.max_cycles > 100)) throw new Error("max_cycles يجب أن يكون بين 1 و100");
+        const { data: dev } = await context.supabase.from("companion_devices").select("id,status").eq("user_id", context.userId).eq("platform", "android").order("last_seen_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
+        if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
+        const { error } = await context.supabase.from("companion_commands").insert({ device_id: dev.id, user_id: context.userId, kind: "workflow", payload, requires_approval: false, status: "approved", approved_at: new Date().toISOString() });
+        if (error) throw new Error(error.message);
+        return { text: `بدأت دورة من ${payload.steps.length} خطوة (${dev.status}) وتستمر حتى تحقق الهدف أو تصل لحد التشغيل الآمن.` };
+      });
+    }
     for (const m of text.matchAll(/\[\[PHONE_BATCH\|([\s\S]*?)\]\]/gi)) {
       if (jobs++ >= 4) break;
       await run("📱 خطة هاتف متسلسلة", async () => {

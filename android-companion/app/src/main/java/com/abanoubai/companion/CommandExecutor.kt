@@ -86,6 +86,7 @@ object CommandExecutor {
             "stop" -> { CompanionRuntime.stop(context); "تم الإيقاف الطارئ" }
             "wait" -> { Thread.sleep((payload?.get("ms")?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 1000L).coerceIn(0L, 10000L)); "تم الانتظار" }
             "batch" -> executeBatch(context, payload)
+            "workflow" -> executeWorkflow(context, payload)
             else -> error("أمر غير مسموح")
         }
     }
@@ -127,6 +128,26 @@ object CommandExecutor {
             }
         }
         return results.joinToString("\n")
+    }
+
+    private fun executeWorkflow(context: Context, payload: JsonObject?): String {
+        val steps = payload?.get("steps") as? JsonArray ?: error("خطوات workflow غير موجودة")
+        require(steps.isNotEmpty() && steps.size <= 50) { "workflow يحتاج من 1 إلى 50 خطوة" }
+        val until = payload["until_text"]?.jsonPrimitive?.contentOrNull
+        val cycles = (payload["max_cycles"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 100).coerceIn(1, 100)
+        val results = mutableListOf<String>()
+        for (cycle in 0 until cycles) {
+            val screen = CompanionAccessibilityService.instance?.readScreen().orEmpty()
+            if (!until.isNullOrBlank() && screen.contains(until, ignoreCase = true)) {
+                results += "تحقق هدف workflow في الدورة ${cycle + 1}: $until"
+                break
+            }
+            val result = executeBatch(context, kotlinx.serialization.json.buildJsonObject { put("steps", steps) })
+            results += "الدورة ${cycle + 1}: $result"
+            if (until.isNullOrBlank()) break
+            Thread.sleep(300L)
+        }
+        return results.takeLast(100).joinToString("\n")
     }
 
     private fun global(context: Context, action: Int, message: String): String {
