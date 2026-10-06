@@ -97,6 +97,10 @@ class CompanionAccessibilityService : AccessibilityService() {
                 val text = s("text") ?: error("النص مفقود")
                 clickNode(find(text) ?: error("لم أجد \"$text\" على الشاشة"))
             }
+            "tap_id", "tap_description" -> {
+                val target = s("id") ?: s("text") ?: s("description") ?: error("هدف الضغط مفقود")
+                clickNode(find(target) ?: error("لم أجد العنصر \"$target\" على الشاشة"))
+            }
             "tap_coordinates", "long_press" -> { tapAt(f("x"), f("y"), if (kind == "long_press") 700L else 80L); "تم الضغط" }
             "type_text" -> {
                 val text = (s("text") ?: error("النص مفقود")).take(1000)
@@ -118,6 +122,23 @@ class CompanionAccessibilityService : AccessibilityService() {
                 if (s("submit") == "true") node.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
                 "كتبت: $text"
             }
+            "clear_text" -> {
+                val target = s("target")?.let { find(it) }
+                val node = target ?: rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: error("لا يوجد حقل كتابة على الشاشة")
+                val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "") }
+                require(node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) { "تعذر مسح الحقل" }
+                "تم مسح الحقل"
+            }
+            "wait_for_text" -> {
+                val text = s("text") ?: error("النص المطلوب انتظاره مفقود")
+                val timeout = (s("timeout_ms")?.toLongOrNull() ?: 10000L).coerceIn(250L, 30000L)
+                val start = System.currentTimeMillis()
+                while (System.currentTimeMillis() - start < timeout) {
+                    if (find(text) != null) return "ظهر العنصر: $text"
+                    Thread.sleep(250L)
+                }
+                error("لم يظهر العنصر خلال المهلة: $text")
+            }
             "scroll" -> {
                 val dm = resources.displayMetrics
                 val w = dm.widthPixels.toFloat(); val h = dm.heightPixels.toFloat()
@@ -131,6 +152,10 @@ class CompanionAccessibilityService : AccessibilityService() {
                 swipe(x1, y1, x2, y2, 350L); "سحبت $dir"
             }
             "swipe" -> { swipe(f("x1"), f("y1"), f("x2"), f("y2"), (s("duration")?.toLongOrNull() ?: 400L).coerceIn(100L, 2000L)); "تم السحب" }
+            "press_back" -> { performGlobalAction(GLOBAL_ACTION_BACK); "تم الرجوع" }
+            "press_home" -> { performGlobalAction(GLOBAL_ACTION_HOME); "تم فتح الشاشة الرئيسية" }
+            "open_notifications" -> { performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS); "تم فتح الإشعارات" }
+            "quick_settings" -> { performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS); "تم فتح الإعدادات السريعة" }
             "screenshot" -> {
                 require(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) { "لقطة الشاشة تحتاج Android 11 أو أحدث" }
                 takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {

@@ -70,7 +70,7 @@ object CommandExecutor {
             "back" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK, "تم الرجوع")
             "home" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME, "تم فتح الشاشة الرئيسية")
             "recents" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS, "تم فتح التطبيقات الأخيرة")
-            "tap_text", "tap_coordinates", "long_press", "type_text", "screenshot", "read_screen", "screen_text", "swipe", "scroll" -> {
+            "tap_text", "tap_id", "tap_description", "tap_coordinates", "long_press", "type_text", "clear_text", "screenshot", "read_screen", "screen_text", "swipe", "scroll", "wait_for_text", "press_back", "press_home", "open_notifications", "quick_settings" -> {
                 val result = CompanionAccessibilityService.instance?.handleScopedCommand(kind, record) ?: error("Accessibility غير مفعّلة")
                 if (kind == "read_screen") result else "تم إرسال أمر $kind"
             }
@@ -108,13 +108,25 @@ object CommandExecutor {
     private fun executeBatch(context: Context, payload: JsonObject?): String {
         val steps = payload?.get("steps") as? JsonArray ?: error("خطة batch غير موجودة")
         require(steps.size <= 50) { "الخطة أكبر من الحد المسموح" }
-        return steps.mapIndexed { index, item ->
+        val results = mutableListOf<String>()
+        steps.forEachIndexed { index, item ->
             val step = item.jsonObject
-            val kind = step["kind"]?.jsonPrimitive?.contentOrNull ?: return@mapIndexed "الخطوة ${index + 1} فشلت: الأمر مفقود"
+            val screen = CompanionAccessibilityService.instance?.readScreen().orEmpty()
+            val ifText = step["if_text"]?.jsonPrimitive?.contentOrNull
+            val unlessText = step["unless_text"]?.jsonPrimitive?.contentOrNull
+            if ((!ifText.isNullOrBlank() && !screen.contains(ifText, ignoreCase = true)) || (!unlessText.isNullOrBlank() && screen.contains(unlessText, ignoreCase = true))) {
+                results += "الخطوة ${index + 1}: تم تخطيها بالشرط"
+                return@forEachIndexed
+            }
+            val kind = step["kind"]?.jsonPrimitive?.contentOrNull ?: run { results += "الخطوة ${index + 1} فشلت: الأمر مفقود"; return@forEachIndexed }
             val stepPayload = step["payload"] as? JsonObject ?: kotlinx.serialization.json.buildJsonObject { }
-            runCatching { execute(context, kind, kotlinx.serialization.json.buildJsonObject { put("kind", JsonPrimitive(kind)); put("payload", stepPayload) }) }
-                .getOrElse { "الخطوة ${index + 1} فشلت: ${it.message}" }
-        }.joinToString("\n")
+            val repeats = (step["repeat"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 1).coerceIn(1, 10)
+            repeat(repeats) { attempt ->
+                results += runCatching { execute(context, kind, kotlinx.serialization.json.buildJsonObject { put("kind", JsonPrimitive(kind)); put("payload", stepPayload) }) }
+                    .getOrElse { "الخطوة ${index + 1} المحاولة ${attempt + 1} فشلت: ${it.message}" }
+            }
+        }
+        return results.joinToString("\n")
     }
 
     private fun global(context: Context, action: Int, message: String): String {
