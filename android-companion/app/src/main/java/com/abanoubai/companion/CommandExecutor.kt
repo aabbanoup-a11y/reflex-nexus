@@ -45,9 +45,7 @@ object CommandExecutor {
             "back" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK, "تم الرجوع")
             "home" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME, "تم فتح الشاشة الرئيسية")
             "recents" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS, "تم فتح التطبيقات الأخيرة")
-            "read_screen" -> CompanionAccessibilityService.instance?.dumpScreen() ?: error("Accessibility غير مفعّلة")
-            "wait" -> { Thread.sleep(1500); "انتظرت ثانية ونص" }
-            "tap_text", "tap_coordinates", "long_press", "type_text", "screenshot", "swipe", "tap_node", "scroll" -> {
+            "tap_text", "tap_coordinates", "long_press", "type_text", "screenshot", "swipe" -> {
                 CompanionAccessibilityService.instance?.handleScopedCommand(kind, record) ?: error("Accessibility غير مفعّلة")
                 "تم إرسال أمر $kind"
             }
