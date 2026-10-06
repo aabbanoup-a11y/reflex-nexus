@@ -16,6 +16,15 @@ function inferPhoneTag(input: string) {
   const text = input.trim();
   const url = text.match(/https?:\/\/\S+|www\.\S+/i)?.[0]?.replace(/[،.,)]+$/g, "");
   if (url && /(افتح|شغل|اذهب|رابط|open|go)/i.test(text)) return `[[PHONE:open_url|${url.startsWith("www.") ? `https://${url}` : url}]]`;
+  if (/(يوتيوب|youtube)/i.test(text) && /(ابحث|بحث|أغنية|اغنية|اغنيه|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)/i.test(text)) {
+    const title = text
+      .replace(/.*?(?:أغنية|اغنية|اغنيه|بحث عن|ابحث عن|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)\s*/i, "")
+      .replace(/\s*(?:على|في|من)\s*(?:ال)?يوتيوب.*$/i, "")
+      .replace(/^(?:أغنية|اغنية|اغنيه|في|على)\s+/i, "")
+      .trim();
+    if (title.length >= 2) return `[[PHONE:open_app|youtube]]\n[[PHONE:type_text_submit|${title.slice(0, 500)}]]`;
+    return "[[PHONE:open_app|youtube]]";
+  }
   if (!/(افتح|شغل|شغّل|open|launch)/i.test(text)) return "";
   const app = text.match(/(يوتيوب|youtube|كروم|chrome|واتساب|whatsapp|تليجرام|telegram|جيميل|gmail|الإعدادات|settings)/i)?.[0];
   return app ? `[[PHONE:open_app|${app}]]` : "";
@@ -33,7 +42,7 @@ ${memory}
 المحتوى الكامل للملف
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
 [[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى موافقة أبانوب بزرار.
-[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. مهم جدًا: اكتب دائمًا الرمز | بين kind وarg، ولا تكتب [[PHONE:open_appcom...]]. إذا قال أبانوب "افتح/شغل يوتيوب أو Chrome أو واتساب" أخرج الوسم فورًا: [[PHONE:open_app|اسم التطبيق أو الحزمة]]. وإذا أعطى رابطًا أخرج [[PHONE:open_url|https://...]]. للبحث: أخرج [[PHONE:open_app|chrome]] ثم [[PHONE:type_text|نص البحث]]. للضغط: [[PHONE:tap_text|النص الظاهر]]. لا تكتفِ بشرح الخطوات ولا تقل إنك لا تملك الهاتف؛ أخرج الوسم وانتظر نتيجة الأداة. يدعم أيضًا الإعدادات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
+[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. مهم جدًا: اكتب دائمًا الرمز | بين kind وarg، ولا تكتب [[PHONE:open_appcom...]]. إذا قال أبانوب "افتح/شغل يوتيوب أو Chrome أو واتساب" أخرج الوسم فورًا: [[PHONE:open_app|اسم التطبيق أو الحزمة]]. وإذا أعطى رابطًا أخرج [[PHONE:open_url|https://...]]. للبحث في تطبيق: أخرج [[PHONE:open_app|youtube]] ثم [[PHONE:type_text_submit|اسم الأغنية أو البحث]]؛ النوع submit يكتب ثم يضغط Enter/بحث. للضغط: [[PHONE:tap_text|النص الظاهر]]. لا تكتفِ بشرح الخطوات ولا تقل إنك لا تملك الهاتف؛ أخرج الوسم وانتظر نتيجة الأداة. يدعم أيضًا الإعدادات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. لا يوجد تنزيل مباشر من صفحة YouTube؛ نزّل فقط رابط HTTPS مباشر مسموح به.
 [[DB_READ:table]] يقرأ بيانات الحساب من جدول مسموح به وبحد أقصى 50 صفًا: tasks أو employees أو network_messages أو companion_events.
 [[WORKSPACE_WRITE|note أو task أو proposal|العنوان|التفاصيل]] يسجل تعديلًا مقترحًا في مساحة عمل حسابك لمراجعته. لا يوجد حذف أو تعديل شامل من النموذج.
 استخدم الأدوات بس لما الطلب محتاجها.`;
@@ -84,7 +93,10 @@ export const networkTurn = createServerFn({ method: "POST" })
       used = fallback;
       text = await n.callModel(fallback, HINT(me.label, sharedMemory, isManager), msgs);
     }
-    const inferredPhone = inferPhoneTag(lastClient?.text ?? "");
+    const requestText = lastClient?.text ?? "";
+    const searchIntent = /(يوتيوب|youtube)/i.test(requestText) && /(بحث|ابحث|أغنية|اغنية|اغنيه|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)/i.test(requestText);
+    if (searchIntent) text = text.replace(/\[\[PHONE:\s*type_text\s*\|([^\]]+)\]\]/gi, "[[PHONE:type_text_submit|$1]]");
+    const inferredPhone = inferPhoneTag(requestText);
     if (inferredPhone && !text.includes("[[PHONE:")) text = `${text}\n${inferredPhone}`;
 
     const tools: ToolEvent[] = [];
@@ -183,7 +195,8 @@ export const networkTurn = createServerFn({ method: "POST" })
         kind = "open_app";
         arg = rawKind.slice("open_app".length);
       }
-      const aliases: Record<string, string> = { click: "tap_text", tap: "tap_text", type: "type_text", search: "type_text", read_screen: "screen_text" };
+      const submit = rawKind === "type_text_submit";
+      const aliases: Record<string, string> = { click: "tap_text", tap: "tap_text", type: "type_text", search: "type_text", type_text_submit: "type_text", read_screen: "screen_text" };
       kind = aliases[kind] ?? kind;
       await run(`📱 الهاتف: ${kind}`, async () => {
         if (!PHONE_KINDS.has(kind)) throw new Error("أمر غير مسموح");
@@ -195,7 +208,7 @@ export const networkTurn = createServerFn({ method: "POST" })
         if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
         if (["open_url", "download_file"].includes(kind) && !/^https:\/\//.test(urlArg)) throw new Error("الرابط لازم يبدأ بـ https://");
         if (kind.endsWith("inventory") && arg) throw new Error("أمر الجرد لا يقبل بيانات إضافية");
-        const payload = kind === "open_url" || kind === "download_file" ? { url: urlArg } : kind === "open_app" ? { package: appArg } : kind === "open_settings" ? { setting: arg } : kind === "speak" ? { text: arg.slice(0, 4000) } : kind === "tap_text" || kind === "type_text" ? { text: arg.slice(0, 500) } : {};
+        const payload = kind === "open_url" || kind === "download_file" ? { url: urlArg } : kind === "open_app" ? { package: appArg } : kind === "open_settings" ? { setting: arg } : kind === "speak" ? { text: arg.slice(0, 4000) } : kind === "tap_text" || kind === "type_text" ? { text: arg.slice(0, 500), ...(submit ? { submit: "true" } : {}) } : {};
         const command = {
           device_id: dev.id, user_id: context.userId, kind, payload,
           requires_approval: false, status: "approved",

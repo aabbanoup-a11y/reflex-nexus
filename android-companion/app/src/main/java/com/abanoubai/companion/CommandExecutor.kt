@@ -24,6 +24,7 @@ object CommandExecutor {
                 val intent = context.packageManager.getLaunchIntentForPackage(packageName) ?: error("التطبيق غير مثبت أو لا يملك شاشة تشغيل")
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
+                Thread.sleep(900)
                 "تم فتح التطبيق: $packageName"
             }
             "open_settings" -> {
@@ -31,7 +32,7 @@ object CommandExecutor {
                 openSetting(context, setting)
                 "تم فتح إعدادات: $setting"
             }
-            "open_chrome" -> { openChrome(context); "تم فتح Chrome" }
+            "open_chrome" -> { openChrome(context); Thread.sleep(900); "تم فتح Chrome" }
             "open_camera" -> { openCamera(context); "تم فتح الكاميرا" }
             "open_url" -> {
                 val url = payload?.get("url")?.jsonPrimitive?.contentOrNull ?: error("الرابط غير موجود")

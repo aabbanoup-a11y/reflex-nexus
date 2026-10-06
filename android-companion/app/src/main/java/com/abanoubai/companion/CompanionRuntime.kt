@@ -26,6 +26,7 @@ object CompanionRuntime {
     private val retryHandler = Handler(Looper.getMainLooper())
     private val pollHandler = Handler(Looper.getMainLooper())
     private val seenCommands = mutableSetOf<String>()
+    private val commandLock = Any()
 
     fun start(context: Context) {
         if (socket != null) return
@@ -113,16 +114,7 @@ object CompanionRuntime {
                             if (id.isBlank() || !seenCommands.add(id)) continue
                             val record = Json.parseToJsonElement(row.toString()).jsonObject
                             val kind = row.optString("kind")
-                            patchCommand(context, id, "running", null)
-                            runCatching { CommandExecutor.execute(context, kind, record) }
-                                .onSuccess { result ->
-                                    patchCommand(context, id, "succeeded", "تم التنفيذ")
-                                    event(context, record, if (kind.endsWith("inventory")) "inventory" else "done", result.take(12000))
-                                }
-                                .onFailure { error ->
-                                    patchCommand(context, id, "failed", error.message ?: "فشل التنفيذ")
-                                    event(context, record, "error", error.message ?: "فشل التنفيذ")
-                                }
+                            executeApproved(context, record)
                         }
                     }
                 }
@@ -145,14 +137,24 @@ object CompanionRuntime {
             val id = record["id"]?.jsonPrimitive?.contentOrNull ?: return
             if (record["status"]?.jsonPrimitive?.contentOrNull != "approved") return
             if (!seenCommands.add(id)) return
+            executeApproved(context, record)
+        }
+    }
+
+    private fun executeApproved(context: Context, record: JsonObject) {
+        synchronized(commandLock) {
+            val id = record["id"]?.jsonPrimitive?.contentOrNull ?: return
+            val kind = record["kind"]?.jsonPrimitive?.contentOrNull ?: return
             patchCommand(context, id, "running", null)
             runCatching { CommandExecutor.execute(context, kind, record) }
                 .onSuccess { result ->
-                    val bounded = result.take(12000)
                     patchCommand(context, id, "succeeded", "تم التنفيذ")
-                    event(context, record, if (kind.endsWith("inventory")) "inventory" else "done", bounded)
+                    event(context, record, if (kind.endsWith("inventory")) "inventory" else "done", result.take(12000))
                 }
-                .onFailure { patchCommand(context, id, "failed", it.message ?: "فشل التنفيذ"); event(context, record, "error", it.message ?: "فشل التنفيذ") }
+                .onFailure { error ->
+                    patchCommand(context, id, "failed", error.message ?: "فشل التنفيذ")
+                    event(context, record, "error", error.message ?: "فشل التنفيذ")
+                }
         }
     }
 

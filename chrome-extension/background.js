@@ -71,7 +71,13 @@ async function run(cmd) {
             if (kind === "type_text") {
               const el = document.activeElement;
               if (!el || !("value" in el)) return "لا يوجد حقل مُركّز";
-              el.value = text; el.dispatchEvent(new Event("input", { bubbles: true })); return "typed";
+              el.value = text; el.dispatchEvent(new Event("input", { bubbles: true }));
+              if (p.submit === "true") {
+                el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true }));
+                if (el.form?.requestSubmit) el.form.requestSubmit();
+                return "typed-and-submitted";
+              }
+              return "typed";
             }
             const nodes = [...document.querySelectorAll("a,button,[role=button],input[type=submit],label")];
             const n = nodes.find((x) => (x.innerText || x.value || "").trim().includes(text));

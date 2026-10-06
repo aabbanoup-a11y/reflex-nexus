@@ -1,4 +1,4 @@
-// Browser-safe registry of the 50 network models.
+// Browser-safe registry of the 50 network models plus the manager model.
 // cf/* = Cloudflare Workers AI on the user's own Cloudflare account.
 
 export type NetModel = {

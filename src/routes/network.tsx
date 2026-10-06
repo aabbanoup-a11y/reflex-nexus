@@ -11,9 +11,9 @@ import { UnifiedWorkspaceNav } from "@/components/UnifiedWorkspaceNav";
 export const Route = createFileRoute("/network")({
   head: () => ({
     meta: [
-      { title: "شبكة الـ30 نموذج | Abanoup" },
-      { name: "description", content: "30 نموذج ذكاء اصطناعي في محادثة واحدة: بيكلموا بعض، بيستخدموا المتصفح، وبيعدّلوا مستودعات GitHub." },
-      { property: "og:title", content: "شبكة الـ30 نموذج | Abanoup" },
+      { title: "شبكة الـ51 نموذج | Abanoup" },
+      { name: "description", content: "50 نموذجًا ومدير في محادثة واحدة: يفهموا الطلب، يستخدموا الهاتف والمتصفح، ويعدّلوا مستودعات GitHub." },
+      { property: "og:title", content: "شبكة الـ51 نموذج | Abanoup" },
       { property: "og:description", content: "محادثة مشتركة، متصفح سحابي، وتعديل GitHub في فرع تجريبي." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -174,7 +174,7 @@ function Network() {
     <main dir="rtl" className="mx-auto max-w-5xl space-y-4 p-4">
       <UnifiedWorkspaceNav />
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">شبكة الـ30 نموذج</h1>
+        <h1 className="text-2xl font-bold">شبكة الـ{NET_MODELS.length + 1} نموذج</h1>
         <div className="flex gap-2">
           <Button asChild variant="outline" size="sm"><Link to="/">الرئيسية</Link></Button>
           <Button variant="outline" size="sm" onClick={() => { if (confirm("مسح المحادثة المشتركة؟")) { ref.current = []; setThread([]); localStorage.removeItem(KEY); if (uid) void supabase.from("network_messages").delete().eq("user_id", uid).then(() => undefined); } }}>مسح</Button>
