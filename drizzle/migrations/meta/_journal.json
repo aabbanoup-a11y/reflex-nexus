@@ -64,6 +64,13 @@
       "when": 1791161357327,
       "tag": "0008_widen_companion_kinds",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791288421177,
+      "tag": "0009_employees_admin_only",
+      "breakpoints": true
     }
   ]
 }
