@@ -64,6 +64,13 @@
       "when": 1791289453514,
       "tag": "0008_agent_full_control_and_daily_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791374648030,
+      "tag": "0009_companion_universal_commands",
+      "breakpoints": true
     }
   ]
 }
