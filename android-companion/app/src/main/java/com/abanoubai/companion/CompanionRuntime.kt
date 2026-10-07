@@ -172,7 +172,12 @@ object CompanionRuntime {
 
     private fun patchDevice(context: Context, deviceId: String, token: String, status: String, error: String?) = request(context, "companion_devices?id=eq.$deviceId", token, "PATCH", JSONObject().apply { put("status", status); put("last_seen_at", java.time.Instant.now().toString()); if (error != null) put("updated_at", java.time.Instant.now().toString()) })
     private fun patchCommand(context: Context, id: String, status: String, error: String?) = context.getSharedPreferences("companion", Context.MODE_PRIVATE).getString("access_token", null)?.let { token -> request(context, "companion_commands?id=eq.$id", token, "PATCH", JSONObject().apply { put("status", status); if (status == "running") put("started_at", java.time.Instant.now().toString()); if (status == "succeeded" || status == "failed") put("finished_at", java.time.Instant.now().toString()); if (error != null) put("error", error.take(1000)) }) }
-    private fun event(context: Context, record: JsonObject, type: String, message: String) = context.getSharedPreferences("companion", Context.MODE_PRIVATE).getString("access_token", null)?.let { token -> val deviceId = context.getSharedPreferences("companion", Context.MODE_PRIVATE).getString("device_id", "") ?: ""; request(context, "companion_events", token, "POST", JSONObject().apply { put("command_id", record["id"]?.jsonPrimitive?.contentOrNull); put("device_id", deviceId); put("event_type", type); put("message", message.take(2000)) }) }
+    private fun event(context: Context, record: JsonObject, type: String, message: String) = context.getSharedPreferences("companion", Context.MODE_PRIVATE).getString("access_token", null)?.let { token -> val deviceId = context.getSharedPreferences("companion", Context.MODE_PRIVATE).getString("device_id", "") ?: ""; request(context, "companion_events", token, "POST", JSONObject().apply { put("command_id", record["id"]?.jsonPrimitive?.contentOrNull); put("device_id", deviceId); userIdFrom(token)?.let { put("user_id", it) }; put("event_type", type); put("message", message.take(if (type == "screenshot") 1_900_000 else 12000)) }) }
+
+    private fun userIdFrom(token: String): String? = runCatching {
+        val part = token.split(".")[1]
+        JSONObject(String(android.util.Base64.decode(part, android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP))).optString("sub").ifBlank { null }
+    }.getOrNull()
 
     fun reportScreenshot(context: Context, record: JsonObject, dataUrl: String) {
         event(context, record, "screenshot", dataUrl.take(1_900_000))
