@@ -37,7 +37,7 @@ ${memory}
 أدوات (اكتب الوسم في سطر لوحده، هيتنفذ وتشوف نتيجته):
 [[BROWSE:https://...]] يفتح الصفحة في المتصفح السحابي (Cloudflare) ويقرأها ويصورها.
 [[ASK:معرف-النموذج|سؤال]] تبعت رسالة لنموذج تاني وتاخد رده. المعرفات: ${NET_MODELS.map((m) => m.id).join(", ")}
-[[GH_READ:repo|path]] يقرا ملف أو مجلد (repo = abra-cadabra-repo أو AbanoupAi، path فاضي = الجذر).
+[[GH_READ:repo|path]] يقرا ملف أو مجلد (repo = reflex-nexus وهو مستودع هذا التطبيق نفسه المتزامن مع Lovable، أو abra-cadabra-repo أو AbanoupAi، path فاضي = الجذر).
 [[GH_WRITE:repo|path]]
 المحتوى الكامل للملف
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
