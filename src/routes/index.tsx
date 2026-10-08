@@ -431,9 +431,9 @@ function TaskDialog({
       await supabase.from("tasks").insert({
         employee_id: employee.id,
         title: task.slice(0, 200),
-        description: r.text,
-        priority: 3,
-        status: "DONE",
+        details: r.text,
+        priority: "medium",
+        status: "done",
       });
       void logRun({ agent_kind: "employee", agent_key: employee.code, agent_name: employee.full_name, model: r.model, prompt: task, reply: r.text, status: "done" });
       notifyDone(`${employee.full_name} خلّص المهمة`, r.text);
