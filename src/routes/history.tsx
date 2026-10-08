@@ -4,6 +4,7 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/runtime-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { UnifiedWorkspaceNav } from "@/components/UnifiedWorkspaceNav";
 
 export const Route = createFileRoute("/history")({
   component: HistoryPage,
@@ -51,6 +52,7 @@ function HistoryPage() {
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/60">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-6">
+          <UnifiedWorkspaceNav />
           <h1 className="text-2xl font-bold">سجل التنفيذ</h1>
           <div className="flex gap-2">
             <Button asChild variant="outline" size="sm"><Link to="/assistant">المساعدين</Link></Button>
