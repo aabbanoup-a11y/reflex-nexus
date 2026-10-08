@@ -5,6 +5,7 @@ import { planRun, runStep, type AgentStep } from "@/lib/agent.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { UnifiedWorkspaceNav } from "@/components/UnifiedWorkspaceNav";
 
 export const Route = createFileRoute("/agent")({
   head: () => ({
@@ -83,6 +84,7 @@ function Agent() {
   return (
     <main dir="rtl" className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-6xl p-4 md:p-8">
+        <UnifiedWorkspaceNav />
         <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold md:text-3xl">وكيل المتصفح السحابي</h1>

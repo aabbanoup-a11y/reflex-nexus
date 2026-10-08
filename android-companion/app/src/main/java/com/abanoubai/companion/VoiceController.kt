@@ -52,6 +52,12 @@ object VoiceController {
     }
 
     fun listen(context: Context, record: kotlinx.serialization.json.JsonObject) {
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            runCatching { listenNow(context, record) }.onFailure { CompanionRuntime.reportVoiceError(context, record, it.message ?: "فشل الاستماع") }
+        }
+    }
+
+    private fun listenNow(context: Context, record: kotlinx.serialization.json.JsonObject) {
         require(ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) { "فعّل إذن الميكروفون أولًا" }
         require(SpeechRecognizer.isRecognitionAvailable(context)) { "خدمة التعرف الصوتي غير متاحة" }
         recognizer?.destroy()

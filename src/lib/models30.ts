@@ -80,5 +80,5 @@ export function modelForKey(key: string) {
   return NET_MODELS[h % NET_MODELS.length]!.id;
 }
 
-export const REPOS = ["aabbanoup-a11y/abra-cadabra-repo", "aabbanoup-a11y/AbanoupAi"] as const;
+export const REPOS = ["aabbanoup-a11y/reflex-nexus", "aabbanoup-a11y/abra-cadabra-repo", "aabbanoup-a11y/AbanoupAi"] as const;
 export const WORK_BRANCH = "ai-team";
