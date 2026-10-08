@@ -29,7 +29,7 @@ function inferPhoneTag(input: string) {
     const title = songTitle(text).slice(0, 500);
     if (title.length < 2) return "[[PHONE:open_app|youtube]]";
     const safe = JSON.stringify(title);
-    return `[[PHONE_BATCH|{"steps":[{"kind":"open_app","payload":{"package":"com.google.android.youtube"}},{"kind":"wait","payload":{"ms":"1200"}},{"kind":"tap_description","if_text":"بحث","payload":{"text":"بحث"}},{"kind":"tap_description","if_text":"Search","payload":{"text":"Search"}},{"kind":"type_text","payload":{"text":${safe},"submit":"true"}},{"kind":"wait_for_text","payload":{"text":${safe},"timeout_ms":"12000"}},{"kind":"screenshot","payload":{}}]}]]`;
+    return `[[PHONE_BATCH|{"steps":[{"kind":"open_app","payload":{"package":"com.google.android.youtube"}},{"kind":"wait","payload":{"ms":"1200"}},{"kind":"tap_description","if_text":"بحث","payload":{"text":"بحث"}},{"kind":"tap_description","if_text":"Search","payload":{"text":"Search"}},{"kind":"type_text","payload":{"text":${safe},"submit":"true"}},{"kind":"wait","payload":{"ms":"1800"}},{"kind":"screen_text","payload":{}},{"kind":"screenshot","payload":{}}]}]]`;
   }
   if (!/(افتح|شغل|شغّل|open|launch)/i.test(text)) return "";
   const app = text.match(/(يوتيوب|youtube|كروم|chrome|واتساب|whatsapp|تليجرام|telegram|جيميل|gmail|الإعدادات|settings)/i)?.[0];
@@ -59,7 +59,7 @@ ${memory}
 [[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. مهم جدًا: اكتب دائمًا الرمز | بين kind وarg، ولا تكتب [[PHONE:open_appcom...]]. إذا قال أبانوب "افتح/شغل يوتيوب أو Chrome أو واتساب" أخرج الوسم فورًا: [[PHONE:open_app|اسم التطبيق أو الحزمة]]. وإذا أعطى رابطًا أخرج [[PHONE:open_url|https://...]]. للبحث: أخرج [[PHONE:open_app|chrome]] ثم [[PHONE:type_text|نص البحث]]. للضغط: [[PHONE:tap_text|النص الظاهر]]. لا تكتفِ بشرح الخطوات ولا تقل إنك لا تملك الهاتف؛ أخرج الوسم وانتظر نتيجة الأداة. يدعم أيضًا الإعدادات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
 [[DB_READ:table]] يقرأ بيانات الحساب من جدول مسموح به وبحد أقصى 50 صفًا: tasks أو employees أو network_messages أو companion_events.
 [[WORKSPACE_WRITE|note أو task أو proposal|العنوان|التفاصيل]] يسجل تعديلًا مقترحًا في مساحة عمل حسابك لمراجعته. لا يوجد حذف أو تعديل شامل من النموذج.
-المهارات التي تختار منها حسب الهدف: phone-control (ملاحظة الشاشة والضغط والكتابة)، youtube-search (فتح YouTube والبحث والتحقق)، file-reader (فهرسة وفتح الملفات)، browser-research (قراءة الصفحة وتلخيصها)، github-editor (قراءة وتعديل فرع العمل)، supabase-data (قراءة/إضافة بيانات الحساب)، cloudflare-ops (قراءة/تعديل الموارد المسموحة)، screen-learning (استخراج أنماط التطبيق من حركات المستخدم دون حفظ نصوصه)، وtask-summary (تلخيص ما تم فعليًا). لا تخترع عنصرًا غير موجود: اقرأ الشاشة قبل الضغط، وبعد الفشل أعد القراءة واختر بديلًا.
+المهارات التي تختار منها حسب الهدف: phone-control (ملاحظة الشاشة والضغط والكتابة)، youtube-search (فتح YouTube والبحث والتحقق)، file-reader (فهرسة وفتح الملفات)، browser-research (قراءة الصفحة وتلخيصها)، github-editor (قراءة وتعديل فرع العمل)، supabase-data (قراءة/إضافة بيانات الحساب)، cloudflare-ops (قراءة/تعديل الموارد المسموحة)، screen-learning (استخراج أنماط التطبيق من حركات المستخدم دون حفظ نصوصه)، وtask-summary (تلخيص ما تم فعليًا). لا تخترع عنصرًا غير موجود: اقرأ الشاشة قبل الضغط، ولا تستخدم tap_text إلا لنص ظهر في screen_text/read_screen أو وصف معروف، وبعد الفشل أعد القراءة واختر بديلًا. افهم الهدف والنتيجة المطلوبة، وليس مجرد تنفيذ أول أمر.
 استخدم الأدوات بس لما الطلب محتاجها.`;
 
 export const networkTurn = createServerFn({ method: "POST" })
@@ -312,7 +312,15 @@ export const networkTurn = createServerFn({ method: "POST" })
           if (state?.status === "failed" || state?.status === "rejected") throw new Error(state.error || event?.message || "فشل تنفيذ الأمر على الهاتف");
         }
         return { text: `أُرسل للهاتف ولم تصل النتيجة بعد (${dev.status})` };
-      });
+        });
+    }
+    const phoneResults = tools.filter((t) => t.tool.includes("الهاتف"));
+    if (phoneResults.length) {
+      const resultText = phoneResults.map((t) => `${t.tool}: ${t.ok ? "نجح" : "فشل"}\n${t.text.slice(0, 5000)}`).join("\n\n");
+      try {
+        const summary = await n.callModel(used, "إنت مراجع تنفيذ. لخّص بالعربية المصرية ما حدث فعلًا في الهاتف من النتائج التالية. لا تصدر أي أوامر ولا تخترع عناصر أو نجاحات غير موجودة. اذكر الخطوة التي فشلت والسبب والخطوة التالية المنطقية.", [{ role: "user", content: `الطلب الأصلي: ${requestText}\nنتائج التنفيذ:\n${resultText}` }]);
+        text = `${text}\n\nملخص التنفيذ الفعلي:\n${summary}`;
+      } catch { /* لا نفشل المهمة إذا تعذر نموذج التلخيص */ }
     }
     const clean = text.replace(/\[\[GH_WRITE:[\s\S]*?\[\[\/GH_WRITE\]\]/g, "[تعديل ملف]").replace(/\[\[CF_WRITE:[\s\S]*?\[\[\/CF_WRITE\]\]/gi, "[تعديل Cloudflare]").replace(/\[\[PHONE(?:_BATCH|_WORKFLOW)\|[\s\S]*?\]\]/gi, "").replace(/\[\[PHONE:[\s\S]*?\]\]/gi, "").replace(/\[\[DELEGATE:[\s\S]*?\]\]/g, "").trim();
     return { model: data.model, usedModel: used, text: clean, tools };

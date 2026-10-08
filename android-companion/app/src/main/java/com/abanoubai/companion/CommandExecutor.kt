@@ -73,7 +73,7 @@ object CommandExecutor {
             "recents" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS, "تم فتح التطبيقات الأخيرة")
             "tap_text", "tap_id", "tap_description", "tap_coordinates", "long_press", "type_text", "clear_text", "screenshot", "read_screen", "screen_text", "swipe", "scroll", "wait_for_text", "press_back", "press_home", "open_notifications", "quick_settings" -> {
                 val result = CompanionAccessibilityService.instance?.handleScopedCommand(kind, record) ?: error("Accessibility غير مفعّلة")
-                if (kind == "read_screen") result else "تم إرسال أمر $kind"
+                if (kind == "read_screen" || kind == "screen_text") result else "تم إرسال أمر $kind"
             }
             "device_inventory" -> DeviceInventory.device(context)
             "app_inventory" -> DeviceInventory.apps(context)
@@ -142,7 +142,9 @@ object CommandExecutor {
                     .getOrElse { "الخطوة ${index + 1} المحاولة ${attempt + 1} فشلت: ${it.message}" }
             }
         }
-        return results.joinToString("\n")
+        val summary = results.joinToString("\n")
+        if (summary.contains("فشلت") || summary.contains("فشل تنفيذ")) error(summary)
+        return summary
     }
 
     private fun executeWorkflow(context: Context, payload: JsonObject?): String {
