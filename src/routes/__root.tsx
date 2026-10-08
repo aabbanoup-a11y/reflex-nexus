@@ -125,6 +125,13 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
   useAndroidAutoPair();
+  useEffect(() => {
+    const inIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
+    const preview = location.hostname.includes("id-preview--") || location.hostname.includes("lovableproject.com") || location.hostname === "localhost";
+    if (!("serviceWorker" in navigator)) return;
+    if (inIframe || preview) { void navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())); return; }
+    void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
