@@ -11,6 +11,7 @@ import { hasCrisisSignal, EMERGENCY_CONTACTS } from "@/lib/safety";
 import { supabase } from "@/integrations/supabase/runtime-client";
 import { useAuth } from "@/hooks/useAuth";
 import { ASSISTANTS, MODELS, QUICK_LINKS, chainFor, getAssistant, type AssistantKey } from "@/lib/assistants";
+import { isLocal } from "@/lib/models30";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -143,9 +144,20 @@ function AssistantPage() {
   ) => {
     const m = modelFor(a);
     try {
-      const reply = await ask({
-        data: { system: a.system, model: m, fallbacks: chainFor(m), messages: msgs, attachments: atts.map(({ path, mime, name }) => ({ path, mime, name })), memories },
-      });
+      const reply = isLocal(m)
+        ? {
+            text: await (await import("@/lib/local-llm")).runLocal(
+              m,
+              a.system,
+              msgs.map((message) => ({ who: message.role === "user" ? "me" : a.name, text: message.content })),
+              (_progress) => undefined,
+            ),
+            model: m,
+            switched: false,
+          }
+        : await ask({
+            data: { system: a.system, model: m, fallbacks: chainFor(m), messages: msgs, attachments: atts.map(({ path, mime, name }) => ({ path, mime, name })), memories },
+          });
       if (reply.crisis) {
         setCrisis(true);
         return null;

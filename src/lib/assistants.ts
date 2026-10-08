@@ -12,7 +12,7 @@ import { NET_MODELS, modelForKey } from "./models30";
 export const MODELS: ModelOption[] = NET_MODELS.map((m) => ({
   id: m.id,
   label: m.label,
-  note: m.provider === "cloudflare" ? "Cloudflare (حسابك)" : m.provider === "local" ? "أوفلاين (على السيرفر بديل سحابي)" : "Lovable AI",
+  note: m.provider === "cloudflare" ? "Cloudflare (حسابك)" : m.provider === "local" ? "أوفلاين على جهازك (بدون رصيد سحابي)" : "Lovable AI",
 }));
 
 export const DEFAULT_MODEL = "google/gemini-3.8-flash";
