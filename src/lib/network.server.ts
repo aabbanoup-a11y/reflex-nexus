@@ -11,6 +11,10 @@ function env(name: string) {
   return v;
 }
 
+function optionalEnv(name: string) {
+  return process.env[name]?.trim() || "";
+}
+
 let accCache = "";
 async function cfAccount() {
   if (accCache) return accCache;
@@ -53,15 +57,29 @@ export async function callModel(id: string, system: string, messages: Msg[]): Pr
   const key = env("LOVABLE_API_KEY");
   let text = "";
   if (id.startsWith("cf/")) {
-    const acc = await cfAccount();
-    const r = await fetch(`${CF}/accounts/${acc}/ai/run/${id.slice(3)}`, {
-      method: "POST",
-      headers: cfHeaders(),
-      body: JSON.stringify({ messages: [{ role: "system", content: system }, ...messages], max_tokens: 1500 }),
-    });
-    if (!r.ok) throw new Error(`${r.status}:${(await r.text()).slice(0, 200)}`);
-    const j = (await r.json()) as any;
-    text = String(j?.result?.choices?.[0]?.message?.content ?? j?.result?.response ?? "");
+    const nativeToken = optionalEnv("CLOUDFLARE_API_TOKEN");
+    const nativeAccount = optionalEnv("CLOUDFLARE_ACCOUNT_ID");
+    if (nativeToken && nativeAccount) {
+      const gateway = optionalEnv("CLOUDFLARE_AI_GATEWAY_ID") || "default";
+      const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${nativeAccount}/ai/v1/chat/completions`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${nativeToken}`, "cf-aig-gateway-id": gateway, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: `workers-ai/${id.slice(3)}`, messages: [{ role: "system", content: system }, ...messages], max_tokens: 1500 }),
+      });
+      if (!r.ok) throw new Error(`${r.status}:${(await r.text()).slice(0, 200)}`);
+      const j = (await r.json()) as any;
+      text = String(j?.choices?.[0]?.message?.content ?? j?.result?.response ?? "");
+    } else {
+      const acc = await cfAccount();
+      const r = await fetch(`${CF}/accounts/${acc}/ai/run/${id.slice(3)}`, {
+        method: "POST",
+        headers: cfHeaders(),
+        body: JSON.stringify({ messages: [{ role: "system", content: system }, ...messages], max_tokens: 1500 }),
+      });
+      if (!r.ok) throw new Error(`${r.status}:${(await r.text()).slice(0, 200)}`);
+      const j = (await r.json()) as any;
+      text = String(j?.result?.choices?.[0]?.message?.content ?? j?.result?.response ?? "");
+    }
     text = text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
   } else if (id.startsWith("openai/")) {
     const r = await fetch(`${AIG}/responses`, {
