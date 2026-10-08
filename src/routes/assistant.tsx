@@ -139,6 +139,7 @@ function AssistantPage() {
     msgs: { role: "user" | "assistant"; content: string }[],
     prompt: string,
     atts: Att[] = [],
+    publish = true,
   ) => {
     const m = modelFor(a);
     try {
@@ -149,15 +150,19 @@ function AssistantPage() {
         setCrisis(true);
         return null;
       }
-      push(thread, { role: "assistant", content: reply.text, author: `${a.emoji} ${a.name}`, model: reply.model });
-      notifyDone(`${a.emoji} ${a.name} خلّص المهمة`, reply.text);
+      if (publish) {
+        push(thread, { role: "assistant", content: reply.text, author: `${a.emoji} ${a.name}`, model: reply.model });
+        notifyDone(`${a.emoji} ${a.name} خلّص المهمة`, reply.text);
+      }
       void logRun({ agent_kind: thread === "team" ? "team" : "assistant", agent_key: a.key, agent_name: a.name, model: reply.model, prompt, reply: reply.text, status: "done" });
       scroll();
       return reply;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "حصل خطأ";
-      push(thread, { role: "assistant", content: `⚠️ ${msg}`, author: `${a.emoji} ${a.name}` });
-      notifyDone(`${a.name} ما قدرش يكمّل`, msg, false);
+      if (publish) {
+        push(thread, { role: "assistant", content: `⚠️ ${msg}`, author: `${a.emoji} ${a.name}` });
+        notifyDone(`${a.name} ما قدرش يكمّل`, msg, false);
+      }
       void logRun({ agent_kind: thread === "team" ? "team" : "assistant", agent_key: a.key, agent_name: a.name, model: m, prompt, reply: msg, status: "error" });
       scroll();
       return null;
@@ -184,7 +189,8 @@ function AssistantPage() {
         const manager = getAssistant("manager");
         const history = (threads[key] ?? []).slice(-12).map(strip);
         const qWeb = await withWeb(q);
-        const plan = await runOne(manager, key, [...history, { role: "user", content: qWeb }], q, atts);
+        // المدير والاختصاصيون يعملون كطبقة داخلية؛ المستخدم يرى الخلاصة فقط.
+        const plan = await runOne(manager, key, [...history, { role: "user", content: qWeb }], q, atts, false);
         if (!plan) return;
         const crew = ASSISTANTS.filter((a) => a.key !== "manager");
         const results: (Awaited<ReturnType<typeof runOne>>)[] = [];
@@ -192,7 +198,7 @@ function AssistantPage() {
         for (let i = 0; i < crew.length; i += 6) {
           const batch = await Promise.all(
             crew.slice(i, i + 6).map((a) =>
-              runOne(a, key, [...history, { role: "user", content: `طلب المستخدم: ${qWeb}\n\nخطة المدير:\n${plan.text}\n\nنفّذ الجزء الخاص بتخصصك فقط في 5 نقاط عملية قصيرة.` }], q, atts),
+              runOne(a, key, [...history, { role: "user", content: `طلب المستخدم: ${qWeb}\n\nخطة المدير:\n${plan.text}\n\nنفّذ الجزء الخاص بتخصصك فقط في 5 نقاط عملية قصيرة.` }], q, atts, false),
             ),
           );
           results.push(...batch);
@@ -207,6 +213,8 @@ function AssistantPage() {
             "team",
             [{ role: "user", content: `طلب المستخدم: ${q}\n\nنتايج الفريق:\n${shared}\n\nاجمع النتايج في خطة نهائية واحدة مترتبة بجدول زمني، واحذف التكرار.` }],
             q,
+            [],
+            true,
           );
         }
         notifyDone("الفريق خلّص كل المهام", q);
@@ -280,7 +288,7 @@ function AssistantPage() {
         </div>
 
         <p className="mt-3 text-sm text-muted-foreground">
-          {teamMode ? "المدير يقسّم طلبك، كل مساعد ينفّذ جزءه بالتوازي، وبعدين المدير يجمع النتايج في خطة واحدة." : assistant.tagline}
+          {teamMode ? "المدير يقسّم طلبك، كل مساعد يشتغل على الجزء المناسب، وبعدها تظهر لك رسالة نهائية واحدة من غير تكرار." : assistant.tagline}
         </p>
 
         {!teamMode && active === "wellness" && (
