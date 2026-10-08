@@ -128,6 +128,15 @@ export async function callModel(id: string, system: string, messages: Msg[]): Pr
   return text.trim();
 }
 
+export async function cfGet(path: string) {
+  if (path.includes("..")) throw new Error("مسار غير صالح");
+  const acc = await cfAccount();
+  const r = await fetch(`${CF}/accounts/${acc}/${path.replace(/^\/+/, "")}`, { headers: cfHeaders() });
+  const t = await r.text();
+  if (!r.ok) throw new Error(`Cloudflare ${r.status}: ${t.slice(0, 300)}`);
+  return t.slice(0, 6000);
+}
+
 // ---------- Browser (Cloudflare Browser Rendering) ----------
 export async function browse(url: string) {
   const u = new URL(url);
