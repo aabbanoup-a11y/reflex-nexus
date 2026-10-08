@@ -32,7 +32,12 @@ ${memory}
 أدوات (اكتب الوسم في سطر لوحده، هيتنفذ وتشوف نتيجته):
 [[BROWSE:https://...]] يفتح الصفحة في المتصفح السحابي (Cloudflare) ويقرأها ويصورها.
 [[ASK:معرف-النموذج|سؤال]] تبعت رسالة لنموذج تاني وتاخد رده. المعرفات: ${NET_MODELS.map((m) => m.id).join(", ")}
-[[GH_READ:repo|path]] يقرا ملف أو مجلد (repo = abra-cadabra-repo أو AbanoupAi، path فاضي = الجذر).
+[[GH_READ:repo|path]] يقرا ملف أو مجلد (repo = reflex-nexus وهو مستودع هذا التطبيق المتزامن مع Lovable، أو abra-cadabra-repo أو AbanoupAi، path فاضي = الجذر).
+[[DB_READ:table|عدد]] يقرأ آخر صفوف من جداول حساب أبانوب في قاعدة البيانات (tasks, network_messages, companion_commands, companion_events, companion_devices, mood_checkins, daily_reports, ai_runs, profiles).
+[[DB_WRITE:table]]
+{"عمود":"قيمة"}
+[[/DB_WRITE]] يضيف صفًا في جداول أبانوب القابلة للكتابة (tasks, network_messages, mood_checkins).
+[[CF:path]] يقرأ من حساب Cloudflare (مثال: workers/scripts أو ai/models/search أو storage/kv/namespaces).
 [[GH_WRITE:repo|path]]
 المحتوى الكامل للملف
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
@@ -135,6 +140,31 @@ export const networkTurn = createServerFn({ method: "POST" })
       await run(`💬 ${me.label} ← ${NET_MODELS.find((x) => x.id === peer)?.label}`, async () => ({
         text: await n.callModel(peer, `نموذج "${me.label}" في الشبكة بيسألك. رد بالعربية باختصار.`, [{ role: "user", content: m[2]!.trim() || "?" }]),
       }));
+    }
+    const DB_TABLES = ["tasks", "network_messages", "companion_commands", "companion_events", "companion_devices", "mood_checkins", "daily_reports", "ai_runs", "profiles"] as const;
+    for (const m of text.matchAll(/\[\[DB_READ:\s*([a-z_]+)\s*\|?\s*(\d*)\s*\]\]/g)) {
+      if (jobs++ >= 12) break;
+      await run(`🗄️ قراءة ${m[1]}`, async () => {
+        const t = m[1] as (typeof DB_TABLES)[number];
+        if (!DB_TABLES.includes(t)) throw new Error("جدول غير مسموح");
+        const { data: rows, error } = await (context.supabase as any).from(t).select("*").order("created_at", { ascending: false }).limit(Math.min(Number(m[2]) || 10, 50));
+        if (error) throw new Error(error.message);
+        return { text: JSON.stringify(rows).slice(0, 6000) };
+      });
+    }
+    for (const m of text.matchAll(/\[\[DB_WRITE:\s*([a-z_]+)\s*\]\]\n?([\s\S]*?)\[\[\/DB_WRITE\]\]/g)) {
+      if (jobs++ >= 12) break;
+      await run(`🗄️ إضافة في ${m[1]}`, async () => {
+        if (!["tasks", "network_messages", "mood_checkins"].includes(m[1]!)) throw new Error("جدول غير مسموح بالكتابة");
+        const row = { ...JSON.parse(m[2]!.trim()), user_id: context.userId };
+        const { error } = await (context.supabase as any).from(m[1]!).insert(row);
+        if (error) throw new Error(error.message);
+        return { text: "اتضاف ✓" };
+      });
+    }
+    for (const m of text.matchAll(/\[\[CF:\s*([a-z0-9_\/?=&.-]+)\s*\]\]/gi)) {
+      if (jobs++ >= 12) break;
+      await run(`☁️ Cloudflare ${m[1]}`, async () => ({ text: await n.cfGet(m[1]!) }));
     }
     for (const m of text.matchAll(/\[\[GH_READ:([^|\]]+)\|?([^\]]*)\]\]/g)) {
       if (jobs++ >= 8) break;
