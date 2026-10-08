@@ -2,9 +2,10 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 
 const items = [
-  { to: "/", label: "162 موظف" },
-  { to: "/assistant", label: "المساعدين" },
-  { to: "/network", label: "شبكة النماذج" },
+  { to: "/", label: "وضع العمل · 162" },
+  { to: "/assistant", label: "AbanoupAi الشخصي" },
+  { to: "/network", label: "الشبكة" },
+  { to: "/agent", label: "الوكيل" },
   { to: "/companion", label: "الهاتف" },
 ] as const;
 

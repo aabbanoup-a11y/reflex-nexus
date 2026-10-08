@@ -30,9 +30,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 
 /**
- * AbanoubAI Companion starts with a local setup hub. The hub only opens Android's
- * own settings pages; the user remains in control of every sensitive permission.
- * The dashboard is opened explicitly after setup.
+ * AbanoupAi is one Android app containing the existing Lovable dashboard.
+ * The dashboard is the launch screen; the local hub is only a fallback when
+ * the remote page cannot load, so the user does not navigate between apps.
  */
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
@@ -83,7 +83,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        showSetupHub()
+        showDashboard()
         CompanionRuntime.start(this)
         if (getSharedPreferences("companion", MODE_PRIVATE).getBoolean("enabled", false)) {
             ContextCompat.startForegroundService(this, Intent(this, CompanionForegroundService::class.java))
@@ -91,7 +91,6 @@ class MainActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (showingDashboard && web.canGoBack()) web.goBack()
-                else if (showingDashboard) showSetupHub()
                 else finish()
             }
         })

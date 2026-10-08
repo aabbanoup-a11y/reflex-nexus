@@ -34,4 +34,5 @@ dist-ssr
 # Android build outputs
 android-companion/.gradle/
 android-companion/app/build/
+android-companion/local.properties
 artifacts/

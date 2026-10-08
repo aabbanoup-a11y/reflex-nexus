@@ -16,33 +16,24 @@ function inferPhoneTag(input: string) {
   const text = input.trim();
   const url = text.match(/https?:\/\/\S+|www\.\S+/i)?.[0]?.replace(/[،.,)]+$/g, "");
   if (url && /(افتح|شغل|اذهب|رابط|open|go)/i.test(text)) return `[[PHONE:open_url|${url.startsWith("www.") ? `https://${url}` : url}]]`;
-  if (/(يوتيوب|youtube)/i.test(text) && /(ابحث|بحث|أغنية|اغنية|اغنيه|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)/i.test(text)) {
-    const title = text
-      .replace(/.*?(?:أغنية|اغنية|اغنيه|بحث عن|ابحث عن|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)\s*/i, "")
-      .replace(/\s*(?:على|في|من)\s*(?:ال)?يوتيوب.*$/i, "")
-      .replace(/^(?:أغنية|اغنية|اغنيه|في|على)\s+/i, "")
-      .trim();
-    if (title.length >= 2) return `[[PHONE:open_app|youtube]]\n[[PHONE:type_text_submit|${title.slice(0, 500)}]]`;
-    return "[[PHONE:open_app|youtube]]";
-  }
   if (!/(افتح|شغل|شغّل|open|launch)/i.test(text)) return "";
   const app = text.match(/(يوتيوب|youtube|كروم|chrome|واتساب|whatsapp|تليجرام|telegram|جيميل|gmail|الإعدادات|settings)/i)?.[0];
   return app ? `[[PHONE:open_app|${app}]]` : "";
 }
 
-const HINT = (me: string, memory: string, manager: boolean) => `${manager ? `إنت ${MANAGER_LABEL}. أنت نقطة الدخول والمنسق: افهم طلب أبانوب، حدد الوكيل المتخصص المناسب، واكتب وسم [[DELEGATE:health|السؤال]] أو [[DELEGATE:karate|السؤال]] أو [[DELEGATE:general|السؤال]] عندما تحتاج رأيًا متخصصًا. لا تدّعي تنفيذ مهمة قبل استخدام أداة الهاتف أو ظهور نتيجتها.` : `إنت "${me}" واحد من شبكة 50 نموذج ذكاء اصطناعي`} بتشتغل مع أبانوب في محادثة واحدة مشتركة. كل الردود (بتاعته وبتاعت باقي النماذج) قدامك تحت وبتتحفظ عند الكل.
+const HINT = (me: string, memory: string, manager: boolean) => `${manager ? `إنت ${MANAGER_LABEL}. أنت نقطة الدخول والمنسق: افهم طلب أبانوب، حدد الوكيل المتخصص المناسب، واكتب وسم [[DELEGATE:health|السؤال]] أو [[DELEGATE:karate|السؤال]] أو [[DELEGATE:general|السؤال]] عندما تحتاج رأيًا متخصصًا. لا تدّعي تنفيذ مهمة قبل استخدام أداة الهاتف أو ظهور نتيجتها.` : `إنت "${me}" واحد من شبكة 30 نموذج ذكاء اصطناعي`} بتشتغل مع أبانوب في محادثة واحدة مشتركة. كل الردود (بتاعته وبتاعت باقي النماذج) قدامك تحت وبتتحفظ عند الكل.
 الذاكرة المشتركة المصرّح بها من أبانوب:
 ${memory}
 رد بالعربية المصرية، مختصر وعملي، ونص عادي من غير ** أو ##. لو نموذج تاني قال حاجة، ممكن توافق أو تصحح أو تكمل عليه.
 أدوات (اكتب الوسم في سطر لوحده، هيتنفذ وتشوف نتيجته):
 [[BROWSE:https://...]] يفتح الصفحة في المتصفح السحابي (Cloudflare) ويقرأها ويصورها.
 [[ASK:معرف-النموذج|سؤال]] تبعت رسالة لنموذج تاني وتاخد رده. المعرفات: ${NET_MODELS.map((m) => m.id).join(", ")}
-[[GH_READ:repo|path]] يقرا ملف أو مجلد (repo = reflex-nexus وهو مستودع هذا التطبيق نفسه المتزامن مع Lovable، أو abra-cadabra-repo أو AbanoupAi، path فاضي = الجذر).
+[[GH_READ:repo|path]] يقرا ملف أو مجلد (repo = abra-cadabra-repo أو AbanoupAi، path فاضي = الجذر).
 [[GH_WRITE:repo|path]]
 المحتوى الكامل للملف
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
 [[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى موافقة أبانوب بزرار.
-[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. استخدم الأوامر الذرية أو خطة متسلسلة [[PHONE_BATCH|{"steps":[{"kind":"open_app","payload":{"package":"..."}},{"kind":"wait_for_text","payload":{"text":"..."}},{"kind":"tap_description","payload":{"text":"..."}},{"kind":"read_screen","payload":{}}]}]]، أو دورة [[PHONE_WORKFLOW|{"until_text":"تم","steps":[...]}]] تكرر الملاحظة والتنفيذ حتى يظهر الهدف. الأوامر تشمل: open_app/open_url/open_chrome/open_settings/open_camera/download_file/back/home/recents/tap_text/tap_id/tap_description/tap_coordinates/long_press/type_text/clear_text/swipe/scroll/wait/wait_for_text/screenshot/read_screen/screen_text/press_back/press_home/open_notifications/quick_settings/device_inventory/app_inventory/app_permissions/notification_inventory/file_inventory/file_read/open_file/open_document/stop. داخل batch يمكن استعمال if_text أو unless_text لتخطي خطوة، وrepeat لعدد مرات. للبحث استخدم type_text_submit ثم Enter. لا تتوقف إذا فشل أمر؛ سجّل الفشل وكمل باقي الخطة. لا تدّعي التنفيذ قبل نتيجة الأداة.
+[[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. مهم جدًا: اكتب دائمًا الرمز | بين kind وarg، ولا تكتب [[PHONE:open_appcom...]]. إذا قال أبانوب "افتح/شغل يوتيوب أو Chrome أو واتساب" أخرج الوسم فورًا: [[PHONE:open_app|اسم التطبيق أو الحزمة]]. وإذا أعطى رابطًا أخرج [[PHONE:open_url|https://...]]. للبحث: أخرج [[PHONE:open_app|chrome]] ثم [[PHONE:type_text|نص البحث]]. للضغط: [[PHONE:tap_text|النص الظاهر]]. لا تكتفِ بشرح الخطوات ولا تقل إنك لا تملك الهاتف؛ أخرج الوسم وانتظر نتيجة الأداة. يدعم أيضًا الإعدادات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
 [[DB_READ:table]] يقرأ بيانات الحساب من جدول مسموح به وبحد أقصى 50 صفًا: tasks أو employees أو network_messages أو companion_events.
 [[WORKSPACE_WRITE|note أو task أو proposal|العنوان|التفاصيل]] يسجل تعديلًا مقترحًا في مساحة عمل حسابك لمراجعته. لا يوجد حذف أو تعديل شامل من النموذج.
 استخدم الأدوات بس لما الطلب محتاجها.`;
@@ -93,10 +84,7 @@ export const networkTurn = createServerFn({ method: "POST" })
       used = fallback;
       text = await n.callModel(fallback, HINT(me.label, sharedMemory, isManager), msgs);
     }
-    const requestText = lastClient?.text ?? "";
-    const searchIntent = /(يوتيوب|youtube)/i.test(requestText) && /(بحث|ابحث|أغنية|اغنية|اغنيه|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)/i.test(requestText);
-    if (searchIntent) text = text.replace(/\[\[PHONE:\s*type_text\s*\|([^\]]+)\]\]/gi, "[[PHONE:type_text_submit|$1]]");
-    const inferredPhone = inferPhoneTag(requestText);
+    const inferredPhone = inferPhoneTag(lastClient?.text ?? "");
     if (inferredPhone && !text.includes("[[PHONE:")) text = `${text}\n${inferredPhone}`;
 
     const tools: ToolEvent[] = [];
@@ -179,41 +167,14 @@ export const networkTurn = createServerFn({ method: "POST" })
     for (const m of text.matchAll(/\[\[MERGE:\s*([^\]]+?)\s*\]\]/g)) {
       tools.push({ tool: `🔀 طلب دمج ${m[1]}`, ok: true, text: `MERGE_REQUEST:${n.checkRepo(m[1]!)}` });
     }
-    const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_id", "tap_description", "tap_coordinates", "long_press", "type_text", "clear_text", "swipe", "scroll", "wait", "wait_for_text", "screenshot", "read_screen", "screen_text", "press_back", "press_home", "open_notifications", "quick_settings", "device_inventory", "app_inventory", "app_permissions", "notification_inventory", "file_inventory", "file_read", "open_file", "open_document", "batch", "workflow"]);
+    const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
+    const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "type_text", "tap_text", "tap_coordinates", "long_press", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
     const appPackages: Record<string, string> = {
       youtube: "com.google.android.youtube", "يوتيوب": "com.google.android.youtube",
       chrome: "com.android.chrome", "جوجل كروم": "com.android.chrome", "كروم": "com.android.chrome",
       whatsapp: "com.whatsapp", "واتساب": "com.whatsapp", telegram: "org.telegram.messenger", "تليجرام": "org.telegram.messenger",
       gmail: "com.google.android.gm", "جيميل": "com.google.android.gm", settings: "com.android.settings", "الإعدادات": "com.android.settings",
     };
-    for (const m of text.matchAll(/\[\[PHONE_WORKFLOW\|([\s\S]*?)\]\]/gi)) {
-      if (jobs++ >= 4) break;
-      await run("📱 دورة هاتف ذاتية", async () => {
-        let payload: any;
-        try { payload = JSON.parse(m[1]!.trim()); } catch { throw new Error("دورة الهاتف ليست JSON صالحًا"); }
-        if (!Array.isArray(payload?.steps) || payload.steps.length === 0 || payload.steps.length > 50) throw new Error("الدورة تحتاج خطوات");
-        if (payload.max_cycles !== undefined && (!Number.isInteger(payload.max_cycles) || payload.max_cycles < 1 || payload.max_cycles > 100)) throw new Error("max_cycles يجب أن يكون بين 1 و100");
-        const { data: dev } = await context.supabase.from("companion_devices").select("id,status").eq("user_id", context.userId).eq("platform", "android").order("last_seen_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
-        if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
-        const { error } = await context.supabase.from("companion_commands").insert({ device_id: dev.id, user_id: context.userId, kind: "workflow", payload, requires_approval: false, status: "approved", approved_at: new Date().toISOString() });
-        if (error) throw new Error(error.message);
-        return { text: `بدأت دورة من ${payload.steps.length} خطوة (${dev.status}) وتستمر حتى تحقق الهدف أو تصل لحد التشغيل الآمن.` };
-      });
-    }
-    for (const m of text.matchAll(/\[\[PHONE_BATCH\|([\s\S]*?)\]\]/gi)) {
-      if (jobs++ >= 4) break;
-      await run("📱 خطة هاتف متسلسلة", async () => {
-        let payload: any;
-        try { payload = JSON.parse(m[1]!.trim()); } catch { throw new Error("خطة الهاتف ليست JSON صالحًا"); }
-        if (!Array.isArray(payload?.steps) || payload.steps.length === 0 || payload.steps.length > 50) throw new Error("خطة الهاتف يجب أن تحتوي من 1 إلى 50 خطوة");
-        const { data: dev } = await context.supabase.from("companion_devices").select("id,status").eq("user_id", context.userId).eq("platform", "android").order("last_seen_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
-        if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
-        const command = { device_id: dev.id, user_id: context.userId, kind: "batch", payload, requires_approval: false, status: "approved", approved_at: new Date().toISOString() };
-        const { error } = await context.supabase.from("companion_commands").insert(command);
-        if (error) throw new Error(error.message);
-        return { text: `اتبعت خطة من ${payload.steps.length} خطوة للهاتف (${dev.status})؛ كل خطوة تسجل نجاحها أو فشلها وتستمر الخطة.` };
-      });
-    }
     for (const m of text.matchAll(/\[\[PHONE:\s*([a-z_]+)(?:\s*\|\s*([^\]]*))?\]\]/gi)) {
       if (jobs++ >= 12) break;
       const rawKind = m[1]!.toLowerCase();
@@ -223,8 +184,7 @@ export const networkTurn = createServerFn({ method: "POST" })
         kind = "open_app";
         arg = rawKind.slice("open_app".length);
       }
-      const submit = rawKind === "type_text_submit";
-      const aliases: Record<string, string> = { click: "tap_text", tap: "tap_text", type: "type_text", search: "type_text", type_text_submit: "type_text", read_screen: "screen_text" };
+      const aliases: Record<string, string> = { click: "tap_text", tap: "tap_text", type: "type_text", search: "type_text", read_screen: "screen_text" };
       kind = aliases[kind] ?? kind;
       await run(`📱 الهاتف: ${kind}`, async () => {
         if (!PHONE_KINDS.has(kind)) throw new Error("أمر غير مسموح");
@@ -236,25 +196,63 @@ export const networkTurn = createServerFn({ method: "POST" })
         if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
         if (["open_url", "download_file"].includes(kind) && !/^https:\/\//.test(urlArg)) throw new Error("الرابط لازم يبدأ بـ https://");
         if (kind.endsWith("inventory") && arg) throw new Error("أمر الجرد لا يقبل بيانات إضافية");
-        const payload = kind === "open_url" || kind === "download_file" ? { url: urlArg } : kind === "open_app" ? { package: appArg } : kind === "open_settings" ? { setting: arg } : kind === "speak" ? { text: arg.slice(0, 4000) } : kind === "tap_text" || kind === "type_text" ? { text: arg.slice(0, 500), ...(submit ? { submit: "true" } : {}) } : {};
+        const payload = kind === "open_url" || kind === "download_file" ? { url: urlArg } : kind === "open_app" ? { package: appArg } : kind === "open_settings" ? { setting: arg } : kind === "speak" ? { text: arg.slice(0, 4000) } : kind === "tap_text" || kind === "type_text" ? { text: arg.slice(0, 500) } : {};
+        // التشغيل التلقائي هو الوضع الافتراضي الذي طلبه صاحب الهاتف؛ يظل كل شيء
+        // مملوكًا للحساب ومسجلًا في السجل، مع زر الطوارئ لإيقاف التنفيذ.
+        const sensitive = false;
         const command = {
           device_id: dev.id, user_id: context.userId, kind, payload,
           requires_approval: false, status: "approved",
           approved_at: new Date().toISOString(),
         };
-        let { error } = await context.supabase.from("companion_commands").insert(command);
+        let { data: inserted, error } = await context.supabase.from("companion_commands").insert(command).select("id").single();
         // Lovable Cloud deployments that still have the original allowlist accept tap_text.
         // Preserve the real action inside the payload so the Android agent can execute it.
         if (error && /kind_check|check constraint/i.test(error.message) && kind !== "tap_text") {
           const legacy = { ...command, kind: "tap_text", payload: { ...payload, agent_action: kind } };
-          ({ error } = await context.supabase.from("companion_commands").insert(legacy));
+          ({ data: inserted, error } = await context.supabase.from("companion_commands").insert(legacy).select("id").single());
         }
         if (error) throw new Error(error.message);
-        return { text: `اتبعت للهاتف (${dev.status}) ونُفذت تلقائيًا` };
+        if (!inserted?.id) return { text: `اتبعت للهاتف (${dev.status})` };
+        for (let attempt = 0; attempt < 18; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 700));
+          const [{ data: state }, { data: event }] = await Promise.all([
+            context.supabase.from("companion_commands").select("status,error").eq("id", inserted.id).maybeSingle(),
+            context.supabase.from("companion_events").select("event_type,message").eq("command_id", inserted.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+          ]);
+          if (state?.status === "succeeded") return { text: event?.message?.slice(0, 12000) || "تم التنفيذ على الهاتف" };
+          if (state?.status === "failed" || state?.status === "rejected") throw new Error(state.error || event?.message || "فشل تنفيذ الأمر على الهاتف");
+        }
+        return { text: `أُرسل للهاتف ولم تصل النتيجة بعد (${dev.status})` };
       });
     }
     const clean = text.replace(/\[\[GH_WRITE:[\s\S]*?\[\[\/GH_WRITE\]\]/g, "[تعديل ملف]").replace(/\[\[DELEGATE:[\s\S]*?\]\]/g, "").trim();
     return { model: data.model, usedModel: used, text: clean, tools };
+  });
+
+export const createDailyReport = createServerFn({ method: "POST" })
+  .middleware([requireCloudAuth])
+  .handler(async ({ context }) => {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const [{ data: messages }, { data: events }] = await Promise.all([
+      context.supabase.from("network_messages").select("who,content,created_at").eq("user_id", context.userId).gte("created_at", since).order("created_at", { ascending: true }).limit(100),
+      context.supabase.from("companion_events").select("event_type,message,created_at").eq("user_id", context.userId).gte("created_at", since).order("created_at", { ascending: true }).limit(100),
+    ]);
+    const msgCount = messages?.length ?? 0;
+    const eventCount = events?.length ?? 0;
+    const failures = (events ?? []).filter((e) => e.event_type === "error").length;
+    const lines = (events ?? []).slice(-12).map((e) => `- ${e.event_type}: ${(e.message ?? "").slice(0, 240)}`);
+    const content = [
+      `تقرير AbanoupAi لآخر 24 ساعة`,
+      `المحادثات المسجلة: ${msgCount}`,
+      `أحداث الهاتف: ${eventCount}`,
+      `الأخطاء: ${failures}`,
+      lines.length ? `آخر الأحداث:\n${lines.join("\n")}` : "لا توجد أحداث هاتف مسجلة.",
+    ].join("\n\n");
+    const reportDate = new Date().toISOString().slice(0, 10);
+    const { data, error } = await context.supabase.from("daily_reports").insert({ user_id: context.userId, report_date: reportDate, content }).select("id,report_date,content,created_at").single();
+    if (error) throw new Error(error.message);
+    return data;
   });
 
 export const mergeRepo = createServerFn({ method: "POST" })

@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { UnifiedWorkspaceNav } from "@/components/UnifiedWorkspaceNav";
+import { networkTurn } from "@/lib/network.functions";
+import { MANAGER_ID, NET_MODELS, netLabel } from "@/lib/models30";
 import {
   Dialog,
   DialogContent,
@@ -65,9 +67,12 @@ type Task = {
 };
 
 function Home() {
+  const [mode, setMode] = useState<"work" | "personal">("work");
   const [search, setSearch] = useState("");
   const [dept, setDept] = useState<string | null>(null);
   const [selected, setSelected] = useState<Employee | null>(null);
+
+  if (mode === "personal") return <PersonalWorkspace onModeChange={setMode} />;
 
   const employeesQuery = useQuery({
     queryKey: ["employees"],
@@ -115,6 +120,10 @@ function Home() {
       <header className="border-b border-border bg-card/60">
         <div className="mx-auto max-w-6xl px-4 py-10">
           <UnifiedWorkspaceNav />
+          <div className="mt-4 flex flex-wrap gap-2 rounded-xl border border-border bg-background/70 p-2">
+            <Button size="sm">وضع العمل · 162 موظف</Button>
+            <Button size="sm" variant="outline" onClick={() => setMode("personal")}>الوضع الشخصي · AbanoupAi</Button>
+          </div>
           <div className="mb-4 flex items-center justify-between gap-3">
             <Badge>مزامنة مباشرة مع قاعدة البيانات</Badge>
             <Button asChild size="sm">
@@ -212,6 +221,70 @@ function Home() {
       </main>
 
       <TaskDialog employee={selected} onOpenChange={(o) => !o && setSelected(null)} />
+    </div>
+  );
+}
+
+function PersonalWorkspace({ onModeChange }: { onModeChange: (mode: "work" | "personal") => void }) {
+  const turn = useServerFn(networkTurn);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [messages, setMessages] = useState<{ who: string; text: string }[]>([]);
+  const personalModels = [MANAGER_ID, ...NET_MODELS.filter((m) => m.provider === "cloudflare").slice(0, 4).map((m) => m.id)];
+
+  async function ask() {
+    const text = input.trim();
+    if (!text || busy) return;
+    setInput("");
+    const next = [...messages, { who: "me", text }];
+    setMessages(next);
+    setBusy(true);
+    try {
+      for (const model of personalModels) {
+        const reply = await turn({ data: { model, thread: next } });
+        setMessages((current) => [...current, { who: netLabel(model), text: reply.text }]);
+      }
+    } catch (e) {
+      setMessages((current) => [...current, { who: "AbanoupAi", text: (e as Error).message }]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div dir="rtl" className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-card/60">
+        <div className="mx-auto max-w-6xl px-4 py-8">
+          <UnifiedWorkspaceNav />
+          <div className="mt-4 flex flex-wrap gap-2 rounded-xl border border-border bg-background/70 p-2">
+            <Button size="sm" variant="outline" onClick={() => onModeChange("work")}>وضع العمل · 162 موظف</Button>
+            <Button size="sm">الوضع الشخصي · AbanoupAi</Button>
+          </div>
+          <h1 className="mt-6 text-3xl font-bold">مساحة AbanoupAi الشخصية</h1>
+          <p className="mt-2 max-w-2xl text-muted-foreground">الشبكة والمساعدين والوكيل والهاتف والذاكرة في محادثة واحدة. Cloudflare هو المسار الأساسي، مع قراءة آمنة وكتابة في الفرع التجريبي وتسجيل التغييرات.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {([
+              ["شبكة النماذج", "/network", "المحادثة المشتركة وCloudflare"],
+              ["المساعدين", "/assistant", "الدراسة والكاراتيه والصحة"],
+              ["الوكيل", "/agent", "قراءة صفحات الويب وتنفيذ الخطوات"],
+              ["هاتف Oppo", "/companion", "الأوامر والسجل وزر الطوارئ"],
+              ["الذاكرة والسجل", "/history", "النتائج والتقارير اليومية"],
+            ] as const).map(([label, href, desc]) => (
+              <Link key={href} to={href} className="rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary"><p className="font-semibold">{label}</p><p className="mt-1 text-xs text-muted-foreground">{desc}</p></Link>
+            ))}
+          </div>
+        </div>
+      </header>
+      <main className="mx-auto max-w-6xl px-4 py-6">
+        <section className="rounded-xl border border-border bg-card p-4">
+          <div className="mb-3 flex items-center justify-between gap-2"><h2 className="font-bold">المحادثة الموحدة</h2><span className="text-xs text-muted-foreground">{busy ? "النماذج بترد..." : "جاهز"}</span></div>
+          <div className="mb-4 min-h-48 space-y-2 rounded-lg border border-border bg-background p-3">
+            {!messages.length && <p className="text-sm text-muted-foreground">اكتب هدفك بصيغة طبيعية، مثل: اقرأ هذا الرابط، عدّل الملف، أو افتح التطبيق على الهاتف.</p>}
+            {messages.map((m, i) => <div key={i} className={`rounded-md p-2 text-sm ${m.who === "me" ? "bg-primary/10" : "bg-muted"}`}><b>{m.who === "me" ? "أنت" : m.who}:</b> {m.text}</div>)}
+          </div>
+          <div className="flex gap-2"><Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void ask(); }} placeholder="اكتب هدفك لـ AbanoupAi..." /><Button onClick={() => void ask()} disabled={busy}>إرسال</Button></div>
+        </section>
+      </main>
     </div>
   );
 }

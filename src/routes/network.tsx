@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { networkTurn, mergeRepo, type ToolEvent } from "@/lib/network.functions";
+import { networkTurn, mergeRepo, createDailyReport, type ToolEvent } from "@/lib/network.functions";
 import { MANAGER_ID, MANAGER_LABEL, NET_MODELS, isLocal, netLabel, REPOS, WORK_BRANCH } from "@/lib/models30";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,9 +11,9 @@ import { UnifiedWorkspaceNav } from "@/components/UnifiedWorkspaceNav";
 export const Route = createFileRoute("/network")({
   head: () => ({
     meta: [
-      { title: "شبكة الـ51 نموذج | Abanoup" },
-      { name: "description", content: "50 نموذجًا ومدير في محادثة واحدة: يفهموا الطلب، يستخدموا الهاتف والمتصفح، ويعدّلوا مستودعات GitHub." },
-      { property: "og:title", content: "شبكة الـ51 نموذج | Abanoup" },
+      { title: "شبكة الـ30 نموذج | Abanoup" },
+      { name: "description", content: "30 نموذج ذكاء اصطناعي في محادثة واحدة: بيكلموا بعض، بيستخدموا المتصفح، وبيعدّلوا مستودعات GitHub." },
+      { property: "og:title", content: "شبكة الـ30 نموذج | Abanoup" },
       { property: "og:description", content: "محادثة مشتركة، متصفح سحابي، وتعديل GitHub في فرع تجريبي." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -24,6 +24,7 @@ export const Route = createFileRoute("/network")({
 
 type Entry = { id: string; who: string; text: string; tools?: ToolEvent[]; err?: boolean };
 type PhoneDevice = { id: string; device_name: string; status: string; last_seen_at: string | null };
+type PendingPhoneCommand = { id: string; kind: string; payload: { url?: string; package?: string; text?: string } };
 const KEY = "network-thread-v1";
 type SpeechCtor = new () => { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: any) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void };
 declare global { interface Window { SpeechRecognition?: SpeechCtor; webkitSpeechRecognition?: SpeechCtor; AbanoubAI?: { savePairing?: (deviceId: string, accessToken: string) => void; startVoiceRecognition?: () => void; stopVoiceRecognition?: () => void }; __abanoupaiVoiceResult?: (text: string) => void; __abanoupaiVoiceError?: (text: string) => void } }
@@ -31,10 +32,12 @@ declare global { interface Window { SpeechRecognition?: SpeechCtor; webkitSpeech
 function Network() {
   const turn = useServerFn(networkTurn);
   const merge = useServerFn(mergeRepo);
+  const makeDailyReport = useServerFn(createDailyReport);
   const [thread, setThread] = useState<Entry[]>([]);
   const [picked, setPicked] = useState<string[]>([MANAGER_ID, ...NET_MODELS.filter((m) => m.provider === "cloudflare").slice(0, 5).map((m) => m.id)]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState("");
+  const [report, setReport] = useState("");
   const [voiceOn, setVoiceOn] = useState(false);
   const voice = useRef<{ stop: () => void } | null>(null);
   const [networkMode] = useState(() => localStorage.getItem("companion-mode") ?? "balanced");
@@ -49,6 +52,7 @@ function Network() {
 
   const [uid, setUid] = useState<string | null | undefined>(undefined);
   const [phone, setPhone] = useState<PhoneDevice | null>(null);
+  const [pendingPhone, setPendingPhone] = useState<PendingPhoneCommand[]>([]);
 
   useEffect(() => {
     void (async () => {
@@ -57,10 +61,12 @@ function Network() {
       setUid(id);
       if (!id) return;
       const loadPhone = async () => {
-        const [{ data: device }] = await Promise.all([
+        const [{ data: device }, { data: pending }] = await Promise.all([
           supabase.from("companion_devices").select("id,device_name,status,last_seen_at").eq("user_id", id).eq("platform", "android").order("last_seen_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle(),
+          supabase.from("companion_commands").select("id,kind,payload").eq("user_id", id).eq("status", "queued").order("created_at", { ascending: false }).limit(5),
         ]);
         setPhone(device as PhoneDevice | null);
+        setPendingPhone((pending ?? []) as PendingPhoneCommand[]);
       };
       void loadPhone();
       const phoneChannel = supabase.channel(`network-phone-${id}`)
@@ -89,6 +95,11 @@ function Network() {
       return () => { void supabase.removeChannel(phoneChannel); };
     })();
   }, []);
+
+  async function approvePhone(id: string, approve: boolean) {
+    await supabase.from("companion_commands").update(approve ? { status: "approved", approved_at: new Date().toISOString() } : { status: "rejected" }).eq("id", id);
+    setPendingPhone((items) => items.filter((item) => item.id !== id));
+  }
 
   const push = (e: Entry) => {
     ref.current = [...ref.current, e];
@@ -133,6 +144,15 @@ function Network() {
   }
   async function send() { await sendText(input); }
 
+  async function dailyReport() {
+    try {
+      const r = await makeDailyReport();
+      setReport(r.content);
+    } catch (e) {
+      setReport((e as Error).message);
+    }
+  }
+
   function toggleVoice() {
     if (voiceOn) { if (window.AbanoubAI?.stopVoiceRecognition) window.AbanoubAI.stopVoiceRecognition(); else voice.current?.stop(); voice.current = null; setVoiceOn(false); return; }
     if (window.AbanoubAI?.startVoiceRecognition) {
@@ -174,12 +194,14 @@ function Network() {
     <main dir="rtl" className="mx-auto max-w-5xl space-y-4 p-4">
       <UnifiedWorkspaceNav />
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">شبكة الـ{NET_MODELS.length + 1} نموذج</h1>
+        <h1 className="text-2xl font-bold">شبكة الـ30 نموذج</h1>
         <div className="flex gap-2">
           <Button asChild variant="outline" size="sm"><Link to="/">الرئيسية</Link></Button>
+          <Button variant="outline" size="sm" onClick={() => void dailyReport()}>تقرير اليوم</Button>
           <Button variant="outline" size="sm" onClick={() => { if (confirm("مسح المحادثة المشتركة؟")) { ref.current = []; setThread([]); localStorage.removeItem(KEY); if (uid) void supabase.from("network_messages").delete().eq("user_id", uid).then(() => undefined); } }}>مسح</Button>
         </div>
       </div>
+      {report && <pre className="whitespace-pre-wrap rounded-lg border bg-card p-3 text-sm">{report}</pre>}
       <p className="text-sm text-muted-foreground">
         التشغيل الافتراضي Cloudflare-first لتقليل الاعتماد على مزود واحد، مع fallback تلقائي عند فشل نموذج. كلهم يشوفوا نفس المحادثة والذاكرة المصرح بها. اكتب طلبك الطبيعي أو استدعِ AbanoupAi صوتيًا. 🌐 = نموذج متصفح.
       </p>
@@ -189,6 +211,7 @@ function Network() {
           <span><b>هاتف Oppo:</b> {phone.status === "online" ? "متصل" : "غير متصل"} · {phone.last_seen_at ? new Date(phone.last_seen_at).toLocaleTimeString("ar-EG") : "لا يوجد اتصال سابق"}</span>
           <Link to="/companion" className="text-primary underline">تفاصيل التحكم</Link>
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">التنفيذ تلقائي، وكل أمر ونتيجة محفوظان في السجل. أوقفه من زر الطوارئ عند الحاجة.</p>
       </section>}
 
       <section className="flex flex-wrap gap-2">
