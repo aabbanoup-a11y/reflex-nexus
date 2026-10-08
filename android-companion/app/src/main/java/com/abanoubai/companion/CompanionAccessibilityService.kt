@@ -19,7 +19,19 @@ import org.json.JSONObject
 class CompanionAccessibilityService : AccessibilityService() {
     companion object { var instance: CompanionAccessibilityService? = null }
     override fun onServiceConnected() { instance = this; CompanionRuntime.restart(this) }
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) { }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        val e = event ?: return
+        val action = when (e.eventType) {
+            AccessibilityEvent.TYPE_VIEW_CLICKED -> "click"
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> "screen"
+            AccessibilityEvent.TYPE_VIEW_SCROLLED -> "scroll"
+            else -> return
+        }
+        val pkg = e.packageName?.toString().orEmpty()
+        val target = e.text?.joinToString(" ")?.trim()?.takeIf { it.isNotBlank() }
+            ?: e.contentDescription?.toString()?.takeIf { it.isNotBlank() }
+        CompanionRuntime.reportUserAction(this, action, pkg, target)
+    }
     override fun onInterrupt() { }
     override fun onDestroy() { instance = null; super.onDestroy() }
 

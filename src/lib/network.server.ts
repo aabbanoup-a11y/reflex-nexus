@@ -137,6 +137,18 @@ export async function cfGet(path: string) {
   return t.slice(0, 6000);
 }
 
+export async function cfWrite(path: string, method: string, body: string) {
+  if (path.includes("..")) throw new Error("مسار غير صالح");
+  const normalized = path.replace(/^accounts\/[^/]+\//, "");
+  if (!/^(workers\/scripts|storage\/kv\/namespaces|d1\/database|pages\/projects)(\/|$)/i.test(normalized)) throw new Error("مسار Cloudflare غير مسموح للتعديل");
+  const parsed = JSON.parse(body);
+  const acc = await cfAccount();
+  const r = await fetch(`${CF}/accounts/${acc}/${path.replace(/^\/+/, "")}`, { method: ["POST", "PUT", "PATCH"].includes(method.toUpperCase()) ? method.toUpperCase() : "PUT", headers: cfHeaders(), body: JSON.stringify(parsed) });
+  const text = await r.text();
+  if (!r.ok) throw new Error(`Cloudflare ${r.status}: ${text.slice(0, 500)}`);
+  return text.slice(0, 6000);
+}
+
 // ---------- Browser (Cloudflare Browser Rendering) ----------
 export async function browse(url: string) {
   const u = new URL(url);

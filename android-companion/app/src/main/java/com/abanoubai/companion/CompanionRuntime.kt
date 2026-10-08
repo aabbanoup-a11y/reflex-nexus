@@ -199,6 +199,23 @@ object CompanionRuntime {
         event(context, record, "error", message)
     }
 
+    /** يسجل نوع الحركة والتطبيق فقط؛ لا يسجل نص الحقول أو كلمات المرور. */
+    fun reportUserAction(context: Context, action: String, packageName: String, target: String?) {
+        val prefs = context.getSharedPreferences("companion", Context.MODE_PRIVATE)
+        val token = prefs.getString("access_token", null) ?: return
+        val deviceId = prefs.getString("device_id", "") ?: ""
+        request(context, "companion_events", token, "POST", JSONObject().apply {
+            put("device_id", deviceId)
+            userIdFrom(token)?.let { put("user_id", it) }
+            put("event_type", "user_action")
+            put("message", JSONObject().apply {
+                put("action", action)
+                put("package", packageName.take(160))
+                if (!target.isNullOrBlank()) put("target", target.take(120))
+            }.toString())
+        })
+    }
+
     fun stop(context: Context) {
         stopped = true
         retryHandler.removeCallbacksAndMessages(null)

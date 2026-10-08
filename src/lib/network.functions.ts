@@ -12,13 +12,24 @@ const Turn = z.object({
 export type ToolEvent = { tool: string; ok: boolean; text: string; link?: string | undefined; shot?: string | undefined };
 export type TurnReply = { model: string; text: string; tools: ToolEvent[]; usedModel: string };
 
+function songTitle(input: string) {
+  return input
+    .replace(/https?:\/\/\S+|www\.\S+/gi, "")
+    .replace(/(?:عايز|عايزة|اريد|أريد|ممكن|لو سمحت|من فضلك|نزّل|نزل|حمّل|حمل|تحميل|تنزيل|تنزيله|ابحث|أبحث|بحث|عن|أغنية|اغنية|اغنيه|اسمها|على|علي|في|من|اليوتيوب|يوتيوب|youtube|please|download|song|on|from)/gi, " ")
+    .replace(/[،,.!?؟]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function inferPhoneTag(input: string) {
   const text = input.trim();
   const url = text.match(/https?:\/\/\S+|www\.\S+/i)?.[0]?.replace(/[،.,)]+$/g, "");
   if (url && /(افتح|شغل|اذهب|رابط|open|go)/i.test(text)) return `[[PHONE:open_url|${url.startsWith("www.") ? `https://${url}` : url}]]`;
-  if (/(يوتيوب|youtube)/i.test(text) && /(بحث|ابحث|أغنية|اغنية|اغنيه|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)/i.test(text)) {
-    const title = text.replace(/.*?(?:أغنية|اغنية|اغنيه|بحث عن|ابحث عن|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)\s*/i, "").replace(/\s*(?:على|في|من)\s*(?:ال)?يوتيوب.*$/i, "").trim();
-    return title.length >= 2 ? `[[PHONE:open_app|youtube]]\n[[PHONE:type_text_submit|${title.slice(0, 500)}]]` : "[[PHONE:open_app|youtube]]";
+  if (/(يوتيوب|youtube|أغنية|اغنية|اغنيه)/i.test(text) && /(بحث|ابحث|أغنية|اغنية|اغنيه|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)/i.test(text)) {
+    const title = songTitle(text).slice(0, 500);
+    if (title.length < 2) return "[[PHONE:open_app|youtube]]";
+    const safe = JSON.stringify(title);
+    return `[[PHONE_BATCH|{"steps":[{"kind":"open_app","payload":{"package":"com.google.android.youtube"}},{"kind":"wait","payload":{"ms":"1200"}},{"kind":"tap_description","if_text":"بحث","payload":{"text":"بحث"}},{"kind":"tap_description","if_text":"Search","payload":{"text":"Search"}},{"kind":"type_text","payload":{"text":${safe},"submit":"true"}},{"kind":"wait_for_text","payload":{"text":${safe},"timeout_ms":"12000"}},{"kind":"screenshot","payload":{}}]}]]`;
   }
   if (!/(افتح|شغل|شغّل|open|launch)/i.test(text)) return "";
   const app = text.match(/(يوتيوب|youtube|كروم|chrome|واتساب|whatsapp|تليجرام|telegram|جيميل|gmail|الإعدادات|settings)/i)?.[0];
@@ -38,6 +49,9 @@ ${memory}
 {"عمود":"قيمة"}
 [[/DB_WRITE]] يضيف صفًا في جداول أبانوب القابلة للكتابة (tasks, network_messages, mood_checkins).
 [[CF:path]] يقرأ من حساب Cloudflare (مثال: workers/scripts أو ai/models/search أو storage/kv/namespaces).
+[[CF_WRITE:PUT|workers/scripts/اسم-العامل]]
+{"script":"..."}
+[[/CF_WRITE]] يعدّل موارد Cloudflare المعروفة فقط. استخدمه عندما يطلب أبانوب تعديل Worker أو KV أو D1 أو Pages، وبعد قراءة الحالة الحالية.
 [[GH_WRITE:repo|path]]
 المحتوى الكامل للملف
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
@@ -45,6 +59,7 @@ ${memory}
 [[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. مهم جدًا: اكتب دائمًا الرمز | بين kind وarg، ولا تكتب [[PHONE:open_appcom...]]. إذا قال أبانوب "افتح/شغل يوتيوب أو Chrome أو واتساب" أخرج الوسم فورًا: [[PHONE:open_app|اسم التطبيق أو الحزمة]]. وإذا أعطى رابطًا أخرج [[PHONE:open_url|https://...]]. للبحث: أخرج [[PHONE:open_app|chrome]] ثم [[PHONE:type_text|نص البحث]]. للضغط: [[PHONE:tap_text|النص الظاهر]]. لا تكتفِ بشرح الخطوات ولا تقل إنك لا تملك الهاتف؛ أخرج الوسم وانتظر نتيجة الأداة. يدعم أيضًا الإعدادات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
 [[DB_READ:table]] يقرأ بيانات الحساب من جدول مسموح به وبحد أقصى 50 صفًا: tasks أو employees أو network_messages أو companion_events.
 [[WORKSPACE_WRITE|note أو task أو proposal|العنوان|التفاصيل]] يسجل تعديلًا مقترحًا في مساحة عمل حسابك لمراجعته. لا يوجد حذف أو تعديل شامل من النموذج.
+المهارات التي تختار منها حسب الهدف: phone-control (ملاحظة الشاشة والضغط والكتابة)، youtube-search (فتح YouTube والبحث والتحقق)، file-reader (فهرسة وفتح الملفات)، browser-research (قراءة الصفحة وتلخيصها)، github-editor (قراءة وتعديل فرع العمل)، supabase-data (قراءة/إضافة بيانات الحساب)، cloudflare-ops (قراءة/تعديل الموارد المسموحة)، screen-learning (استخراج أنماط التطبيق من حركات المستخدم دون حفظ نصوصه)، وtask-summary (تلخيص ما تم فعليًا). لا تخترع عنصرًا غير موجود: اقرأ الشاشة قبل الضغط، وبعد الفشل أعد القراءة واختر بديلًا.
 استخدم الأدوات بس لما الطلب محتاجها.`;
 
 export const networkTurn = createServerFn({ method: "POST" })
@@ -94,10 +109,13 @@ export const networkTurn = createServerFn({ method: "POST" })
       text = await n.callModel(fallback, HINT(me.label, sharedMemory, isManager), msgs);
     }
     const requestText = lastClient?.text ?? "";
-    const searchIntent = /(يوتيوب|youtube)/i.test(requestText) && /(بحث|ابحث|أغنية|اغنية|اغنيه|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)/i.test(requestText);
-    if (searchIntent) text = text.replace(/\[\[PHONE:\s*type_text\s*\|([^\]]+)\]\]/gi, "[[PHONE:type_text_submit|$1]]");
+    const searchIntent = /(يوتيوب|youtube|أغنية|اغنية|اغنيه)/i.test(requestText) && /(بحث|ابحث|أغنية|اغنية|اغنيه|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)/i.test(requestText);
+    if (searchIntent) {
+      // لا نسمح للنموذج باختراع open_url أو عنصر مثل Accounts في مسار YouTube؛ نستخدم المسار الحتمي أعلاه.
+      text = text.replace(/\[\[PHONE:[\s\S]*?\]\]/gi, "");
+    }
     const inferredPhone = inferPhoneTag(requestText);
-    if (inferredPhone && !text.includes("[[PHONE:")) text = `${text}\n${inferredPhone}`;
+    if (inferredPhone && (!text.includes("[[PHONE:") || searchIntent)) text = `${text.trim()}\n${inferredPhone}`;
 
     const tools: ToolEvent[] = [];
     const run = async (tool: string, f: () => Promise<Omit<ToolEvent, "tool" | "ok">>) => {
@@ -166,6 +184,10 @@ export const networkTurn = createServerFn({ method: "POST" })
       if (jobs++ >= 12) break;
       await run(`☁️ Cloudflare ${m[1]}`, async () => ({ text: await n.cfGet(m[1]!) }));
     }
+    for (const m of text.matchAll(/\[\[CF_WRITE:\s*(POST|PUT|PATCH)\s*\|\s*([^\]]+)\]\]\n?([\s\S]*?)\[\[\/CF_WRITE\]\]/gi)) {
+      if (jobs++ >= 8) break;
+      await run(`☁️ تعديل Cloudflare ${m[2]}`, async () => ({ text: await n.cfWrite(m[2]!.trim(), m[1]!, m[3]!.trim()) }));
+    }
     for (const m of text.matchAll(/\[\[GH_READ:([^|\]]+)\|?([^\]]*)\]\]/g)) {
       if (jobs++ >= 8) break;
       await run(`📖 GitHub ${m[1]}/${m[2]}`, async () => ({ text: await n.ghRead(m[1]!.trim(), (m[2] ?? "").trim()) }));
@@ -204,7 +226,6 @@ export const networkTurn = createServerFn({ method: "POST" })
     for (const m of text.matchAll(/\[\[MERGE:\s*([^\]]+?)\s*\]\]/g)) {
       tools.push({ tool: `🔀 طلب دمج ${m[1]}`, ok: true, text: `MERGE_REQUEST:${n.checkRepo(m[1]!)}` });
     }
-    const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_coordinates", "long_press", "type_text", "type_text_submit", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
     const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "type_text", "tap_text", "tap_coordinates", "long_press", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
     const appPackages: Record<string, string> = {
       youtube: "com.google.android.youtube", "يوتيوب": "com.google.android.youtube",
@@ -212,6 +233,35 @@ export const networkTurn = createServerFn({ method: "POST" })
       whatsapp: "com.whatsapp", "واتساب": "com.whatsapp", telegram: "org.telegram.messenger", "تليجرام": "org.telegram.messenger",
       gmail: "com.google.android.gm", "جيميل": "com.google.android.gm", settings: "com.android.settings", "الإعدادات": "com.android.settings",
     };
+    const submitPhone = async (kind: string, payload: Record<string, unknown>) => {
+      const { data: dev } = await context.supabase.from("companion_devices").select("id,status").eq("user_id", context.userId).eq("platform", "android").order("last_seen_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
+      if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
+      const command = { device_id: dev.id, user_id: context.userId, kind, payload: payload as any, requires_approval: false, status: "approved", approved_at: new Date().toISOString() };
+      let { data: inserted, error } = await context.supabase.from("companion_commands").insert(command).select("id").single();
+      if (error && /kind_check|check constraint/i.test(error.message) && kind !== "tap_text") ({ data: inserted, error } = await context.supabase.from("companion_commands").insert({ ...command, kind: "tap_text", payload: { ...payload, agent_action: kind } }).select("id").single());
+      if (error) throw new Error(error.message);
+      if (!inserted?.id) return { text: `اتبعت للهاتف (${dev.status})` };
+      for (let attempt = 0; attempt < 24; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        const [{ data: state }, { data: event }] = await Promise.all([
+          context.supabase.from("companion_commands").select("status,error").eq("id", inserted.id).maybeSingle(),
+          context.supabase.from("companion_events").select("event_type,message").eq("command_id", inserted.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        ]);
+        if (state?.status === "succeeded") return { text: event?.message?.slice(0, 12000) || "تم التنفيذ على الهاتف" };
+        if (state?.status === "failed" || state?.status === "rejected") throw new Error(state.error || event?.message || "فشل تنفيذ الأمر على الهاتف");
+      }
+      return { text: `أُرسل للهاتف ولم تصل النتيجة بعد (${dev.status})` };
+    };
+    for (const m of text.matchAll(/\[\[PHONE_(BATCH|WORKFLOW)\|([\s\S]*?)\]\]/gi)) {
+      if (jobs++ >= 4) break;
+      await run(`📱 الهاتف: ${m[1]!.toLowerCase()}`, async () => {
+        let payload: any;
+        try { payload = JSON.parse(m[2]!.trim()); } catch { throw new Error("خطة الهاتف ليست JSON صالحًا"); }
+        if (!Array.isArray(payload?.steps) || payload.steps.length < 1 || payload.steps.length > 50) throw new Error("خطة الهاتف تحتاج من 1 إلى 50 خطوة");
+        return submitPhone(m[1]!.toLowerCase() === "batch" ? "batch" : "workflow", payload);
+      });
+    }
+    const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_id", "tap_description", "tap_coordinates", "long_press", "type_text", "type_text_submit", "clear_text", "swipe", "scroll", "wait", "wait_for_text", "screenshot", "read_screen", "screen_text", "press_back", "press_home", "open_notifications", "quick_settings", "device_inventory", "app_inventory", "app_permissions", "notification_inventory", "file_inventory", "file_read", "open_file", "open_document", "stop", "batch", "workflow"]);
     for (const m of text.matchAll(/\[\[PHONE:\s*([a-z_]+)(?:\s*\|\s*([^\]]*))?\]\]/gi)) {
       if (jobs++ >= 12) break;
       const rawKind = m[1]!.toLowerCase();
@@ -264,7 +314,7 @@ export const networkTurn = createServerFn({ method: "POST" })
         return { text: `أُرسل للهاتف ولم تصل النتيجة بعد (${dev.status})` };
       });
     }
-    const clean = text.replace(/\[\[GH_WRITE:[\s\S]*?\[\[\/GH_WRITE\]\]/g, "[تعديل ملف]").replace(/\[\[DELEGATE:[\s\S]*?\]\]/g, "").trim();
+    const clean = text.replace(/\[\[GH_WRITE:[\s\S]*?\[\[\/GH_WRITE\]\]/g, "[تعديل ملف]").replace(/\[\[CF_WRITE:[\s\S]*?\[\[\/CF_WRITE\]\]/gi, "[تعديل Cloudflare]").replace(/\[\[PHONE(?:_BATCH|_WORKFLOW)\|[\s\S]*?\]\]/gi, "").replace(/\[\[PHONE:[\s\S]*?\]\]/gi, "").replace(/\[\[DELEGATE:[\s\S]*?\]\]/g, "").trim();
     return { model: data.model, usedModel: used, text: clean, tools };
   });
 
