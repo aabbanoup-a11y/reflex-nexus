@@ -31,7 +31,7 @@ object CommandExecutor {
                 val intent = context.packageManager.getLaunchIntentForPackage(packageName) ?: error("التطبيق غير مثبت أو لا يملك شاشة تشغيل")
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
-                Thread.sleep(900)
+                waitForScreenReady(packageName)
                 "تم فتح التطبيق: $packageName"
             }
             "open_settings" -> {
@@ -39,12 +39,13 @@ object CommandExecutor {
                 openSetting(context, setting)
                 "تم فتح إعدادات: $setting"
             }
-            "open_chrome" -> { openChrome(context); Thread.sleep(900); "تم فتح Chrome" }
+            "open_chrome" -> { openChrome(context); waitForScreenReady("com.android.chrome"); "تم فتح Chrome" }
             "open_camera" -> { openCamera(context); "تم فتح الكاميرا" }
             "open_url" -> {
                 val url = payload?.get("url")?.jsonPrimitive?.contentOrNull ?: error("الرابط غير موجود")
                 require(url.startsWith("https://") || url.startsWith("http://")) { "الرابط غير مسموح" }
                 openUrl(context, url)
+                waitForScreenReady(null)
                 "تم فتح الرابط"
             }
             "open_document" -> {
@@ -98,6 +99,20 @@ object CommandExecutor {
         val request = DownloadManager.Request(Uri.parse(url)).setTitle(name).setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED).setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
         context.getSystemService(DownloadManager::class.java).enqueue(request)
         return "بدأ تنزيل $name، وستظهر حالته في إشعارات Android"
+    }
+
+    private fun waitForScreenReady(expectedPackage: String?) {
+        val start = System.currentTimeMillis()
+        while (System.currentTimeMillis() - start < 6000L) {
+            val service = CompanionAccessibilityService.instance
+            val current = service?.rootInActiveWindow?.packageName?.toString().orEmpty()
+            if (service != null && (expectedPackage == null || current == expectedPackage)) {
+                Thread.sleep(450L)
+                return
+            }
+            Thread.sleep(150L)
+        }
+        Thread.sleep(450L)
     }
 
     private fun readFile(context: Context, payload: JsonObject?): String {

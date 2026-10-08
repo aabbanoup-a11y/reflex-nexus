@@ -1,12 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { networkTurn, mergeRepo, type ToolEvent } from "@/lib/network.functions";
-import { MANAGER_ID, MANAGER_LABEL, NET_MODELS, isLocal, netLabel, REPOS, WORK_BRANCH } from "@/lib/models30";
+import { networkTurn, type ToolEvent } from "@/lib/network.functions";
+import { MANAGER_ID, MANAGER_LABEL, isLocal, netLabel } from "@/lib/models30";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/runtime-client";
-import { UnifiedWorkspaceNav } from "@/components/UnifiedWorkspaceNav";
 
 export const Route = createFileRoute("/network")({
   head: () => ({
@@ -28,11 +27,10 @@ const KEY = "network-thread-v1";
 type SpeechCtor = new () => { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: any) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void };
 declare global { interface Window { SpeechRecognition?: SpeechCtor; webkitSpeechRecognition?: SpeechCtor; AbanoubAI?: { savePairing?: (deviceId: string, accessToken: string) => void; startVoiceRecognition?: () => void; stopVoiceRecognition?: () => void }; __abanoupaiVoiceResult?: (text: string) => void; __abanoupaiVoiceError?: (text: string) => void } }
 
-function Network() {
+export function Network() {
   const turn = useServerFn(networkTurn);
-  const merge = useServerFn(mergeRepo);
   const [thread, setThread] = useState<Entry[]>([]);
-  const [picked, setPicked] = useState<string[]>([MANAGER_ID, ...NET_MODELS.filter((m) => m.provider === "cloudflare").slice(0, 5).map((m) => m.id)]);
+  const picked = [MANAGER_ID];
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState("");
   const [voiceOn, setVoiceOn] = useState(false);
@@ -158,30 +156,14 @@ function Network() {
     voice.current = r; setVoiceOn(true); r.start();
   }
 
-  async function doMerge(repo: string) {
-    if (!confirm(`دمج فرع ${WORK_BRANCH} في النسخة الأصلية من ${repo}؟`)) return;
-    try {
-      const r = await merge({ data: { repo: repo as (typeof REPOS)[number] } });
-      push({ id: crypto.randomUUID(), who: "me", text: `✅ اتدمج ${repo}: ${r.url}` });
-    } catch (e) {
-      push({ id: crypto.randomUUID(), who: "me", text: `الدمج فشل: ${(e as Error).message} (لازم تكون مسجّل دخول)`, err: true });
-    }
-  }
-
-  const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
-
   return (
     <main dir="rtl" className="mx-auto max-w-5xl space-y-4 p-4">
-      <UnifiedWorkspaceNav />
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">شبكة الـ{NET_MODELS.length + 1} نموذج</h1>
-        <div className="flex gap-2">
-          <Button asChild variant="outline" size="sm"><Link to="/">الرئيسية</Link></Button>
-          <Button variant="outline" size="sm" onClick={() => { if (confirm("مسح المحادثة المشتركة؟")) { ref.current = []; setThread([]); localStorage.removeItem(KEY); if (uid) void supabase.from("network_messages").delete().eq("user_id", uid).then(() => undefined); } }}>مسح</Button>
-        </div>
+        <div><p className="text-sm font-semibold text-primary">AbanoupAi</p><h1 className="text-2xl font-bold">شات AbanoupAi</h1></div>
+        <Button variant="outline" size="sm" onClick={() => { if (confirm("مسح المحادثة؟")) { ref.current = []; setThread([]); localStorage.removeItem(KEY); if (uid) void supabase.from("network_messages").delete().eq("user_id", uid).then(() => undefined); } }}>مسح المحادثة</Button>
       </div>
       <p className="text-sm text-muted-foreground">
-        التشغيل الافتراضي Cloudflare-first لتقليل الاعتماد على مزود واحد، مع fallback تلقائي عند فشل نموذج. كلهم يشوفوا نفس المحادثة والذاكرة المصرح بها. اكتب طلبك الطبيعي أو استدعِ AbanoupAi صوتيًا. 🌐 = نموذج متصفح.
+        اكتب طلبك بشكل طبيعي. AbanoupAi يفهم الطلب، يستخدم النماذج المتاحة، وينفذ أوامر الهاتف والمتصفح وGitHub وSupabase وCloudflare عند الحاجة.
       </p>
 
       {phone && <section className="rounded-lg border bg-card p-3 text-sm">
@@ -190,21 +172,6 @@ function Network() {
           <Link to="/companion" className="text-primary underline">تفاصيل التحكم</Link>
         </div>
       </section>}
-
-      <section className="flex flex-wrap gap-2">
-        <button onClick={() => toggle(MANAGER_ID)}
-          className={`rounded-full border px-3 py-1 text-xs font-semibold ${picked.includes(MANAGER_ID) ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"}`}>
-          {MANAGER_LABEL}
-        </button>
-        {NET_MODELS.map((m) => (
-          <button key={m.id} onClick={() => toggle(m.id)}
-            className={`rounded-full border px-3 py-1 text-xs ${picked.includes(m.id) ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"}`}>
-            {m.browser ? "🌐 " : m.provider === "cloudflare" ? "☁️ " : ""}{m.label}
-          </button>
-        ))}
-        <Button size="sm" variant="ghost" onClick={() => setPicked([MANAGER_ID, ...NET_MODELS.map((m) => m.id)])}>الكل</Button>
-        <Button size="sm" variant="ghost" onClick={() => setPicked([])}>ولا واحد</Button>
-      </section>
 
       {uid === null && (
         <section className="rounded-lg border bg-card p-4 text-sm">
@@ -221,11 +188,7 @@ function Network() {
             {e.tools?.map((t, i) => (
               <div key={i} className="mt-2 rounded border bg-background p-2 text-xs">
                 <p className="font-semibold">{t.tool} {t.ok ? "" : "❌"}</p>
-                {t.text.startsWith("MERGE_REQUEST:") ? (
-                  <Button size="sm" className="mt-1" onClick={() => doMerge(t.text.slice(14))}>وافق على الدمج</Button>
-                ) : (
-                  <p className="whitespace-pre-wrap">{t.text.slice(0, 1500)}</p>
-                )}
+                <p className="whitespace-pre-wrap">{t.text.slice(0, 1500)}</p>
                 {t.link && <a href={t.link} target="_blank" rel="noreferrer" className="text-primary underline">فتح</a>}
                 {t.shot && <img src={t.shot} alt="لقطة من المتصفح" className="mt-1 max-h-72 rounded border" />}
               </div>
@@ -240,11 +203,7 @@ function Network() {
         <div className="flex flex-wrap gap-2">
           <Button onClick={send} disabled={!!busy || picked.length === 0}>ابعت ({picked.length})</Button>
           <Button variant={voiceOn ? "destructive" : "outline"} onClick={toggleVoice}>{voiceOn ? "إيقاف استدعاء AbanoupAi" : "استدعاء AbanoupAi صوتيًا"}</Button>
-          <Button variant="outline" disabled={!!busy || thread.length === 0 || picked.length === 0} onClick={() => round(picked)}>خليهم يردوا على بعض</Button>
           {busy && <Button variant="destructive" onClick={() => (stop.current = true)}>إيقاف</Button>}
-          {REPOS.map((r) => (
-            <Button key={r} variant="secondary" size="sm" onClick={() => doMerge(r)}>دمج {r.split("/")[1]}</Button>
-          ))}
         </div>
       </div>
     </main>
