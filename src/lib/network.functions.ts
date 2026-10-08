@@ -16,6 +16,10 @@ function inferPhoneTag(input: string) {
   const text = input.trim();
   const url = text.match(/https?:\/\/\S+|www\.\S+/i)?.[0]?.replace(/[،.,)]+$/g, "");
   if (url && /(افتح|شغل|اذهب|رابط|open|go)/i.test(text)) return `[[PHONE:open_url|${url.startsWith("www.") ? `https://${url}` : url}]]`;
+  if (/(يوتيوب|youtube)/i.test(text) && /(بحث|ابحث|أغنية|اغنية|اغنيه|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)/i.test(text)) {
+    const title = text.replace(/.*?(?:أغنية|اغنية|اغنيه|بحث عن|ابحث عن|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)\s*/i, "").replace(/\s*(?:على|في|من)\s*(?:ال)?يوتيوب.*$/i, "").trim();
+    return title.length >= 2 ? `[[PHONE:open_app|youtube]]\n[[PHONE:type_text_submit|${title.slice(0, 500)}]]` : "[[PHONE:open_app|youtube]]";
+  }
   if (!/(افتح|شغل|شغّل|open|launch)/i.test(text)) return "";
   const app = text.match(/(يوتيوب|youtube|كروم|chrome|واتساب|whatsapp|تليجرام|telegram|جيميل|gmail|الإعدادات|settings)/i)?.[0];
   return app ? `[[PHONE:open_app|${app}]]` : "";
@@ -84,7 +88,10 @@ export const networkTurn = createServerFn({ method: "POST" })
       used = fallback;
       text = await n.callModel(fallback, HINT(me.label, sharedMemory, isManager), msgs);
     }
-    const inferredPhone = inferPhoneTag(lastClient?.text ?? "");
+    const requestText = lastClient?.text ?? "";
+    const searchIntent = /(يوتيوب|youtube)/i.test(requestText) && /(بحث|ابحث|أغنية|اغنية|اغنيه|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)/i.test(requestText);
+    if (searchIntent) text = text.replace(/\[\[PHONE:\s*type_text\s*\|([^\]]+)\]\]/gi, "[[PHONE:type_text_submit|$1]]");
+    const inferredPhone = inferPhoneTag(requestText);
     if (inferredPhone && !text.includes("[[PHONE:")) text = `${text}\n${inferredPhone}`;
 
     const tools: ToolEvent[] = [];
@@ -167,7 +174,7 @@ export const networkTurn = createServerFn({ method: "POST" })
     for (const m of text.matchAll(/\[\[MERGE:\s*([^\]]+?)\s*\]\]/g)) {
       tools.push({ tool: `🔀 طلب دمج ${m[1]}`, ok: true, text: `MERGE_REQUEST:${n.checkRepo(m[1]!)}` });
     }
-    const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_coordinates", "long_press", "type_text", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
+    const PHONE_KINDS = new Set(["open_chrome", "open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "back", "home", "recents", "tap_text", "tap_coordinates", "long_press", "type_text", "type_text_submit", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
     const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "type_text", "tap_text", "tap_coordinates", "long_press", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
     const appPackages: Record<string, string> = {
       youtube: "com.google.android.youtube", "يوتيوب": "com.google.android.youtube",
@@ -184,7 +191,8 @@ export const networkTurn = createServerFn({ method: "POST" })
         kind = "open_app";
         arg = rawKind.slice("open_app".length);
       }
-      const aliases: Record<string, string> = { click: "tap_text", tap: "tap_text", type: "type_text", search: "type_text", read_screen: "screen_text" };
+      const submit = rawKind === "type_text_submit";
+      const aliases: Record<string, string> = { click: "tap_text", tap: "tap_text", type: "type_text", search: "type_text", type_text_submit: "type_text", read_screen: "screen_text" };
       kind = aliases[kind] ?? kind;
       await run(`📱 الهاتف: ${kind}`, async () => {
         if (!PHONE_KINDS.has(kind)) throw new Error("أمر غير مسموح");
@@ -196,7 +204,7 @@ export const networkTurn = createServerFn({ method: "POST" })
         if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
         if (["open_url", "download_file"].includes(kind) && !/^https:\/\//.test(urlArg)) throw new Error("الرابط لازم يبدأ بـ https://");
         if (kind.endsWith("inventory") && arg) throw new Error("أمر الجرد لا يقبل بيانات إضافية");
-        const payload = kind === "open_url" || kind === "download_file" ? { url: urlArg } : kind === "open_app" ? { package: appArg } : kind === "open_settings" ? { setting: arg } : kind === "speak" ? { text: arg.slice(0, 4000) } : kind === "tap_text" || kind === "type_text" ? { text: arg.slice(0, 500) } : {};
+        const payload = kind === "open_url" || kind === "download_file" ? { url: urlArg } : kind === "open_app" ? { package: appArg } : kind === "open_settings" ? { setting: arg } : kind === "speak" ? { text: arg.slice(0, 4000) } : kind === "tap_text" || kind === "type_text" ? { text: arg.slice(0, 500), ...(submit ? { submit: "true" } : {}) } : {};
         // التشغيل التلقائي هو الوضع الافتراضي الذي طلبه صاحب الهاتف؛ يظل كل شيء
         // مملوكًا للحساب ومسجلًا في السجل، مع زر الطوارئ لإيقاف التنفيذ.
         const sensitive = false;
