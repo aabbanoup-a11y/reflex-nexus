@@ -153,7 +153,7 @@ export const networkTurn = createServerFn({ method: "POST" })
       await run(`🗄️ قراءة قاعدة البيانات: ${m[1]}`, async () => {
         const table = m[1]!.trim();
         if (!dbReadTables.has(table)) throw new Error("الجدول غير مسموح للوكيل");
-        const columns = table === "tasks" ? "id,title,details,priority,status,created_at" : table === "employees" ? "id,code,full_name,department,job_title,status" : table === "network_messages" ? "id,who,content,created_at" : table === "companion_events" ? "id,event_type,message,created_at" : "id,action_type,title,content,status,created_at";
+        const columns = table === "tasks" ? "id,title,description,priority,status,created_at" : table === "employees" ? "id,code,name,department_name,role_description,primary_model,lifecycle_status,risk_level,quality_score" : table === "network_messages" ? "id,who,content,created_at" : table === "companion_events" ? "id,event_type,message,created_at" : "id,action_type,title,content,status,created_at";
         const db = context.supabase as any;
         const q = db.from(table).select(columns).limit(50);
         const scoped = table === "employees" ? q : q.eq("user_id", context.userId);

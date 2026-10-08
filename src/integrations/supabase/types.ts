@@ -255,43 +255,106 @@ export type Database = {
       }
       employees: {
         Row: {
-          ai_model: string | null
-          code: string
+          allowed_actions: string[]
+          code: string | null
           created_at: string
-          department: string
-          email: string
-          full_name: string
-          hired_at: string
+          data_sensitivity: string | null
+          department_id: string | null
+          department_name: string | null
+          dependencies: string[]
+          evaluation_tests: string[]
+          failure_history: string | null
+          fallback_models: string[]
           id: string
-          job_title: string
-          phone: string
-          status: string
+          kpis: string[]
+          learning_plan: string | null
+          lifecycle_status: Database["public"]["Enums"]["lifecycle_status"]
+          manager: string | null
+          max_cost_policy: string | null
+          mission: string | null
+          name: string
+          primary_model: string | null
+          prohibited_actions: string[]
+          quality_score: number | null
+          reviewer: string | null
+          review_policy: string | null
+          risk_level: Database["public"]["Enums"]["risk_level"]
+          role_description: string | null
+          safe_failure_state: string | null
+          skills: string[]
+          sop_refs: string[]
+          task_class: string | null
+          tool_permissions: string[]
+          updated_at: string
+          version: number
         }
         Insert: {
-          ai_model?: string | null
-          code: string
+          allowed_actions?: string[]
+          code?: string | null
           created_at?: string
-          department: string
-          email: string
-          full_name: string
-          hired_at?: string
+          data_sensitivity?: string | null
+          department_id?: string | null
+          department_name?: string | null
+          dependencies?: string[]
+          evaluation_tests?: string[]
+          failure_history?: string | null
+          fallback_models?: string[]
           id?: string
-          job_title: string
-          phone: string
-          status?: string
+          kpis?: string[]
+          learning_plan?: string | null
+          lifecycle_status?: Database["public"]["Enums"]["lifecycle_status"]
+          manager?: string | null
+          max_cost_policy?: string | null
+          mission?: string | null
+          name: string
+          primary_model?: string | null
+          prohibited_actions?: string[]
+          quality_score?: number | null
+          reviewer?: string | null
+          review_policy?: string | null
+          risk_level?: Database["public"]["Enums"]["risk_level"]
+          role_description?: string | null
+          safe_failure_state?: string | null
+          skills?: string[]
+          sop_refs?: string[]
+          task_class?: string | null
+          tool_permissions?: string[]
+          updated_at?: string
+          version?: number
         }
         Update: {
-          ai_model?: string | null
-          code?: string
+          allowed_actions?: string[]
+          code?: string | null
           created_at?: string
-          department?: string
-          email?: string
-          full_name?: string
-          hired_at?: string
+          data_sensitivity?: string | null
+          department_id?: string | null
+          department_name?: string | null
+          dependencies?: string[]
+          evaluation_tests?: string[]
+          failure_history?: string | null
+          fallback_models?: string[]
           id?: string
-          job_title?: string
-          phone?: string
-          status?: string
+          kpis?: string[]
+          learning_plan?: string | null
+          lifecycle_status?: Database["public"]["Enums"]["lifecycle_status"]
+          manager?: string | null
+          max_cost_policy?: string | null
+          mission?: string | null
+          name?: string
+          primary_model?: string | null
+          prohibited_actions?: string[]
+          quality_score?: number | null
+          reviewer?: string | null
+          review_policy?: string | null
+          risk_level?: Database["public"]["Enums"]["risk_level"]
+          role_description?: string | null
+          safe_failure_state?: string | null
+          skills?: string[]
+          sop_refs?: string[]
+          task_class?: string | null
+          tool_permissions?: string[]
+          updated_at?: string
+          version?: number
         }
         Relationships: []
       }
@@ -399,34 +462,61 @@ export type Database = {
       }
       tasks: {
         Row: {
+          acceptance_criteria: string | null
           created_at: string
-          details: string | null
+          description: string | null
+          due_date: string | null
           employee_id: string | null
+          evidence: string | null
+          goal_id: string | null
           id: string
-          priority: string
-          status: string
+          owner_id: string | null
+          priority: number
+          result: string | null
+          reviewer_id: string | null
+          risk_level: Database["public"]["Enums"]["risk_level"]
+          service_id: string | null
+          stage: Database["public"]["Enums"]["workflow_stage"]
+          status: Database["public"]["Enums"]["work_status"]
           title: string
-          user_id: string | null
         }
         Insert: {
+          acceptance_criteria?: string | null
           created_at?: string
-          details?: string | null
+          description?: string | null
+          due_date?: string | null
           employee_id?: string | null
+          evidence?: string | null
+          goal_id?: string | null
           id?: string
-          priority?: string
-          status?: string
+          owner_id?: string | null
+          priority?: number
+          result?: string | null
+          reviewer_id?: string | null
+          risk_level?: Database["public"]["Enums"]["risk_level"]
+          service_id?: string | null
+          stage?: Database["public"]["Enums"]["workflow_stage"]
+          status?: Database["public"]["Enums"]["work_status"]
           title: string
-          user_id?: string | null
         }
         Update: {
+          acceptance_criteria?: string | null
           created_at?: string
-          details?: string | null
+          description?: string | null
+          due_date?: string | null
           employee_id?: string | null
+          evidence?: string | null
+          goal_id?: string | null
           id?: string
-          priority?: string
-          status?: string
+          owner_id?: string | null
+          priority?: number
+          result?: string | null
+          reviewer_id?: string | null
+          risk_level?: Database["public"]["Enums"]["risk_level"]
+          service_id?: string | null
+          stage?: Database["public"]["Enums"]["workflow_stage"]
+          status?: Database["public"]["Enums"]["work_status"]
           title?: string
-          user_id?: string | null
         }
         Relationships: [
           {
@@ -498,6 +588,10 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      lifecycle_status: "PROPOSED" | "EVALUATING" | "SANDBOX" | "APPROVED" | "ACTIVE" | "PAUSED" | "RETIRED"
+      risk_level: "R0" | "R1" | "R2" | "R3"
+      work_status: "TODO" | "IN_PROGRESS" | "BLOCKED" | "REVIEW" | "DONE" | "CANCELLED"
+      workflow_stage: "INTAKE" | "CLARIFY" | "PLAN" | "RESEARCH" | "RISK_SCAN" | "EXECUTE" | "REVIEW" | "TEST" | "APPROVAL" | "DELIVER" | "MONITOR" | "LEARN"
     }
     CompositeTypes: {
       [_ in never]: never

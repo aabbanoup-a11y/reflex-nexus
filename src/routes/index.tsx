@@ -50,11 +50,14 @@ type Employee = {
   full_name: string;
   department: string;
   job_title: string;
-  email: string;
-  phone: string;
-  hired_at: string;
-  status: string;
-  ai_model: string | null;
+  primary_model: string | null;
+  lifecycle_status: string;
+  risk_level: string;
+  quality_score: number | null;
+  task_class: string | null;
+  manager: string | null;
+  reviewer: string | null;
+  data_sensitivity: string | null;
 };
 
 type Task = {
@@ -62,7 +65,7 @@ type Task = {
   employee_id: string | null;
   title: string;
   details: string | null;
-  priority: string;
+  priority: number;
   status: string;
 };
 
@@ -70,6 +73,10 @@ function Home() {
   const [mode, setMode] = useState<"work" | "personal">("work");
   const [search, setSearch] = useState("");
   const [dept, setDept] = useState<string | null>(null);
+  const [lifecycle, setLifecycle] = useState<string>("");
+  const [risk, setRisk] = useState<string>("");
+  const [primaryModel, setPrimaryModel] = useState<string>("");
+  const [taskStatus, setTaskStatus] = useState<string>("");
   const [selected, setSelected] = useState<Employee | null>(null);
 
   if (mode === "personal") return <PersonalWorkspace onModeChange={setMode} />;
@@ -79,10 +86,24 @@ function Home() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employees")
-        .select("id,code,full_name,department,job_title,hired_at,status,created_at,ai_model")
+        .select("id,code,name,department_name,role_description,primary_model,lifecycle_status,risk_level,quality_score,task_class,manager,reviewer,data_sensitivity")
         .order("code", { ascending: true });
       if (error) throw error;
-      return (data ?? []).map((e) => ({ ...e, email: "", phone: "" })) as unknown as Employee[];
+      return (data ?? []).map((e: any) => ({
+        id: e.id,
+        code: e.code ?? "",
+        full_name: e.name ?? "بدون اسم",
+        department: e.department_name ?? "بدون قسم",
+        job_title: e.role_description ?? "بدون وصف وظيفي",
+        primary_model: e.primary_model ?? null,
+        lifecycle_status: e.lifecycle_status ?? "PROPOSED",
+        risk_level: e.risk_level ?? "R0",
+        quality_score: e.quality_score == null ? null : Number(e.quality_score),
+        task_class: e.task_class ?? null,
+        manager: e.manager ?? null,
+        reviewer: e.reviewer ?? null,
+        data_sensitivity: e.data_sensitivity ?? null,
+      })) as Employee[];
     },
   });
 
@@ -91,10 +112,10 @@ function Home() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tasks")
-        .select("*")
+        .select("id,employee_id,title,description,priority,status")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as Task[];
+      return (data ?? []).map((t: any) => ({ ...t, details: t.description ?? null, priority: Number(t.priority ?? 3) })) as Task[];
     },
   });
 
@@ -106,13 +127,19 @@ function Home() {
 
   const filtered = employees.filter((e) => {
     const matchDept = !dept || e.department === dept;
+    const matchLifecycle = !lifecycle || e.lifecycle_status === lifecycle;
+    const matchRisk = !risk || e.risk_level === risk;
+    const matchModel = !primaryModel || e.primary_model === primaryModel;
+    const employeeTasks = (tasksQuery.data ?? []).filter((t) => t.employee_id === e.id);
+    const matchTaskStatus = !taskStatus || employeeTasks.some((t) => t.status === taskStatus);
     const q = search.trim();
     const matchSearch =
       !q ||
-      e.full_name.includes(q) ||
-      e.job_title.includes(q) ||
+      e.full_name.toLowerCase().includes(q.toLowerCase()) ||
+      e.job_title.toLowerCase().includes(q.toLowerCase()) ||
+      e.department.toLowerCase().includes(q.toLowerCase()) ||
       e.code.toLowerCase().includes(q.toLowerCase());
-    return matchDept && matchSearch;
+    return matchDept && matchLifecycle && matchRisk && matchModel && matchTaskStatus && matchSearch;
   });
 
   return (
@@ -157,7 +184,7 @@ function Home() {
             <Stat
               icon={<Users className="size-4" />}
               label="على رأس العمل"
-              value={employees.filter((e) => e.status === "active").length}
+              value={employees.filter((e) => e.lifecycle_status === "ACTIVE").length}
             />
             <Stat
               icon={<Sparkles className="size-4" />}
@@ -179,7 +206,26 @@ function Home() {
           />
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <select value={lifecycle} onChange={(e) => setLifecycle(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="">كل حالات الدورة</option>
+            {['PROPOSED', 'EVALUATING', 'SANDBOX', 'APPROVED', 'ACTIVE', 'PAUSED', 'RETIRED'].map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+          <select value={risk} onChange={(e) => setRisk(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="">كل مستويات المخاطر</option>
+            {['R0', 'R1', 'R2', 'R3'].map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+          <select value={primaryModel} onChange={(e) => setPrimaryModel(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="">كل النماذج الأساسية</option>
+            {Array.from(new Set(employees.map((e) => e.primary_model).filter(Boolean))).map((value) => <option key={value} value={value ?? ""}>{value}</option>)}
+          </select>
+          <select value={taskStatus} onChange={(e) => setTaskStatus(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="">كل حالات المهام</option>
+            {['TODO', 'IN_PROGRESS', 'BLOCKED', 'REVIEW', 'DONE', 'CANCELLED'].map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
           <Button
             size="sm"
             variant={dept === null ? "default" : "outline"}
@@ -320,15 +366,15 @@ function EmployeeCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="truncate font-semibold">{employee.full_name}</h3>
-            <Badge variant={employee.status === "active" ? "secondary" : "outline"}>
-              {employee.status === "active" ? "نشط" : "إجازة"}
+            <Badge variant={employee.lifecycle_status === "ACTIVE" ? "secondary" : "outline"}>
+              {employee.lifecycle_status}
             </Badge>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {employee.job_title} — {employee.department}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {employee.code} · 🤖 {modelForKey(employee.code).split("/").pop()}
+            {employee.code} · {employee.risk_level} · 🤖 {(employee.primary_model || modelForKey(employee.code)).split("/").pop()}
           </p>
         </div>
       </div>
@@ -385,9 +431,9 @@ function TaskDialog({
       await supabase.from("tasks").insert({
         employee_id: employee.id,
         title: task.slice(0, 200),
-        details: r.text,
-        priority: "medium",
-        status: "done",
+        description: r.text,
+        priority: 3,
+        status: "DONE",
       });
       void logRun({ agent_kind: "employee", agent_key: employee.code, agent_name: employee.full_name, model: r.model, prompt: task, reply: r.text, status: "done" });
       notifyDone(`${employee.full_name} خلّص المهمة`, r.text);
