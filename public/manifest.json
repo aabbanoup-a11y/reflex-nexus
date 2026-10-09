@@ -1,0 +1,14 @@
+{
+  "name": "AbanoubAI Reflex Nexus",
+  "short_name": "AbanoubAI",
+  "description": "مساعد محلي أولًا مع تشغيل سحابي عند توفر الإنترنت",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#171717",
+  "theme_color": "#171717",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon" }
+  ]
+}

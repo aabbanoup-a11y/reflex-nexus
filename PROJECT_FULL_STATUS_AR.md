@@ -695,3 +695,10 @@ qwen2.5-0.5b-instruct-q4_k_m.gguf
 النموذج محفوظ في بيئة البناء وليس داخل Git بسبب حجمه. تم تسجيل checksum وطريقة التنزيل في `android-companion/models/README.md`. تشغيله داخل APK يحتاج الآن دمج runtime Android مثل llama.cpp؛ وجود ملف GGUF وحده لا يجعل Android يشغله تلقائيًا. WebLLM الموجود مسبقًا يظل مسار النموذج المحلي داخل المتصفح.
 
 العائق الخارجي الوحيد هو `SUPABASE_SERVICE_ROLE_KEY`: لا يوجد هذا المفتاح في بيئة الجلسة أو موصل Supabase، ولا يجوز تخمينه أو استخدام publishable key بدلاً منه. لذلك تم نشر Worker والـ AI binding بنجاح، لكن تنفيذ `scheduled_jobs` على كل المستخدمين لن يعمل فعليًا حتى يُضاف هذا السر إلى Cloudflare Secret باسم `SUPABASE_SERVICE_ROLE_KEY`.
+
+
+## الاستقلال عن Lovable بدون كسر التطبيق
+
+تم تنفيذ فصل آمن تدريجي بدل حذف Lovable بالقوة. مسار نماذج Cloudflare أصبح يمر عبر Worker المحمي بجلسة Supabase، وPWA صار لديه manifest وservice worker مستقلان. بقيت طبقة Lovable في OAuth وبعض وظائف قديمة كـ fallback حتى لا ينكسر تسجيل الدخول أو صفحات الإنتاج فجأة.
+
+حذف Lovable بالكامل يحتاج أن تكون Google OAuth مفعلة داخل Supabase وأن يتم نقل الوظائف القديمة التي تستعمل `ai.gateway.lovable.dev` إلى Worker/Workers AI أو إلى fallback محلي، ثم اختبار كل المسارات. لذلك لم يتم حذف الحزم أو OAuth عشوائيًا؛ هذا هو المسار المحترم الذي يحافظ على التطبيق أثناء النقل.
