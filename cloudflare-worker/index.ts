@@ -1,4 +1,5 @@
-export interface Env { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string; INTEGRATION_MESH_URL?: string; }
+type AiBinding = { run: (model: string, input: Record<string, unknown>) => Promise<unknown> };
+export interface Env { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string; INTEGRATION_MESH_URL?: string; AI: AiBinding; AI_GATEWAY_TOKEN?: string; }
 type CronEvent = Record<string, unknown>;
 type WorkerContext = { waitUntil: (promise: Promise<unknown>) => void };
 
@@ -6,8 +7,22 @@ export default {
   async scheduled(_event: CronEvent, env: Env, ctx: WorkerContext) {
     ctx.waitUntil(runScheduledJobs(env));
   },
-  async fetch() { return new Response("AbanoupAi local-first scheduler is ready", { status: 200 }); },
+  async fetch(request: Request, env: Env) {
+    const url = new URL(request.url);
+    if (url.pathname === "/ai/chat" && request.method === "POST") return runAiChat(request, env);
+    return new Response("AbanoupAi local-first scheduler is ready", { status: 200 });
+  },
 };
+
+async function runAiChat(request: Request, env: Env) {
+  if (!env.AI_GATEWAY_TOKEN) return Response.json({ error: "AI gateway is not configured" }, { status: 503 });
+  if (request.headers.get("authorization") !== `Bearer ${env.AI_GATEWAY_TOKEN}`) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const body = await request.json().catch(() => null) as { model?: string; messages?: unknown[]; max_tokens?: number } | null;
+  const model = body?.model?.startsWith("@cf/") ? body.model : "@cf/meta/llama-3.2-1b-instruct";
+  const messages = Array.isArray(body?.messages) ? body.messages.slice(-24) : [];
+  const result = await env.AI.run(model, { messages, max_tokens: Math.min(Math.max(body?.max_tokens ?? 800, 1), 2000) });
+  return Response.json({ result, model });
+}
 
 async function runScheduledJobs(env: Env) {
   const headers = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json" };

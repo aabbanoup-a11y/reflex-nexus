@@ -655,3 +655,20 @@ wobfdslqlmvlatyrtgkd
 [1]: https://huggingface.co/docs/hub/en/gguf-llamacpp "Hugging Face GGUF usage with llama.cpp"
 [2]: https://huggingface.co/docs/transformers.js/en/guides/webgpu "Hugging Face Transformers.js WebGPU guide"
 [3]: https://huggingface.co/docs/text-generation-inference/en/index "Hugging Face Text Generation Inference status"
+
+
+## تحديث تكامل Cloudflare AI وLovable
+
+Lovable Cloud وSupabase AbanoupAi ليسا نفس الشيء. في هذا المشروع، Lovable ما زال مستخدمًا في طبقة OAuth وبعض مسارات `ai.gateway.lovable.dev`، بينما Supabase AbanoupAi هو backend قاعدة البيانات الذي تم ربط runtime المحلي وAndroid به. هذا الفصل كان موجودًا في الكود قبل التعديل، وليس قاعدة بيانات جديدة من عندي.
+
+تم اختبار Cloudflare Workers AI مباشرة من الحساب المتصل على النموذج `@cf/meta/llama-3.2-1b-instruct`، وكانت النتيجة HTTP 200 مع استجابة صحيحة. كما أضيف AI binding إلى Worker الحالي، وأضيف مسار `/ai/chat` محمي بتوكن مستقل. بذلك أصبح لدينا مسار Cloudflare مستقل عن رصيد Lovable عند تمرير طلبات النموذج إليه.
+
+الرابط الحالي للـ Worker:
+
+```text
+https://abanoupai-local-first-scheduler.abanoupai.workers.dev
+```
+
+لكن التطبيق المستضاف لن يستخدم بوابة Cloudflare تلقائيًا إلا بعد وضع أسرار Cloudflare في بيئة تشغيل التطبيق أو توصيله بالـ Worker المحمي. كما أن Worker المجدول يحتاج `SUPABASE_SERVICE_ROLE_KEY` حتى ينفذ scheduled_jobs فعليًا؛ هذا السر لم يكن متاحًا ولذلك لم أضع مفتاحًا غير معروف.
+
+لا يوجد Hugging Face token أو runtime Android لنموذج GGUF داخل المستودع حتى الآن. النموذج المحلي الحالي هو WebLLM/MLC داخل المتصفح، ويحتاج تنزيلًا أوليًا ثم يعمل دون إنترنت في المتصفح الذي خزّنه. تشغيل نموذج داخل الهاتف نفسه يحتاج دمج llama.cpp أو runtime Android مشابه وتنزيل GGUF مرة واحدة عبر Wi‑Fi.
