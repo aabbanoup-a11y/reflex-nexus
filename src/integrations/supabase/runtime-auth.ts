@@ -35,6 +35,7 @@ export const requireCloudAuth = createMiddleware({ type: "function" }).server(as
       supabase: userClient,
       userId: data.user.id,
       claims: data.user,
+      accessToken: token,
     },
   });
 });

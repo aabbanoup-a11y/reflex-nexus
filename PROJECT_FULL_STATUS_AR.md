@@ -672,3 +672,26 @@ https://abanoupai-local-first-scheduler.abanoupai.workers.dev
 لكن التطبيق المستضاف لن يستخدم بوابة Cloudflare تلقائيًا إلا بعد وضع أسرار Cloudflare في بيئة تشغيل التطبيق أو توصيله بالـ Worker المحمي. كما أن Worker المجدول يحتاج `SUPABASE_SERVICE_ROLE_KEY` حتى ينفذ scheduled_jobs فعليًا؛ هذا السر لم يكن متاحًا ولذلك لم أضع مفتاحًا غير معروف.
 
 لا يوجد Hugging Face token أو runtime Android لنموذج GGUF داخل المستودع حتى الآن. النموذج المحلي الحالي هو WebLLM/MLC داخل المتصفح، ويحتاج تنزيلًا أوليًا ثم يعمل دون إنترنت في المتصفح الذي خزّنه. تشغيل نموذج داخل الهاتف نفسه يحتاج دمج llama.cpp أو runtime Android مشابه وتنزيل GGUF مرة واحدة عبر Wi‑Fi.
+
+
+## آخر تنفيذ: ربط Worker بالنظام وتنزيل نموذج محلي
+
+تم ربط `networkTurn` بمسار Cloudflare Worker. عند اختيار نموذج `cf/...`، يرسل النظام جلسة Supabase الخاصة بالمستخدم إلى:
+
+```text
+https://abanoupai-local-first-scheduler.abanoupai.workers.dev/ai/chat
+```
+
+يتحقق Worker من الجلسة عبر Supabase Auth ثم يستخدم `env.AI` لتشغيل Workers AI. ما زال توكن الطوارئ السري موجودًا كخيار داخلي، لكن التشغيل الطبيعي يعتمد على JWT الخاص بالمستخدم وليس على Lovable AI credits.
+
+تم تنزيل نموذج Hugging Face محليًا:
+
+```text
+Qwen/Qwen2.5-0.5B-Instruct-GGUF
+qwen2.5-0.5b-instruct-q4_k_m.gguf
+الحجم: حوالي 469 MB
+```
+
+النموذج محفوظ في بيئة البناء وليس داخل Git بسبب حجمه. تم تسجيل checksum وطريقة التنزيل في `android-companion/models/README.md`. تشغيله داخل APK يحتاج الآن دمج runtime Android مثل llama.cpp؛ وجود ملف GGUF وحده لا يجعل Android يشغله تلقائيًا. WebLLM الموجود مسبقًا يظل مسار النموذج المحلي داخل المتصفح.
+
+العائق الخارجي الوحيد هو `SUPABASE_SERVICE_ROLE_KEY`: لا يوجد هذا المفتاح في بيئة الجلسة أو موصل Supabase، ولا يجوز تخمينه أو استخدام publishable key بدلاً منه. لذلك تم نشر Worker والـ AI binding بنجاح، لكن تنفيذ `scheduled_jobs` على كل المستخدمين لن يعمل فعليًا حتى يُضاف هذا السر إلى Cloudflare Secret باسم `SUPABASE_SERVICE_ROLE_KEY`.

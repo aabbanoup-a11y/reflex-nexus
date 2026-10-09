@@ -10,6 +10,7 @@ crons = ["0 3 * * *"]
 [vars]
 INTEGRATION_MESH_URL = ""
 SUPABASE_URL = "https://wobfdslqlmvlatyrtgkd.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ"
 
 [ai]
 binding = "AI"
