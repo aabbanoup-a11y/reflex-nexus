@@ -6,6 +6,8 @@ import android.app.AppOpsManager
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.os.Build
 import android.os.PowerManager
@@ -318,6 +320,10 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun showDashboard() {
+        if (!isNetworkAvailable()) {
+            showOfflineHub()
+            return
+        }
         showingDashboard = true
         CookieManager.getInstance().setAcceptCookie(true)
         web = WebView(this).apply {
@@ -325,8 +331,8 @@ class MainActivity : AppCompatActivity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.databaseEnabled = true
-            settings.allowFileAccess = false
-            settings.allowContentAccess = false
+            settings.allowFileAccess = true
+            settings.allowContentAccess = true
             settings.userAgentString = settings.userAgentString.replace("; wv)", ")").replace(Regex("Version/\\S+ "), "")
             settings.javaScriptCanOpenWindowsAutomatically = true
             addJavascriptInterface(Bridge(), "AbanoubAI")
@@ -370,5 +376,13 @@ class MainActivity : AppCompatActivity() {
         private const val REQUEST_MIC = 1002
         private const val REQUEST_LOCATION = 1003
         private const val REQUEST_MEDIA = 1004
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val manager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = manager.activeNetwork ?: return false
+        val caps = manager.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 }

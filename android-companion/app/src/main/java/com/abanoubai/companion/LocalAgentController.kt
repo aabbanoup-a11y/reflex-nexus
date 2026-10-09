@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.core.content.ContextCompat
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.Locale
@@ -50,6 +51,23 @@ object LocalAgentController {
             return run(context, "open_settings", buildPayload("setting" to "accessibility"))
         }
 
+        // Offline planner for the common multi-step request: open YouTube and search.
+        if (containsAny(lower, "يوتيوب", "youtube") && containsAny(lower, "ابحث", "بحث", "عن", "أغنية", "اغنية")) {
+            val query = ((Regex("(?:عن|على|في)\\s+(.+)", RegexOption.IGNORE_CASE).find(command)?.groupValues?.getOrNull(1)?.trim() ?: "")
+                .ifBlank { command.replace(Regex(".*?(يوتيوب|youtube)", RegexOption.IGNORE_CASE), "").trim() })
+                .take(300)
+            if (query.isNotBlank()) {
+                val steps = buildJsonArray {
+                    add(buildJsonObject { put("kind", "open_app"); put("payload", buildPayload("package" to "com.google.android.youtube")) })
+                    add(buildJsonObject { put("kind", "wait"); put("payload", buildPayload("ms" to "1200")) })
+                    add(buildJsonObject { put("kind", "tap_description"); put("if_text", "بحث"); put("payload", buildPayload("text" to "بحث")) })
+                    add(buildJsonObject { put("kind", "tap_description"); put("if_text", "Search"); put("payload", buildPayload("text" to "Search")) })
+                    add(buildJsonObject { put("kind", "type_text"); put("payload", buildPayload("text" to query, "submit" to "true")) })
+                }
+                return run(context, "batch", buildJsonObject { put("steps", steps) })
+            }
+        }
+
         val app = appPackages.entries.firstOrNull { (name, _) -> lower.contains(name) }
         if (app != null && containsAny(lower, "افتح", "شغل", "شغّل", "launch", "open")) {
             return run(context, "open_app", buildPayload("package" to app.value))
@@ -72,7 +90,7 @@ object LocalAgentController {
 
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(PENDING, command.take(2000)).apply()
-        return "حفظت الطلب محليًا. عند عودة الاتصال سيعالجه AbanoupAi السحابي؛ هذا الطلب غير معروف للوكيل المحلي الآن."
+        return "حفظت الطلب محليًا. الأوامر الأساسية تعمل بدون إنترنت، أما هذا الطلب فيحتاج نموذجًا محليًا مدمجًا أو اتصالًا سحابيًا عند عودة الشبكة."
     }
 
     fun pending(context: Context): String? = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(PENDING, null)

@@ -134,6 +134,13 @@ class CompanionAccessibilityService : AccessibilityService() {
                 if (s("submit") == "true") node.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
                 "كتبت: $text"
             }
+            "press_enter", "press_search" -> {
+                val node = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                    ?: error("لا يوجد حقل إدخال نشط")
+                val action = AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id
+                require(node.performAction(action)) { "تعذر تنفيذ زر الإدخال" }
+                if (kind == "press_search") "تم تنفيذ البحث" else "تم الضغط على Enter"
+            }
             "clear_text" -> {
                 val target = s("target")?.let { find(it) }
                 val node = target ?: rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: error("لا يوجد حقل كتابة على الشاشة")
