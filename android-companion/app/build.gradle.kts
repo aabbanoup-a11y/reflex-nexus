@@ -7,14 +7,16 @@ plugins {
 android {
     namespace = "com.abanoubai.companion"
     compileSdk = 35
+    ndkVersion = "27.2.12479018"
     defaultConfig {
         applicationId = "com.abanoubai.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14
-        versionName = "0.6.8"
+        versionCode = 15
+        versionName = "0.7.0"
         buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL") ?: "https://wobfdslqlmvlatyrtgkd.supabase.co"}\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY") ?: "sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ"}\"")
+        ndk { abiFilters += listOf("arm64-v8a") }
     }
     signingConfigs {
         create("release") {
@@ -33,7 +35,18 @@ android {
         }
     }
     buildFeatures { buildConfig = true }
+    externalNativeBuild {
+        cmake { path = file("src/main/cpp/CMakeLists.txt") }
+    }
 }
+
+val copyQwenModel by tasks.registering(Copy::class) {
+    from("../models/qwen2.5-0.5b-instruct-q4_k_m.gguf")
+    into("src/main/assets/models")
+    rename { "qwen.gguf" }
+}
+
+tasks.named("preBuild") { dependsOn(copyQwenModel) }
 
 kotlin { jvmToolchain(17) }
 

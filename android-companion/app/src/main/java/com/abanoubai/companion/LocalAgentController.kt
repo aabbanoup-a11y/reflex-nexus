@@ -19,6 +19,7 @@ import java.util.Locale
 object LocalAgentController {
     private const val PREFS = "companion"
     private const val PENDING = "offline_agent_pending"
+    @Volatile private var qwen: QwenEngine? = null
 
     fun handle(context: Context, spoken: String): String {
         val text = spoken.trim()
@@ -87,6 +88,13 @@ object LocalAgentController {
             else -> null
         }
         if (global != null) return run(context, global, buildPayload())
+
+        // Real local LLM fallback. It is loaded lazily and never calls the network.
+        val localReply = runCatching {
+            val engine = qwen ?: synchronized(this) { qwen ?: QwenEngine(context).also { qwen = it } }
+            engine.chat(command)
+        }.getOrDefault("")
+        if (localReply.isNotBlank()) return "📱 محلي Offline\n$localReply"
 
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(PENDING, command.take(2000)).apply()
