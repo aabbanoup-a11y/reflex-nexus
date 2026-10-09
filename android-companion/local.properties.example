@@ -1,0 +1,3 @@
+# Copy to local.properties and change this path for your machine.
+sdk.dir=/Users/YOUR_USER/Library/Android/sdk
+# Linux example: /home/YOUR_USER/Android/Sdk

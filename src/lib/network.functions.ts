@@ -7,6 +7,7 @@ import { loadConsentedMemoryContext } from "./memory.functions";
 const Turn = z.object({
   model: z.string().min(1),
   thread: z.array(z.object({ who: z.string(), text: z.string() })).max(200),
+  mode: z.enum(["execute", "opinion"]).default("execute"),
 });
 
 export type ToolEvent = { tool: string; ok: boolean; text: string; link?: string | undefined; shot?: string | undefined };
@@ -97,16 +98,23 @@ export const networkTurn = createServerFn({ method: "POST" })
     const transcript = history.map((h) => h.content).join("\n\n");
     const msgs = [{ role: "user" as const, content: `المحادثة المشتركة لحد دلوقتي:\n\n${transcript}\n\nدلوقتي دورك يا ${me.label}.` }];
 
-    const fallback = "cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+    const fallbacks = ["google/gemini-3.8-flash", "openai/chat-latest", "anthropic/claude-haiku-4-5"];
+    const fallback = fallbacks[0]!;
     let used = isManager ? fallback : data.model;
-    let text: string;
+    let text = "";
     try {
       text = await n.callModel(used, HINT(me.label, sharedMemory, isManager), msgs);
     } catch (e) {
       console.error("model failed", data.model, e);
-      if (String(e).includes("402")) throw new Error("رصيد الذكاء الاصطناعي خلص.");
-      used = fallback;
-      text = await n.callModel(fallback, HINT(me.label, sharedMemory, isManager), msgs);
+      let recovered = false;
+      for (const candidate of fallbacks) {
+        if (candidate === used) continue;
+        try { used = candidate; text = await n.callModel(candidate, HINT(me.label, sharedMemory, isManager), msgs); recovered = true; break; } catch { /* جرّب المزود التالي */ }
+      }
+      if (!recovered) throw new Error("كل مسارات الذكاء الاصطناعي غير متاحة حاليًا؛ جرّب مرة أخرى لاحقًا أو راجع إعدادات الموصلات.");
+    }
+    if (data.mode === "opinion") {
+      return { model: data.model, usedModel: used, text: text.replace(/\[\[[\s\S]*?\]\]/g, "").trim(), tools: [] };
     }
     const requestText = lastClient?.text ?? "";
     const searchIntent = /(يوتيوب|youtube|أغنية|اغنية|اغنيه)/i.test(requestText) && /(بحث|ابحث|أغنية|اغنية|اغنيه|تحميل|تنزيل|نزل|نزّل|حمل|حمّل)/i.test(requestText);

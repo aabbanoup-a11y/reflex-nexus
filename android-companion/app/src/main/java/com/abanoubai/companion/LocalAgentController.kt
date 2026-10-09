@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import androidx.core.content.ContextCompat
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -21,6 +22,8 @@ object LocalAgentController {
     fun handle(context: Context, spoken: String): String {
         val text = spoken.trim()
         if (text.isBlank()) return "لم أسمع أمرًا واضحًا"
+        // Keep local listening alive even when Android recreates the activity.
+        runCatching { ContextCompat.startForegroundService(context, Intent(context, CompanionForegroundService::class.java)) }
         val command = stripWakeWord(text)
         val lower = command.lowercase(Locale.ROOT)
 

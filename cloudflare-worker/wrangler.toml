@@ -1,0 +1,12 @@
+name = "abanoupai-local-first-scheduler"
+main = "index.ts"
+compatibility_date = "2026-10-09"
+
+[triggers]
+crons = ["0 3 * * *"]
+
+[vars]
+INTEGRATION_MESH_URL = ""
+
+# Set secrets with: wrangler secret put SUPABASE_URL
+# Set secrets with: wrangler secret put SUPABASE_SERVICE_ROLE_KEY

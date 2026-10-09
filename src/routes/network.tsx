@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { networkTurn, type ToolEvent } from "@/lib/network.functions";
-import { MANAGER_ID, MANAGER_LABEL, isLocal, netLabel } from "@/lib/models30";
+import { askAssistant } from "@/lib/chat.functions";
+import { MANAGER_ID, MANAGER_LABEL, NET_MODELS, isLocal, netLabel } from "@/lib/models30";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/runtime-client";
@@ -21,7 +22,8 @@ export const Route = createFileRoute("/network")({
   component: Network,
 });
 
-type Entry = { id: string; who: string; text: string; tools?: ToolEvent[]; err?: boolean };
+type AttachmentView = { name: string; type: string; size: number };
+type Entry = { id: string; who: string; text: string; tools?: ToolEvent[]; err?: boolean; attachments?: AttachmentView[] };
 type PhoneDevice = { id: string; device_name: string; status: string; last_seen_at: string | null };
 const KEY = "network-thread-v1";
 type SpeechCtor = new () => { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: any) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void };
@@ -29,9 +31,12 @@ declare global { interface Window { SpeechRecognition?: SpeechCtor; webkitSpeech
 
 export function Network() {
   const turn = useServerFn(networkTurn);
+  const askWithFiles = useServerFn(askAssistant);
   const [thread, setThread] = useState<Entry[]>([]);
-  const picked = [MANAGER_ID];
+  const [chatMode, setChatMode] = useState<"manager" | "all">("manager");
+  const picked = chatMode === "all" ? [MANAGER_ID, ...NET_MODELS.map((m) => m.id)] : [MANAGER_ID];
   const [input, setInput] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState("");
   const [voiceOn, setVoiceOn] = useState(false);
   const voice = useRef<{ stop: () => void } | null>(null);
@@ -102,7 +107,38 @@ export function Network() {
 
   async function round(models: string[]) {
     stop.current = false;
-    const effective = networkMode === "economic" ? models.slice(0, 1) : networkMode === "balanced" ? models.slice(0, 3) : models;
+    const effective = chatMode === "all" ? models : networkMode === "economic" ? models.slice(0, 1) : models.slice(0, 3);
+    if (chatMode === "all") {
+      const opinions: string[] = [];
+      for (const m of effective) {
+        if (stop.current) break;
+        setBusy(`رأي ${netLabel(m)}`);
+        try {
+          if (isLocal(m)) {
+            const { runLocal } = await import("@/lib/local-llm");
+            opinions.push(`${netLabel(m)}: ${await runLocal(m, "حلل الطلب كرأي داخلي مختصر، لا تصدر أوامر.", ref.current.map((e) => ({ who: e.who, text: e.text })), () => undefined)}`);
+          } else {
+            const r = await turn({ data: { model: m, mode: "opinion", thread: ref.current.map((e) => ({ who: e.who === "me" ? "me" : netLabel(e.who), text: e.text.slice(0, 6000) })) } });
+            opinions.push(`${netLabel(m)}: ${r.text}`);
+          }
+        } catch (e) { opinions.push(`${netLabel(m)}: تعذر الرأي (${(e as Error).message})`); }
+      }
+      setBusy("تجميع الآراء وتنفيذ المطلوب مرة واحدة");
+      try {
+        const request = ref.current[ref.current.length - 1]?.text ?? "";
+        const synthesis = await askWithFiles({ data: { system: "إنت AbanoupAi — المجمّع النهائي. اجمع آراء النماذج في رسالة عربية مصرية واحدة بسيطة ومفيدة، بدون تكرار أسماء النماذج أو عرض رسائل منفصلة. لو المهمة دراسية قدم إجابة منظمة. لا تصدر أوامر هاتف أو GitHub في هذا الرد.", messages: [{ role: "user", content: `الطلب: ${request}\n\nآراء داخلية:\n${opinions.join("\n\n").slice(0, 60000)}` }], model: "google/gemini-3.1-pro-preview", fallbacks: ["anthropic/claude-opus-5-5", "openai/gpt-5.5-pro"], attachments: [], memories: [] } });
+        let unified = synthesis.text;
+        let tools: ToolEvent[] = [];
+        if (/(افتح|شغل|نفذ|نزّل|نزل|تحميل|عدّل|عدل|اكتب|اضغط|انشر|اقرأ|حلل|ابحث|افحص|نفّذ)/i.test(request)) {
+          const execution = await turn({ data: { model: MANAGER_ID, mode: "execute", thread: [...ref.current.map((e) => ({ who: e.who === "me" ? "me" : netLabel(e.who), text: e.text })), { who: "الفريق", text: synthesis.text }, { who: "me", text: request }] } });
+          unified += `\n\nنتيجة التنفيذ: ${execution.text}`;
+          tools = execution.tools;
+        }
+        push({ id: crypto.randomUUID(), who: "الفريق الموحد", text: unified, tools });
+      } catch (e) { push({ id: crypto.randomUUID(), who: MANAGER_ID, text: (e as Error).message, err: true }); }
+      setBusy("");
+      return;
+    }
     for (const m of effective) {
       if (stop.current) break;
       setBusy(netLabel(m));
@@ -113,7 +149,7 @@ export function Network() {
           push({ id: crypto.randomUUID(), who: m, text });
           continue;
         }
-        const r = await turn({ data: { model: m, thread: ref.current.map((e) => ({ who: e.who === "me" ? "me" : netLabel(e.who), text: e.text + (e.tools?.length ? "\n" + e.tools.map((t) => `${t.tool}: ${t.text.slice(0, 1500)}`).join("\n") : "") })) } });
+        const r = await turn({ data: { model: m, mode: "execute", thread: ref.current.map((e) => ({ who: e.who === "me" ? "me" : netLabel(e.who), text: e.text + (e.tools?.length ? "\n" + e.tools.map((t) => `${t.tool}: ${t.text.slice(0, 1500)}`).join("\n") : "") })) } });
         push({ id: crypto.randomUUID(), who: m, text: r.usedModel !== m ? `${r.text}\n(اتحوّل لـ ${netLabel(r.usedModel)} عشان الأصلي فشل)` : r.text, tools: r.tools });
       } catch (e) {
         push({ id: crypto.randomUUID(), who: m, text: (e as Error).message, err: true });
@@ -122,14 +158,59 @@ export function Network() {
     setBusy("");
   }
 
-  async function sendText(value: string) {
-    const t = value.trim();
+  async function sendWithFiles(value: string, files: File[]) {
+    const t = value.trim() || "حلل المرفقات دي واذكر محتواها وأهم النتائج بالتفصيل.";
+    if (!uid) { push({ id: crypto.randomUUID(), who: MANAGER_ID, text: "لازم تسجل دخول قبل رفع الملفات.", err: true }); return; }
+    setInput("");
+    setPendingFiles([]);
+    const views = files.map((f) => ({ name: f.name, type: f.type, size: f.size }));
+    push({ id: crypto.randomUUID(), who: "me", text: t, attachments: views });
+    setBusy("رفع وتحليل المرفقات");
+    try {
+      const uploaded: { path: string; mime: string; name: string }[] = [];
+      for (const file of files.slice(0, 10)) {
+        const safe = file.name.replace(/[^\w.\-ء-ي]+/g, "_").slice(0, 100);
+        const path = `u/${uid}/${crypto.randomUUID()}-${safe}`;
+        const { error } = await supabase.storage.from("chat-uploads").upload(path, file, { upsert: false, contentType: file.type || "application/octet-stream" });
+        if (error) throw new Error(`رفع ${file.name} فشل: ${error.message}`);
+        uploaded.push({ path, mime: file.type || "application/octet-stream", name: file.name });
+      }
+      const history = ref.current.slice(-20).map((e) => ({ role: (e.who === "me" ? "user" : "assistant") as "user" | "assistant", content: e.text.slice(0, 8000) }));
+      const r = await askWithFiles({ data: { system: "إنت AbanoupAi محلل ملفات ومساعد مذاكرة. افهم الصور والفيديوهات والمستندات، رد بالعربية المصرية، ولو الملف متعلق بالثانوية العامة اشرحه كمدرس متخصص مع أمثلة وأسئلة مراجعة.", messages: [...history, { role: "user", content: t }], model: "openai/chat-latest", fallbacks: ["google/gemini-3.8-flash", "anthropic/claude-sonnet-5"], attachments: uploaded, memories: [] } });
+      push({ id: crypto.randomUUID(), who: r.model, text: r.text });
+    } catch (e) {
+      push({ id: crypto.randomUUID(), who: MANAGER_ID, text: (e as Error).message, err: true });
+    } finally { setBusy(""); }
+  }
+
+  async function sendText(value: string, files: File[] = pendingFiles) {
+    if (files.length) { await sendWithFiles(value, files); return; }
+    const fileContext = files.length ? `\n\n[مرفقات المستخدم]\n${(await Promise.all(files.map(async (file) => {
+      const meta = `${file.name} — ${file.type || "نوع غير معروف"} — ${Math.ceil(file.size / 1024)}KB`;
+      if (file.size <= 20000 && (file.type.startsWith("text/") || /\.(txt|csv|md|json|xml)$/i.test(file.name))) {
+        return `${meta}\nمحتوى الملف:\n${(await file.text()).slice(0, 18000)}`;
+      }
+      return meta;
+    }))).join("\n\n")}` : "";
+    const t = `${value.trim()}${fileContext}`.trim();
     if (!t || busy) return;
     setInput("");
-    push({ id: crypto.randomUUID(), who: "me", text: t });
+    setPendingFiles([]);
+    push({ id: crypto.randomUUID(), who: "me", text: t, attachments: files.map((f) => ({ name: f.name, type: f.type, size: f.size })) });
     await round(picked);
   }
-  async function send() { await sendText(input); }
+  async function send() { await sendText(input, pendingFiles); }
+
+  function studyPrompt(kind: string) {
+    const prompts: Record<string, string> = {
+      explain: "اشرحلي الدرس ده كمدرس ثانوية عامة، ببساطة وبأمثلة وأسئلة متوقعة: ",
+      solve: "حل السؤال ده خطوة خطوة وراجع الإجابة كمدرس ثانوية عامة: ",
+      quiz: "اعمل لي اختبار ثانوية عامة من 10 أسئلة في الموضوع ده، وبعد إجابتي صححلي: ",
+      summary: "لخص الملف أو الدرس ده للمراجعة النهائية مع أهم القوانين والنقاط: ",
+      plan: "اعمل لي خطة مذاكرة أسبوعية للثانوية العامة حسب المواد والوقت المتاح: ",
+    };
+    setInput(prompts[kind] ?? "");
+  }
 
   function toggleVoice() {
     if (voiceOn) { if (window.AbanoubAI?.stopVoiceRecognition) window.AbanoubAI.stopVoiceRecognition(); else voice.current?.stop(); voice.current = null; setVoiceOn(false); return; }
@@ -163,8 +244,20 @@ export function Network() {
         <Button variant="outline" size="sm" onClick={() => { if (confirm("مسح المحادثة؟")) { ref.current = []; setThread([]); localStorage.removeItem(KEY); if (uid) void supabase.from("network_messages").delete().eq("user_id", uid).then(() => undefined); } }}>مسح المحادثة</Button>
       </div>
       <p className="text-sm text-muted-foreground">
-        اكتب طلبك بشكل طبيعي. AbanoupAi يفهم الطلب، يستخدم النماذج المتاحة، وينفذ أوامر الهاتف والمتصفح وGitHub وSupabase وCloudflare عند الحاجة.
+        شات واحد مع AbanoupAi أو مع كل النماذج. ارفع أي ملف، واطلب تنفيذ مهمة أو شرحًا أو مذاكرة؛ والردود والنتائج تظهر في نفس المحادثة.
       </p>
+
+      <section className="rounded-lg border bg-card p-3">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold">وضع المحادثة:</span>
+          <Button size="sm" variant={chatMode === "manager" ? "default" : "outline"} onClick={() => setChatMode("manager")}>AbanoupAi فقط</Button>
+          <Button size="sm" variant={chatMode === "all" ? "default" : "outline"} onClick={() => setChatMode("all")}>اسأل الكل ({NET_MODELS.length + 1})</Button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <span className="text-sm font-semibold">أدوات الثانوية العامة:</span>
+          {([["explain", "شرح درس"], ["solve", "حل سؤال"], ["quiz", "اختبار"], ["summary", "ملخص"], ["plan", "خطة مذاكرة"]] as [string, string][]).map(([key, label]) => <Button key={key} size="sm" variant="outline" onClick={() => studyPrompt(key)}>{label}</Button>)}
+        </div>
+      </section>
 
       {phone && <section className="rounded-lg border bg-card p-3 text-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -185,6 +278,7 @@ export function Network() {
           <div key={e.id} className={`rounded-md p-3 text-sm ${e.who === "me" ? "bg-primary/10" : e.err ? "bg-destructive/10" : "bg-muted"}`}>
             <p className="mb-1 text-xs font-semibold text-primary">{e.who === "me" ? "أنت" : netLabel(e.who)}</p>
             <p className="whitespace-pre-wrap">{e.text}</p>
+            {e.attachments?.length ? <div className="mt-2 flex flex-wrap gap-2">{e.attachments.map((a) => <span key={a.name} className="rounded border bg-background px-2 py-1 text-xs">مرفق: {a.name}</span>)}</div> : null}
             {e.tools?.map((t, i) => (
               <div key={i} className="mt-2 rounded border bg-background p-2 text-xs">
                 <p className="font-semibold">{t.tool} {t.ok ? "" : "❌"}</p>
@@ -201,10 +295,15 @@ export function Network() {
       <div className="space-y-2">
         <Textarea value={input} onChange={(e) => setInput(e.target.value)} placeholder="اكتب رسالتك للنماذج…" rows={3} />
         <div className="flex flex-wrap gap-2">
+          <label className="inline-flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm hover:bg-muted">
+            إرفاق صورة/فيديو/مستند
+            <input type="file" multiple className="hidden" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.md,.json" onChange={(e) => setPendingFiles((old) => [...old, ...Array.from(e.target.files ?? [])])} />
+          </label>
           <Button onClick={send} disabled={!!busy || picked.length === 0}>ابعت ({picked.length})</Button>
           <Button variant={voiceOn ? "destructive" : "outline"} onClick={toggleVoice}>{voiceOn ? "إيقاف استدعاء AbanoupAi" : "استدعاء AbanoupAi صوتيًا"}</Button>
           {busy && <Button variant="destructive" onClick={() => (stop.current = true)}>إيقاف</Button>}
         </div>
+        {pendingFiles.length > 0 && <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">{pendingFiles.map((f) => <span key={`${f.name}-${f.size}`} className="rounded border px-2 py-1">{f.name} <button type="button" className="mr-1 text-destructive" onClick={() => setPendingFiles((old) => old.filter((x) => x !== f))}>×</button></span>)}</div>}
       </div>
     </main>
   );
