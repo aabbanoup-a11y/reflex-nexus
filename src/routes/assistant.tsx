@@ -11,6 +11,7 @@ import { hasCrisisSignal, EMERGENCY_CONTACTS } from "@/lib/safety";
 import { supabase } from "@/integrations/supabase/runtime-client";
 import { useAuth } from "@/hooks/useAuth";
 import { ASSISTANTS, MODELS, QUICK_LINKS, chainFor, getAssistant, type AssistantKey } from "@/lib/assistants";
+import { isLocal } from "@/lib/models30";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -139,25 +140,55 @@ function AssistantPage() {
     msgs: { role: "user" | "assistant"; content: string }[],
     prompt: string,
     atts: Att[] = [],
+    publish = true,
   ) => {
     const m = modelFor(a);
     try {
-      const reply = await ask({
-        data: { system: a.system, model: m, fallbacks: chainFor(m), messages: msgs, attachments: atts.map(({ path, mime, name }) => ({ path, mime, name })), memories },
-      });
+      const reply = isLocal(m)
+        ? {
+            text: await (await import("@/lib/local-llm")).runLocal(
+              m,
+              a.system,
+              msgs.map((message) => ({ who: message.role === "user" ? "me" : a.name, text: message.content })),
+              (_progress) => undefined,
+            ),
+            model: m,
+            switched: false,
+          }
+        : await ask({
+            data: { system: a.system, model: m, fallbacks: chainFor(m), messages: msgs, attachments: atts.map(({ path, mime, name }) => ({ path, mime, name })), memories },
+          });
       if (reply.crisis) {
         setCrisis(true);
         return null;
       }
-      push(thread, { role: "assistant", content: reply.text, author: `${a.emoji} ${a.name}`, model: reply.model });
-      notifyDone(`${a.emoji} ${a.name} خلّص المهمة`, reply.text);
+      if (publish) {
+        push(thread, { role: "assistant", content: reply.text, author: `${a.emoji} ${a.name}`, model: reply.model });
+        notifyDone(`${a.emoji} ${a.name} خلّص المهمة`, reply.text);
+      }
       void logRun({ agent_kind: thread === "team" ? "team" : "assistant", agent_key: a.key, agent_name: a.name, model: reply.model, prompt, reply: reply.text, status: "done" });
       scroll();
       return reply;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "حصل خطأ";
-      push(thread, { role: "assistant", content: `⚠️ ${msg}`, author: `${a.emoji} ${a.name}` });
-      notifyDone(`${a.name} ما قدرش يكمّل`, msg, false);
+      if (!isLocal(m)) {
+        try {
+          const localId = MODELS.find((option) => option.id.startsWith("local/"))?.id;
+          if (localId) {
+            const localText = await (await import("@/lib/local-llm")).runLocal(localId, a.system, msgs.map((message) => ({ who: message.role === "user" ? "me" : a.name, text: message.content })), () => undefined);
+            if (publish) push(thread, { role: "assistant", content: localText, author: `${a.emoji} ${a.name}`, model: localId });
+            void logRun({ agent_kind: thread === "team" ? "team" : "assistant", agent_key: a.key, agent_name: a.name, model: localId, prompt, reply: localText, status: "done" });
+            scroll();
+            return { text: localText, model: localId, switched: true };
+          }
+        } catch {
+          localStorage.setItem("abanoupai:pending", JSON.stringify({ prompt, assistant: a.key, createdAt: new Date().toISOString() }));
+        }
+      }
+      if (publish) {
+        push(thread, { role: "assistant", content: "حفظت المهمة محليًا وهكمّلها أول ما يتاح نموذج تشغيل.", author: `${a.emoji} ${a.name}` });
+        notifyDone(`${a.name} حفظ المهمة`, "المهمة محفوظة للاستكمال", false);
+      }
       void logRun({ agent_kind: thread === "team" ? "team" : "assistant", agent_key: a.key, agent_name: a.name, model: m, prompt, reply: msg, status: "error" });
       scroll();
       return null;
@@ -184,7 +215,8 @@ function AssistantPage() {
         const manager = getAssistant("manager");
         const history = (threads[key] ?? []).slice(-12).map(strip);
         const qWeb = await withWeb(q);
-        const plan = await runOne(manager, key, [...history, { role: "user", content: qWeb }], q, atts);
+        // المدير والاختصاصيون يعملون كطبقة داخلية؛ المستخدم يرى الخلاصة فقط.
+        const plan = await runOne(manager, key, [...history, { role: "user", content: qWeb }], q, atts, false);
         if (!plan) return;
         const crew = ASSISTANTS.filter((a) => a.key !== "manager");
         const results: (Awaited<ReturnType<typeof runOne>>)[] = [];
@@ -192,7 +224,7 @@ function AssistantPage() {
         for (let i = 0; i < crew.length; i += 6) {
           const batch = await Promise.all(
             crew.slice(i, i + 6).map((a) =>
-              runOne(a, key, [...history, { role: "user", content: `طلب المستخدم: ${qWeb}\n\nخطة المدير:\n${plan.text}\n\nنفّذ الجزء الخاص بتخصصك فقط في 5 نقاط عملية قصيرة.` }], q, atts),
+              runOne(a, key, [...history, { role: "user", content: `طلب المستخدم: ${qWeb}\n\nخطة المدير:\n${plan.text}\n\nنفّذ الجزء الخاص بتخصصك فقط في 5 نقاط عملية قصيرة.` }], q, atts, false),
             ),
           );
           results.push(...batch);
@@ -207,6 +239,8 @@ function AssistantPage() {
             "team",
             [{ role: "user", content: `طلب المستخدم: ${q}\n\nنتايج الفريق:\n${shared}\n\nاجمع النتايج في خطة نهائية واحدة مترتبة بجدول زمني، واحذف التكرار.` }],
             q,
+            [],
+            true,
           );
         }
         notifyDone("الفريق خلّص كل المهام", q);
@@ -280,7 +314,7 @@ function AssistantPage() {
         </div>
 
         <p className="mt-3 text-sm text-muted-foreground">
-          {teamMode ? "المدير يقسّم طلبك، كل مساعد ينفّذ جزءه بالتوازي، وبعدين المدير يجمع النتايج في خطة واحدة." : assistant.tagline}
+          {teamMode ? "المدير يقسّم طلبك، كل مساعد يشتغل على الجزء المناسب، وبعدها تظهر لك رسالة نهائية واحدة من غير تكرار." : assistant.tagline}
         </p>
 
         {!teamMode && active === "wellness" && (

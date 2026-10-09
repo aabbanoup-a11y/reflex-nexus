@@ -1,0 +1,12 @@
+create table if not exists public.agent_paths (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, name text not null, description text not null, entrypoint text not null, enabled boolean not null default true, version integer not null default 1, created_at timestamptz not null default now(), unique(user_id, name));
+create table if not exists public.agent_commands (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, name text not null, description text not null, action text not null, params jsonb not null default '{}'::jsonb, requires_approval boolean not null default true, version integer not null default 1, created_at timestamptz not null default now(), unique(user_id, name));
+create table if not exists public.agent_updates (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade, current_version text not null, target_version text not null, files jsonb not null default '[]'::jsonb, strategy text not null, rollback_enabled boolean not null default true, status text not null default 'planned', created_at timestamptz not null default now());
+
+grant select, insert, update on public.agent_paths, public.agent_commands, public.agent_updates to authenticated;
+alter table public.agent_paths enable row level security; alter table public.agent_commands enable row level security; alter table public.agent_updates enable row level security;
+drop policy if exists agent_paths_owner on public.agent_paths;
+drop policy if exists agent_commands_owner on public.agent_commands;
+drop policy if exists agent_updates_owner on public.agent_updates;
+create policy agent_paths_owner on public.agent_paths for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy agent_commands_owner on public.agent_commands for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy agent_updates_owner on public.agent_updates for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);

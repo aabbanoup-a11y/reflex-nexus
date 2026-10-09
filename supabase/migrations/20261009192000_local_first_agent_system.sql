@@ -79,3 +79,26 @@ with check (bucket_id = 'artifacts' and (storage.foldername(name))[1] = 'u' and 
 create index if not exists scheduled_jobs_due_idx on public.scheduled_jobs(status, next_run_at);
 create index if not exists artifacts_user_created_idx on public.artifacts(user_id, created_at desc);
 create index if not exists agent_updates_user_created_idx on public.agent_updates(user_id, created_at desc);
+
+-- Compatibility columns keep the local-first UI and the product-agent paths on one schema.
+alter table public.agent_paths add column if not exists entrypoint text not null default 'local';
+alter table public.agent_paths add column if not exists enabled boolean not null default true;
+alter table public.agent_paths add column if not exists version integer not null default 1;
+alter table public.agent_commands add column if not exists action text not null default '';
+alter table public.agent_commands add column if not exists params jsonb not null default '{}'::jsonb;
+alter table public.agent_commands add column if not exists requires_approval boolean not null default false;
+alter table public.agent_commands add column if not exists version integer not null default 1;
+alter table public.scheduled_jobs add column if not exists instruction text not null default '';
+alter table public.scheduled_jobs add column if not exists timezone text not null default 'Africa/Cairo';
+alter table public.scheduled_jobs add column if not exists enabled boolean not null default true;
+alter table public.scheduled_jobs add column if not exists last_status text;
+alter table public.scheduled_jobs add column if not exists updated_at timestamptz not null default now();
+alter table public.agent_updates add column if not exists current_version text not null default '';
+alter table public.agent_updates add column if not exists target_version text not null default '';
+alter table public.agent_updates add column if not exists strategy text not null default 'local-first';
+alter table public.agent_updates add column if not exists rollback_enabled boolean not null default true;
+alter table public.artifacts add column if not exists kind text not null default 'file';
+alter table public.artifacts add column if not exists url text;
+alter table public.artifacts add column if not exists preview text;
+alter table public.artifacts add column if not exists status text not null default 'ready';
+alter table public.artifacts add column if not exists metadata jsonb not null default '{}'::jsonb;

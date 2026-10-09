@@ -12,15 +12,18 @@ import { NET_MODELS, modelForKey } from "./models30";
 export const MODELS: ModelOption[] = NET_MODELS.map((m) => ({
   id: m.id,
   label: m.label,
-  note: m.provider === "cloudflare" ? "Cloudflare (حسابك)" : m.provider === "local" ? "أوفلاين (على السيرفر بديل سحابي)" : "Lovable AI",
+  note: m.provider === "cloudflare" ? "Cloudflare (حسابك)" : m.provider === "local" ? "أوفلاين على جهازك (بدون رصيد سحابي)" : "Lovable AI",
 }));
 
 export const DEFAULT_MODEL = "google/gemini-3.8-flash";
 export { modelForKey };
 
-// لكل دور نموذج أساسي مخصص، والباقي بدائل بالترتيب.
+// احتياطيات قوية من النماذج المسجلة في المشروع؛ لا توجد مفاتيح API في الواجهة.
+const STRONG_FALLBACKS = ["google/gemini-3.1-pro-preview", "anthropic/claude-opus-5-5", "openai/gpt-5.5-pro"];
+
+// لكل دور نموذج أساسي مخصص، ثم احتياطيات قوية، ثم بقية النماذج المتاحة.
 export function chainFor(primary: string): string[] {
-  return [primary, ...MODELS.map((m) => m.id).filter((m) => m !== primary)];
+  return [primary, ...STRONG_FALLBACKS, ...MODELS.map((m) => m.id)].filter((id, i, all) => all.indexOf(id) === i);
 }
 
 export type AssistantKey =
@@ -74,7 +77,7 @@ export type Assistant = {
 export const ASSISTANTS: Assistant[] = [
   {
     key: "manager",
-    model: "openai/gpt-6-astra",
+    model: "openai/gpt-5.5-pro",
     name: "المدير المنسّق",
     tagline: "يوزّع المهمة على باقي المساعدين ويعمل خطة",
     emoji: "🧭",
@@ -84,7 +87,7 @@ export const ASSISTANTS: Assistant[] = [
   },
   {
     key: "study",
-    model: "google/gemini-3.8-flash",
+    model: "google/gemini-3.1-pro-preview",
     name: "مساعد الدراسة",
     tagline: "أولى ثانوي — تلخيص، مراجعة، خطة مذاكرة",
     emoji: "📚",
