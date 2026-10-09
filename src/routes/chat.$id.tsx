@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/runtime-client";
 import { useAuth } from "@/hooks/useAuth";
 import { askAssistant } from "@/lib/chat.functions";
-import { basicReply, localReply, savePending, type ChatTurn } from "@/lib/chat-assistant";
+import { assistantFallback, basicReply, isYouTubeRequest, type ChatTurn } from "@/lib/chat-assistant";
 
 type Message = { id: string; role: "user" | "assistant" | "system"; content: string; created_at: string };
 
@@ -75,20 +75,19 @@ function ChatPage() {
     const history: ChatTurn[] = [...messages, localUserMessage].map(({ role, content }) => ({ role: role === "system" ? "assistant" : role, content }));
     let reply = basicReply(prompt);
     let model = "basic-local";
-    try {
-      const cloud = await ask({ data: { system: "أنت مساعد عربي ودود وعملي. أجب بالعربية المصرية باختصار مفيد.", model: "google/gemini-3.8-flash", fallbacks: [], messages: history, attachments: [], memories: [] } });
-      if (cloud.text?.trim()) {
-        reply = cloud.text.trim();
-        model = cloud.model;
-      }
-    } catch {
+    if (isYouTubeRequest(prompt)) {
+      reply = await assistantFallback(prompt, history, id, user.id);
+      model = "phone-command-fallback";
+    } else {
       try {
-        reply = await localReply(prompt, history);
-        model = "local-webgpu";
+        const cloud = await ask({ data: { system: "أنت مساعد عربي ودود وعملي. أجب بالعربية المصرية باختصار مفيد.", model: "google/gemini-3.8-flash", fallbacks: [], messages: history, attachments: [], memories: [] } });
+        if (cloud.text?.trim()) {
+          reply = cloud.text.trim();
+          model = cloud.model;
+        }
       } catch {
-        savePending(prompt, id);
-        reply = "حفظت رسالتك محليًا. هرد عليك أول ما يتاح نموذج تشغيل على جهازك.";
-        model = "pending";
+        reply = await assistantFallback(prompt, history, id, user.id);
+        model = "local-or-basic-fallback";
       }
     }
     const { data: savedReply, error: replyError } = await supabase.from("messages").insert({ conversation_id: id, user_id: user.id, role: "assistant", content: reply }).select("id,role,content,created_at").single();
