@@ -14,12 +14,20 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AgentRouteImport } from './routes/agent'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ChatRouteImport } from './routes/chat'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as ImagesRouteImport } from './routes/images'
+import { Route as LibraryRouteImport } from './routes/library'
 import { Route as NetworkRouteImport } from './routes/network'
+import { Route as PluginsRouteImport } from './routes/plugins'
+import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as RemoteRouteImport } from './routes/remote'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ScheduledRouteImport } from './routes/scheduled'
 import { Route as AuthenticatedCompanionRouteImport } from './routes/_authenticated/companion'
 import { Route as AuthenticatedMemoryRouteImport } from './routes/_authenticated/memory'
 import { Route as AuthenticatedPathsUiRouteImport } from './routes/_authenticated/paths-ui'
+import { Route as ChatIdRouteImport } from './routes/chat.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -45,9 +53,24 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImagesRoute = ImagesRouteImport.update({
+  id: '/images',
+  path: '/images',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NetworkRoute = NetworkRouteImport.update({
@@ -55,9 +78,29 @@ const NetworkRoute = NetworkRouteImport.update({
   path: '/network',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PluginsRoute = PluginsRouteImport.update({
+  id: '/plugins',
+  path: '/plugins',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RemoteRoute = RemoteRouteImport.update({
+  id: '/remote',
+  path: '/remote',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScheduledRoute = ScheduledRouteImport.update({
+  id: '/scheduled',
+  path: '/scheduled',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedCompanionRoute = AuthenticatedCompanionRouteImport.update({
@@ -75,30 +118,51 @@ const AuthenticatedPathsUiRoute = AuthenticatedPathsUiRouteImport.update({
   path: '/paths-ui',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ChatIdRoute = ChatIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ChatRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
+  '/chat': typeof ChatRouteWithChildren
   '/history': typeof HistoryRoute
+  '/images': typeof ImagesRoute
+  '/library': typeof LibraryRoute
   '/network': typeof NetworkRoute
+  '/plugins': typeof PluginsRoute
+  '/projects': typeof ProjectsRoute
+  '/remote': typeof RemoteRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/scheduled': typeof ScheduledRoute
   '/companion': typeof AuthenticatedCompanionRoute
   '/memory': typeof AuthenticatedMemoryRoute
   '/paths-ui': typeof AuthenticatedPathsUiRoute
+  '/chat/$id': typeof ChatIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agent': typeof AgentRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
+  '/chat': typeof ChatRouteWithChildren
   '/history': typeof HistoryRoute
+  '/images': typeof ImagesRoute
+  '/library': typeof LibraryRoute
   '/network': typeof NetworkRoute
+  '/plugins': typeof PluginsRoute
+  '/projects': typeof ProjectsRoute
+  '/remote': typeof RemoteRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/scheduled': typeof ScheduledRoute
   '/companion': typeof AuthenticatedCompanionRoute
   '/memory': typeof AuthenticatedMemoryRoute
   '/paths-ui': typeof AuthenticatedPathsUiRoute
+  '/chat/$id': typeof ChatIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,12 +171,20 @@ export interface FileRoutesById {
   '/agent': typeof AgentRoute
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
+  '/chat': typeof ChatRouteWithChildren
   '/history': typeof HistoryRoute
+  '/images': typeof ImagesRoute
+  '/library': typeof LibraryRoute
   '/network': typeof NetworkRoute
+  '/plugins': typeof PluginsRoute
+  '/projects': typeof ProjectsRoute
+  '/remote': typeof RemoteRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/scheduled': typeof ScheduledRoute
   '/_authenticated/companion': typeof AuthenticatedCompanionRoute
   '/_authenticated/memory': typeof AuthenticatedMemoryRoute
   '/_authenticated/paths-ui': typeof AuthenticatedPathsUiRoute
+  '/chat/$id': typeof ChatIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,24 +193,40 @@ export interface FileRouteTypes {
     | '/agent'
     | '/assistant'
     | '/auth'
+    | '/chat'
     | '/history'
+    | '/images'
+    | '/library'
     | '/network'
+    | '/plugins'
+    | '/projects'
+    | '/remote'
     | '/reset-password'
+    | '/scheduled'
     | '/companion'
     | '/memory'
     | '/paths-ui'
+    | '/chat/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/agent'
     | '/assistant'
     | '/auth'
+    | '/chat'
     | '/history'
+    | '/images'
+    | '/library'
     | '/network'
+    | '/plugins'
+    | '/projects'
+    | '/remote'
     | '/reset-password'
+    | '/scheduled'
     | '/companion'
     | '/memory'
     | '/paths-ui'
+    | '/chat/$id'
   id:
     | '__root__'
     | '/'
@@ -146,12 +234,20 @@ export interface FileRouteTypes {
     | '/agent'
     | '/assistant'
     | '/auth'
+    | '/chat'
     | '/history'
+    | '/images'
+    | '/library'
     | '/network'
+    | '/plugins'
+    | '/projects'
+    | '/remote'
     | '/reset-password'
+    | '/scheduled'
     | '/_authenticated/companion'
     | '/_authenticated/memory'
     | '/_authenticated/paths-ui'
+    | '/chat/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -160,9 +256,16 @@ export interface RootRouteChildren {
   AgentRoute: typeof AgentRoute
   AssistantRoute: typeof AssistantRoute
   AuthRoute: typeof AuthRoute
+  ChatRoute: typeof ChatRouteWithChildren
   HistoryRoute: typeof HistoryRoute
+  ImagesRoute: typeof ImagesRoute
+  LibraryRoute: typeof LibraryRoute
   NetworkRoute: typeof NetworkRoute
+  PluginsRoute: typeof PluginsRoute
+  ProjectsRoute: typeof ProjectsRoute
+  RemoteRoute: typeof RemoteRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ScheduledRoute: typeof ScheduledRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -202,11 +305,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/history': {
       id: '/history'
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/images': {
+      id: '/images'
+      path: '/images'
+      fullPath: '/images'
+      preLoaderRoute: typeof ImagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/network': {
@@ -216,11 +340,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NetworkRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/plugins': {
+      id: '/plugins'
+      path: '/plugins'
+      fullPath: '/plugins'
+      preLoaderRoute: typeof PluginsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/remote': {
+      id: '/remote'
+      path: '/remote'
+      fullPath: '/remote'
+      preLoaderRoute: typeof RemoteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scheduled': {
+      id: '/scheduled'
+      path: '/scheduled'
+      fullPath: '/scheduled'
+      preLoaderRoute: typeof ScheduledRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/companion': {
@@ -244,6 +396,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPathsUiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/chat/$id': {
+      id: '/chat/$id'
+      path: '/$id'
+      fullPath: '/chat/$id'
+      preLoaderRoute: typeof ChatIdRouteImport
+      parentRoute: typeof ChatRoute
+    }
   }
 }
 
@@ -262,15 +421,32 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ChatRouteChildren {
+  ChatIdRoute: typeof ChatIdRoute
+}
+
+const ChatRouteChildren: ChatRouteChildren = {
+  ChatIdRoute: ChatIdRoute,
+}
+
+const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AgentRoute: AgentRoute,
   AssistantRoute: AssistantRoute,
   AuthRoute: AuthRoute,
+  ChatRoute: ChatRouteWithChildren,
   HistoryRoute: HistoryRoute,
+  ImagesRoute: ImagesRoute,
+  LibraryRoute: LibraryRoute,
   NetworkRoute: NetworkRoute,
+  PluginsRoute: PluginsRoute,
+  ProjectsRoute: ProjectsRoute,
+  RemoteRoute: RemoteRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ScheduledRoute: ScheduledRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

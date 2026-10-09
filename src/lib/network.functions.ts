@@ -111,7 +111,7 @@ export const networkTurn = createServerFn({ method: "POST" })
         if (candidate === used) continue;
         try { used = candidate; text = await n.callModel(candidate, HINT(me.label, sharedMemory, isManager), msgs); recovered = true; break; } catch { /* جرّب المزود التالي */ }
       }
-      if (!recovered) throw new Error("كل مسارات الذكاء الاصطناعي غير متاحة حاليًا؛ جرّب مرة أخرى لاحقًا أو راجع إعدادات الموصلات.");
+      if (!recovered) throw new Error("تعذر الاتصال بالمصادر السحابية الآن؛ تم الاحتفاظ بالطلب للمحاولة المحلية.");
     }
     if (data.mode === "opinion") {
       return { model: data.model, usedModel: used, text: text.replace(/\[\[[\s\S]*?\]\]/g, "").trim(), tools: [] };

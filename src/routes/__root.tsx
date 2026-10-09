@@ -15,6 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/runtime-client";
 import { useAndroidAutoPair } from "@/components/DeviceLink";
+import { ChatSidebar } from "@/components/ChatSidebar";
 
 function NotFoundComponent() {
   return (
@@ -144,8 +145,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <div className="min-h-screen lg:pl-[272px]">
+        <ChatSidebar />
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </div>
       <Toaster position="top-center" richColors />
     </QueryClientProvider>
   );
