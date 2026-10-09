@@ -37,6 +37,19 @@ object LocalAgentController {
             return if (NotificationInbox.enabled) DeviceInventory.notifications() else "فعّل الوصول إلى الإشعارات أولًا من إعدادات AbanoubAI"
         }
 
+        if (containsAny(lower, "افتح الكاميرا", "شغل الكاميرا", "شغّل الكاميرا", "الكاميرا")) {
+            return run(context, "open_camera", buildPayload())
+        }
+        if (containsAny(lower, "افتح الواي فاي", "إعدادات الواي فاي", "wifi")) {
+            return run(context, "open_settings", buildPayload("setting" to "wifi"))
+        }
+        if (containsAny(lower, "افتح البلوتوث", "إعدادات البلوتوث", "bluetooth")) {
+            return run(context, "open_settings", buildPayload("setting" to "bluetooth"))
+        }
+        if (containsAny(lower, "افتح إعدادات إمكانية الوصول", "إعدادات إمكانية الوصول", "accessibility")) {
+            return run(context, "open_settings", buildPayload("setting" to "accessibility"))
+        }
+
         val app = appPackages.entries.firstOrNull { (name, _) -> lower.contains(name) }
         if (app != null && containsAny(lower, "افتح", "شغل", "شغّل", "launch", "open")) {
             return run(context, "open_app", buildPayload("package" to app.value))
