@@ -585,3 +585,58 @@ companion auto-execution and YouTube search smoke test: PASS
 6. اختبار مسار artifact لكل من صورة وفيديو ومستند.
 
 **الوضع الحالي المختصر:** الكود مرفوع ومدمج في المستودع الأساسي، والاختبارات البرمجية ناجحة، أما تفعيل البنية الخارجية الكاملة فيحتاج تحققًا وتطبيقًا على خدمات Supabase وCloudflare الفعلية، وليس مجرد وجود ملفات الإعداد في GitHub.
+
+
+---
+
+## تحديث تنفيذي لاحق: تطبيق Supabase migrations
+
+**بتاريخ 2026-10-09 بعد التحقق الإداري:** تم تطبيق migrations الخمس التالية بنجاح عبر موصل Supabase الإداري على المشروع:
+
+```text
+اسم المشروع: AbanoupAi
+project_id/ref: wobfdslqlmvlatyrtgkd
+```
+
+المigrations المطبقة:
+
+```text
+product_agent_v1
+local_first_agent_system
+scheduled_jobs
+agent_evolution
+chat_system
+```
+
+وظهرت في سجل migrations الفعلي بإصدارات التطبيق، كما ظهرت الجداول التالية في `public`:
+
+```text
+artifacts
+agent_tools
+integration_registry
+orders
+agent_paths
+agent_commands
+scheduled_jobs
+agent_updates
+conversations
+messages
+```
+
+وكل الجداول الجديدة مفعّل عليها RLS وفق سياسات الملكية الموجودة في ملفات migrations.
+
+### تنبيه مهم عن اختلاف البيئات
+
+إعداد `.env` المحلي للتطبيق يشير حاليًا إلى Lovable Cloud project ref:
+
+```text
+huekskmelmanmptfyowh
+```
+
+بينما migrations الإدارية أعلاه طُبقت على مشروع Supabase:
+
+```text
+wobfdslqlmvlatyrtgkd
+```
+
+هذا يعني أن قاعدة `AbanoupAi` أصبحت مجهزة، لكن التطبيق سيستخدمها فقط بعد تغيير إعدادات runtime إلى URL ومفتاح publishable الخاصين بهذا المشروع. لم أغيّر هذا الربط تلقائيًا لأن تبديل backend قد يفصل جلسات المستخدمين أو يغيّر بيانات الإنتاج. لا ينبغي اعتبار المشروعين قاعدة واحدة قبل تنفيذ قرار ربط واضح.
