@@ -171,9 +171,23 @@ function AssistantPage() {
       return reply;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "حصل خطأ";
+      if (!isLocal(m)) {
+        try {
+          const localId = MODELS.find((option) => option.id.startsWith("local/"))?.id;
+          if (localId) {
+            const localText = await (await import("@/lib/local-llm")).runLocal(localId, a.system, msgs.map((message) => ({ who: message.role === "user" ? "me" : a.name, text: message.content })), () => undefined);
+            if (publish) push(thread, { role: "assistant", content: localText, author: `${a.emoji} ${a.name}`, model: localId });
+            void logRun({ agent_kind: thread === "team" ? "team" : "assistant", agent_key: a.key, agent_name: a.name, model: localId, prompt, reply: localText, status: "done" });
+            scroll();
+            return { text: localText, model: localId, switched: true };
+          }
+        } catch {
+          localStorage.setItem("abanoupai:pending", JSON.stringify({ prompt, assistant: a.key, createdAt: new Date().toISOString() }));
+        }
+      }
       if (publish) {
-        push(thread, { role: "assistant", content: `⚠️ ${msg}`, author: `${a.emoji} ${a.name}` });
-        notifyDone(`${a.name} ما قدرش يكمّل`, msg, false);
+        push(thread, { role: "assistant", content: "حفظت المهمة محليًا وهكمّلها أول ما يتاح نموذج تشغيل.", author: `${a.emoji} ${a.name}` });
+        notifyDone(`${a.name} حفظ المهمة`, "المهمة محفوظة للاستكمال", false);
       }
       void logRun({ agent_kind: thread === "team" ? "team" : "assistant", agent_key: a.key, agent_name: a.name, model: m, prompt, reply: msg, status: "error" });
       scroll();
