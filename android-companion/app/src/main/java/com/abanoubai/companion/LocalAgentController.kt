@@ -24,6 +24,16 @@ object LocalAgentController {
         val command = stripWakeWord(text)
         val lower = command.lowercase(Locale.ROOT)
 
+        if (containsAny(lower, "حالتي", "ملخص", "اعمل ايه", "عمل ايه", "البطارية", "الشبكة", "النت")) {
+            return DeviceInventory.device(context)
+        }
+        if (containsAny(lower, "الملفات", "فحص الملفات", "الصور", "الفيديوهات")) {
+            return DeviceInventory.files(context)
+        }
+        if (containsAny(lower, "الإشعارات", "الرسائل الأخيرة", "اشعارات")) {
+            return if (NotificationInbox.enabled) DeviceInventory.notifications() else "فعّل الوصول إلى الإشعارات أولًا من إعدادات AbanoubAI"
+        }
+
         val app = appPackages.entries.firstOrNull { (name, _) -> lower.contains(name) }
         if (app != null && containsAny(lower, "افتح", "شغل", "شغّل", "launch", "open")) {
             return run(context, "open_app", buildPayload("package" to app.value))
