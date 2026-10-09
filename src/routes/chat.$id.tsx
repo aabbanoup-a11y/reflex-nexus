@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/runtime-client";
 import { useAuth } from "@/hooks/useAuth";
 import { askAssistant } from "@/lib/chat.functions";
 import { assistantFallback, basicReply, isYouTubeRequest, type ChatTurn } from "@/lib/chat-assistant";
+import { networkTurn } from "@/lib/network.functions";
+import { MANAGER_ID } from "@/lib/models30";
 
 type Message = { id: string; role: "user" | "assistant" | "system"; content: string; created_at: string };
 
@@ -16,6 +18,7 @@ function ChatPage() {
   const { id } = Route.useParams();
   const { user, ready } = useAuth();
   const ask = useServerFn(askAssistant);
+  const runAgent = useServerFn(networkTurn);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -80,14 +83,31 @@ function ChatPage() {
       model = "phone-command-fallback";
     } else {
       try {
-        const cloud = await ask({ data: { system: "أنت مساعد عربي ودود وعملي. أجب بالعربية المصرية باختصار مفيد.", model: "google/gemini-3.8-flash", fallbacks: [], messages: history, attachments: [], memories: [] } });
-        if (cloud.text?.trim()) {
-          reply = cloud.text.trim();
-          model = cloud.model;
+        const agent = await runAgent({
+          data: {
+            model: MANAGER_ID,
+            mode: "execute",
+            thread: [...messages, localUserMessage].map((message) => ({
+              who: message.role === "user" ? "me" : "assistant",
+              text: message.content,
+            })),
+          },
+        });
+        if (agent.text?.trim()) {
+          reply = agent.text.trim();
+          model = agent.usedModel || agent.model;
         }
       } catch {
-        reply = await assistantFallback(prompt, history, id, user.id);
-        model = "local-or-basic-fallback";
+        try {
+          const cloud = await ask({ data: { system: "أنت مساعد عربي ودود وعملي. أجب بالعربية المصرية باختصار مفيد.", model: "google/gemini-3.8-flash", fallbacks: [], messages: history, attachments: [], memories: [] } });
+          if (cloud.text?.trim()) {
+            reply = cloud.text.trim();
+            model = cloud.model;
+          }
+        } catch {
+          reply = await assistantFallback(prompt, history, id, user.id);
+          model = "local-or-basic-fallback";
+        }
       }
     }
     const { data: savedReply, error: replyError } = await supabase.from("messages").insert({ conversation_id: id, user_id: user.id, role: "assistant", content: reply }).select("id,role,content,created_at").single();
