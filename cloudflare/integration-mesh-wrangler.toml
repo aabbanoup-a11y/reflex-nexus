@@ -1,0 +1,9 @@
+name = "reflex-nexus-integration-mesh"
+main = "../src/integrations/integration-mesh-worker.ts"
+compatibility_date = "2026-10-09"
+
+[triggers]
+crons = ["0 3 * * *"]
+
+[vars]
+INTEGRATION_MESH_URL = "https://example.invalid/internal/integration-discovery"
