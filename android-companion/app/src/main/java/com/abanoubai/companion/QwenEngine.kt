@@ -2,6 +2,7 @@ package com.abanoubai.companion
 
 import android.content.Context
 import java.io.File
+import org.json.JSONObject
 
 /** Local-only Qwen GGUF engine. It never performs network access. */
 class QwenEngine(private val context: Context) {
@@ -44,6 +45,12 @@ class QwenEngine(private val context: Context) {
     }
 
     fun isReady(): Boolean = loaded
+    fun status(): String = JSONObject()
+        .put("model", "Qwen2.5-0.5B-Instruct GGUF")
+        .put("loaded", loaded)
+        .put("size_bytes", if (modelFile.exists()) modelFile.length() else 0)
+        .put("network_required", false)
+        .toString()
     fun close() { runCatching { nativeShutdown() }; loaded = false }
 
     private external fun nativeLoad(path: String): Boolean

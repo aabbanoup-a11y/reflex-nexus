@@ -50,11 +50,24 @@ object LocalAgentController {
         if (containsAny(lower, "حالتي", "ملخص", "اعمل ايه", "عمل ايه", "البطارية", "الشبكة", "النت")) {
             return DeviceInventory.device(context)
         }
+        if (containsAny(lower, "حالة النموذج", "الموديل المحلي", "النموذج المحلي", "model status")) {
+            val engine = qwen ?: synchronized(this) { qwen ?: QwenEngine(context).also { qwen = it } }
+            return engine.status()
+        }
+        if (containsAny(lower, "التطبيقات المثبتة", "كل التطبيقات", "قائمة التطبيقات")) {
+            return DeviceInventory.apps(context)
+        }
+        if (containsAny(lower, "صلاحيات التطبيق", "الصلاحيات", "permissions")) {
+            return DeviceInventory.permissions(context, null)
+        }
         if (containsAny(lower, "الملفات", "فحص الملفات", "الصور", "الفيديوهات")) {
             return DeviceInventory.files(context)
         }
         if (containsAny(lower, "الإشعارات", "الرسائل الأخيرة", "اشعارات")) {
             return if (NotificationInbox.enabled) DeviceInventory.notifications() else "فعّل الوصول إلى الإشعارات أولًا من إعدادات AbanoubAI"
+        }
+        if (containsAny(lower, "لقطة شاشة", "سكرين شوت", "screenshot")) {
+            return run(context, "screenshot", buildPayload())
         }
 
         if (containsAny(lower, "افتح الكاميرا", "شغل الكاميرا", "شغّل الكاميرا", "الكاميرا")) {
