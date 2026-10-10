@@ -7,8 +7,9 @@ const migration = fs.readFileSync("supabase/migrations/20261002152000_companion_
 const universalMigration = fs.readFileSync("supabase/migrations/20261007010000_companion_universal_commands.sql", "utf8");
 const android = fs.readFileSync("android-companion/app/src/main/java/com/abanoubai/companion/MainActivity.kt", "utf8");
 
-assert.match(companion, /requires_approval: false/);
-assert.match(companion, /status: "approved"/);
+assert.match(companion, /const requiresApproval = supervisedKinds\.has\(kind\)/);
+assert.match(companion, /requires_approval: requiresApproval/);
+assert.match(companion, /status: requiresApproval \? "queued" : "approved"/);
 assert.match(network, /type_text_submit/);
 assert.match(network, /searchIntent/);
 assert.match(companion, /send\("stop"\)/);
