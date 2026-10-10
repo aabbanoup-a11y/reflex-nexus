@@ -35,6 +35,14 @@ class QwenEngine(private val context: Context) {
         return runCatching { nativeGenerate(formatted, 192).trim() }.getOrDefault("")
     }
 
+    /** Generates a constrained action proposal; OfflinePlan validates it before execution. */
+    @Synchronized
+    fun plan(request: String): String {
+        if (!load()) return ""
+        val formatted = "<|im_start|>system\nأنت مخطط أوفلاين للهاتف. أخرج JSON فقط ولا تضف أي شرح.<|im_end|>\n<|im_start|>user\n${OfflinePlan.prompt(request)}<|im_end|>\n<|im_start|>assistant\n"
+        return runCatching { nativeGenerate(formatted, 512).trim() }.getOrDefault("")
+    }
+
     fun isReady(): Boolean = loaded
     fun close() { runCatching { nativeShutdown() }; loaded = false }
 

@@ -12,9 +12,8 @@ import kotlinx.serialization.json.put
 import java.util.Locale
 
 /**
- * Small offline command router. It is intentionally deterministic: it can run
- * without the cloud, but it never pretends to be a local copy of the 50 cloud
- * models. Unknown requests are saved as pending text for the cloud agent.
+ * Offline command router. Known commands use deterministic fallbacks; unknown
+ * requests are planned by the embedded Qwen model and then validated locally.
  */
 object LocalAgentController {
     private const val PREFS = "companion"
@@ -65,7 +64,7 @@ object LocalAgentController {
                     add(buildJsonObject { put("kind", "tap_description"); put("if_text", "Search"); put("payload", buildPayload("text" to "Search")) })
                     add(buildJsonObject { put("kind", "type_text"); put("payload", buildPayload("text" to query, "submit" to "true")) })
                 }
-                return run(context, "batch", buildJsonObject { put("steps", steps) })
+                return run(context, "batch", buildJsonObject { put("steps", steps); put("return_to_chat", "true") })
             }
         }
 
@@ -89,7 +88,29 @@ object LocalAgentController {
         }
         if (global != null) return run(context, global, buildPayload())
 
-        // Real local LLM fallback. It is loaded lazily and never calls the network.
+        // Deterministic safety nets for the most common underspecified requests.
+        if (containsAny(lower, "النوتة", "النوت", "الملاحظات", "note", "notepad") &&
+            containsAny(lower, "افتح", "شغل", "اكتب", "اكتبي")) {
+            val noteText = Regex("(?:اكتب|اكتبي|دوّن|دون)\\s+(.+)", RegexOption.IGNORE_CASE)
+                .find(command)?.groupValues?.getOrNull(1)?.trim()
+            val steps = buildJsonArray {
+                add(buildJsonObject { put("kind", "open_note"); put("payload", buildPayload()) })
+                add(buildJsonObject { put("kind", "wait"); put("payload", buildPayload("ms" to "1200")) })
+                if (!noteText.isNullOrBlank()) add(buildJsonObject { put("kind", "type_text"); put("payload", buildPayload("text" to noteText)) })
+            }
+            return run(context, "batch", buildJsonObject { put("steps", steps); put("return_to_chat", "true") })
+        }
+
+        // Real local LLM planner. It is loaded lazily and never calls the network.
+        val planned = runCatching {
+            val engine = qwen ?: synchronized(this) { qwen ?: QwenEngine(context).also { qwen = it } }
+            OfflinePlan.fromModel(engine.plan(command))
+        }.getOrNull()
+        if (planned != null) {
+            return run(context, "batch", buildJsonObject { put("steps", planned); put("return_to_chat", "true") })
+        }
+
+        // Local conversational fallback, still offline and never a fake execution claim.
         val localReply = runCatching {
             val engine = qwen ?: synchronized(this) { qwen ?: QwenEngine(context).also { qwen = it } }
             engine.chat(command)

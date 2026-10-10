@@ -12,8 +12,8 @@ android {
         applicationId = "com.abanoubai.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 15
-        versionName = "0.7.0"
+        versionCode = 16
+        versionName = "0.8.0"
         buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL") ?: "https://wobfdslqlmvlatyrtgkd.supabase.co"}\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY") ?: "sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ"}\"")
         ndk { abiFilters += listOf("arm64-v8a") }
