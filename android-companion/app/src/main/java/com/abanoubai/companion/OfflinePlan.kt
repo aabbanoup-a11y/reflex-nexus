@@ -57,12 +57,14 @@ object OfflinePlan {
         return valid.takeIf { it.size == steps.size }
     }
 
-    fun prompt(request: String): String = """
+    fun prompt(request: String, phoneContext: String = "{}"): String = """
 أنت مخطط أوفلاين للهاتف. حوّل طلب المستخدم إلى JSON فقط بلا شرح.
 الشكل الإجباري: {"steps":[{"kind":"...","payload":{}}]}
 الأوامر المسموحة فقط: open_app(package), open_note(), open_url(url), tap_text(text), tap_description(text), type_text(text,submit), press_enter(), press_search(), clear_text(), wait(ms), wait_for_text(text,timeout_ms), back(), home(), recents(), scroll(dir), press_back(), press_home().
 لا تخترع package. استخدم هذه الحزم المعروفة فقط: YouTube=com.google.android.youtube, Chrome=com.android.chrome, WhatsApp=com.whatsapp, Telegram=org.telegram.messenger, Gmail=com.google.android.gm, Settings=com.android.settings.
 بعد فتح التطبيق انتظر 1200ms. بعد الكتابة استخدم submit=true إذا كان المطلوب إرسال/بحث، وإلا أضف press_enter عند الحاجة. اجعل الخطة 1 إلى 8 خطوات.
+حالة الهاتف الحالية (محلية فقط): $phoneContext
+إذا كانت الحالة لا تحتوي على تطبيق أو عنصر مناسب، لا تخترع نتيجة؛ استخدم خطوة انتظار أو خطة آمنة قصيرة.
 طلب المستخدم: $request
 JSON:
 """.trimIndent()

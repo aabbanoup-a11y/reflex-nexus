@@ -37,9 +37,9 @@ class QwenEngine(private val context: Context) {
 
     /** Generates a constrained action proposal; OfflinePlan validates it before execution. */
     @Synchronized
-    fun plan(request: String): String {
+    fun plan(request: String, phoneContext: String = "{}"): String {
         if (!load()) return ""
-        val formatted = "<|im_start|>system\nأنت مخطط أوفلاين للهاتف. أخرج JSON فقط ولا تضف أي شرح.<|im_end|>\n<|im_start|>user\n${OfflinePlan.prompt(request)}<|im_end|>\n<|im_start|>assistant\n"
+        val formatted = "<|im_start|>system\nأنت مخطط أوفلاين للهاتف. أخرج JSON فقط ولا تضف أي شرح. استخدم حالة الهاتف لاختيار التطبيق والخطوة التالية، ولا تدّع نجاح خطوة لم تُنفذ.<|im_end|>\n<|im_start|>user\n${OfflinePlan.prompt(request, phoneContext)}<|im_end|>\n<|im_start|>assistant\n"
         return runCatching { nativeGenerate(formatted, 512).trim() }.getOrDefault("")
     }
 

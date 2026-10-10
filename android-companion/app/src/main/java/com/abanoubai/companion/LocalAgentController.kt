@@ -104,7 +104,7 @@ object LocalAgentController {
         // Real local LLM planner. It is loaded lazily and never calls the network.
         val planned = runCatching {
             val engine = qwen ?: synchronized(this) { qwen ?: QwenEngine(context).also { qwen = it } }
-            OfflinePlan.fromModel(engine.plan(command))
+            OfflinePlan.fromModel(engine.plan(command, PhoneContext.snapshot(context)))
         }.getOrNull()
         if (planned != null) {
             return run(context, "batch", buildJsonObject { put("steps", planned); put("return_to_chat", "true") })
