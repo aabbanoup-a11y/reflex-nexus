@@ -6,6 +6,8 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.core.content.ContextCompat
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -18,11 +20,28 @@ import java.util.Locale
 object LocalAgentController {
     private const val PREFS = "companion"
     private const val PENDING = "offline_agent_pending"
+    private const val PENDING_PLAN = "offline_agent_pending_plan"
+    private const val PENDING_REASON = "offline_agent_pending_reason"
     @Volatile private var qwen: QwenEngine? = null
 
     fun handle(context: Context, spoken: String): String {
         val text = spoken.trim()
         if (text.isBlank()) return "لم أسمع أمرًا واضحًا"
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val pendingPlan = prefs.getString(PENDING_PLAN, null)
+        if (pendingPlan != null) {
+            if (isAffirmative(text)) {
+                val steps = runCatching { Json.parseToJsonElement(pendingPlan) as JsonArray }.getOrNull()
+                prefs.edit().remove(PENDING_PLAN).remove(PENDING_REASON).apply()
+                if (steps != null) return run(context, "batch", buildJsonObject { put("steps", steps); put("return_to_chat", "true") })
+                return "الخطة المؤجلة غير صالحة؛ لم أنفذها."
+            }
+            if (isNegative(text)) {
+                prefs.edit().remove(PENDING_PLAN).remove(PENDING_REASON).apply()
+                return "ألغيت الخطة ولم أنفذ الأمر."
+            }
+            return "لدي خطة حساسة معلقة. اكتب نعم للتنفيذ أو لا للإلغاء."
+        }
         // Keep local listening alive even when Android recreates the activity.
         runCatching { ContextCompat.startForegroundService(context, Intent(context, CompanionForegroundService::class.java)) }
         val command = stripWakeWord(text)
@@ -107,6 +126,11 @@ object LocalAgentController {
             OfflinePlan.fromModel(engine.plan(command, PhoneContext.snapshot(context)))
         }.getOrNull()
         if (planned != null) {
+            val reason = confirmationReason(planned, command)
+            if (reason != null) {
+                prefs.edit().putString(PENDING_PLAN, planned.toString()).putString(PENDING_REASON, reason).apply()
+                return "الخطة جاهزة، لكن فيها خطوة قد تؤثر على شخص أو بيانات خارجية. $reason\nهل أنت متأكد؟ اكتب نعم للتنفيذ أو لا للإلغاء."
+            }
             return run(context, "batch", buildJsonObject { put("steps", planned); put("return_to_chat", "true") })
         }
 
@@ -124,7 +148,27 @@ object LocalAgentController {
 
     fun pending(context: Context): String? = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(PENDING, null)
 
-    fun clearPending(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(PENDING).apply()
+    fun clearPending(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(PENDING).remove(PENDING_PLAN).remove(PENDING_REASON).apply()
+
+    private fun isAffirmative(text: String): Boolean = text.trim().lowercase(Locale.ROOT) in setOf("نعم", "ايوه", "أيوه", "اه", "أه", "yes", "نعم نفذ", "نفذ")
+    private fun isNegative(text: String): Boolean = text.trim().lowercase(Locale.ROOT) in setOf("لا", "لأ", "الغاء", "إلغاء", "cancel", "مش موافق")
+
+    private fun confirmationReason(steps: JsonArray, request: String): String? {
+        val lower = request.lowercase(Locale.ROOT)
+        if (containsAny(lower, "بحث", "ابحث", "search")) return null
+        steps.forEach { item ->
+            val step = item as? JsonObject ?: return@forEach
+            val kind = step["kind"]?.toString()?.trim('"').orEmpty()
+            val payload = step["payload"]?.toString().orEmpty().lowercase(Locale.ROOT)
+            if ((kind == "type_text" && payload.contains("submit")) ||
+                payload.contains("إرسال") || payload.contains("ارسال") || payload.contains("send") ||
+                payload.contains("حذف") || payload.contains("delete") || payload.contains("شراء") ||
+                payload.contains("دفع") || payload.contains("payment")) {
+                return "قد يؤدي هذا إلى إرسال أو حذف أو شراء، وهذا أثر لا يمكنني افتراض أنك تريده من دون تأكيد صريح."
+            }
+        }
+        return null
+    }
 
     private fun run(context: Context, kind: String, payload: JsonObject): String {
         val record = buildJsonObject { put("payload", payload) }
