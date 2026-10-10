@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "test:companion": "node scripts/companion-policy-check.mjs",
+    "test:offline-planner": "node scripts/offline-planner-check.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
