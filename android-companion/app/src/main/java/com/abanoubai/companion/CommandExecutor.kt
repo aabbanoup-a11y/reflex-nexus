@@ -34,6 +34,21 @@ object CommandExecutor {
                 waitForScreenReady(packageName)
                 "تم فتح التطبيق: $packageName"
             }
+            "open_note" -> {
+                val create = Intent("android.intent.action.CREATE_NOTE").apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                val view = Intent(Intent.ACTION_VIEW).apply {
+                    type = "text/plain"
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                val intent = when {
+                    create.resolveActivity(context.packageManager) != null -> create
+                    view.resolveActivity(context.packageManager) != null -> view
+                    else -> error("لا يوجد تطبيق ملاحظات متاح")
+                }
+                context.startActivity(intent)
+                waitForScreenReady(null)
+                "تم فتح تطبيق الملاحظات"
+            }
             "open_settings" -> {
                 val setting = payload?.get("setting")?.jsonPrimitive?.contentOrNull ?: error("صفحة الإعدادات غير محددة")
                 openSetting(context, setting)
@@ -71,7 +86,7 @@ object CommandExecutor {
             "back" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK, "تم الرجوع")
             "home" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME, "تم فتح الشاشة الرئيسية")
             "recents" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS, "تم فتح التطبيقات الأخيرة")
-            "tap_text", "tap_id", "tap_description", "tap_coordinates", "long_press", "type_text", "clear_text", "screenshot", "read_screen", "screen_text", "swipe", "scroll", "wait_for_text", "press_back", "press_home", "open_notifications", "quick_settings" -> {
+            "tap_text", "tap_id", "tap_description", "tap_coordinates", "long_press", "type_text", "press_enter", "press_search", "clear_text", "screenshot", "read_screen", "screen_text", "swipe", "scroll", "wait_for_text", "press_back", "press_home", "open_notifications", "quick_settings" -> {
                 val result = CompanionAccessibilityService.instance?.handleScopedCommand(kind, record) ?: error("Accessibility غير مفعّلة")
                 if (kind == "read_screen" || kind == "screen_text") result else "تم إرسال أمر $kind"
             }
@@ -124,6 +139,7 @@ object CommandExecutor {
     private fun executeBatch(context: Context, payload: JsonObject?): String {
         val steps = payload?.get("steps") as? JsonArray ?: error("خطة batch غير موجودة")
         require(steps.size <= 50) { "الخطة أكبر من الحد المسموح" }
+        val returnToChat = payload["return_to_chat"]?.jsonPrimitive?.contentOrNull == "true"
         val results = mutableListOf<String>()
         steps.forEachIndexed { index, item ->
             val step = item.jsonObject
@@ -140,10 +156,16 @@ object CommandExecutor {
             repeat(repeats) { attempt ->
                 results += runCatching { execute(context, kind, kotlinx.serialization.json.buildJsonObject { put("kind", JsonPrimitive(kind)); put("payload", stepPayload) }) }
                     .getOrElse { "الخطوة ${index + 1} المحاولة ${attempt + 1} فشلت: ${it.message}" }
+                Thread.sleep(220L)
             }
         }
         val summary = results.joinToString("\n")
         if (summary.contains("فشلت") || summary.contains("فشل تنفيذ")) error(summary)
+        if (returnToChat) {
+            context.startActivity(context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            } ?: error("تعذر الرجوع إلى AbanoubAI"))
+        }
         return summary
     }
 

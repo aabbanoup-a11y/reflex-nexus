@@ -22,6 +22,7 @@ export const Route = createFileRoute("/_authenticated/companion")({
 type Device = { id: string; device_name: string; platform: string; status: string; last_seen_at?: string | null };
 type Cmd = { id: string; kind: string; status: string; requires_approval: boolean; payload: any; created_at: string; error: string | null };
 type Ev = { id: string; event_type: string; message: string | null; created_at: string };
+const supervisedKinds = new Set(["open_settings", "download_file", "open_document", "open_file", "file_read", "file_inventory", "app_permissions", "batch", "workflow", "type_text", "clear_text", "tap_coordinates", "long_press", "screenshot", "read_screen", "screen_text", "notification_inventory", "quick_settings", "open_camera"]);
 declare const chrome: any;
 declare global {
   interface Window { AbanoubAI?: { savePairing?: (deviceId: string, accessToken: string) => void; startVoiceRecognition?: () => void; stopVoiceRecognition?: () => void } }
@@ -135,16 +136,27 @@ function CompanionPage() {
 
   async function send(kind: string, payload: Record<string, unknown> = {}) {
     if (!dev) return;
+    const requiresApproval = supervisedKinds.has(kind);
     const command = {
       device_id: dev, user_id: uid, kind, payload: { ...payload, run_mode: mode } as any,
-      requires_approval: false, status: "approved", approved_at: new Date().toISOString(),
+      requires_approval: requiresApproval, status: requiresApproval ? "queued" : "approved", ...(requiresApproval ? {} : { approved_at: new Date().toISOString() }),
     };
     let { error } = await supabase.from("companion_commands").insert(command);
     if (error && /kind_check|check constraint/i.test(error.message) && kind !== "tap_text") {
       ({ error } = await supabase.from("companion_commands").insert({ ...command, kind: "tap_text", payload: { ...payload, run_mode: mode, agent_action: kind } as any }));
     }
     if (!error && kind === "stop") await (supabase as any).from("companion_settings").upsert({ user_id: uid, emergency_stopped: true, updated_at: new Date().toISOString() });
-    setMsg(error ? error.message : "اتنفذ تلقائيًا");
+    setMsg(error ? error.message : requiresApproval ? "اتحط في قائمة المراجعة؛ وافق عليه من سجل التدقيق للتنفيذ." : "اتنفذ تلقائيًا");
+  }
+  async function approveCommand(id: string) {
+    const { error } = await supabase.from("companion_commands").update({ status: "approved", approved_at: new Date().toISOString() }).eq("id", id).eq("user_id", uid);
+    setMsg(error ? error.message : "تمت الموافقة وإرسال الأمر للهاتف.");
+    if (dev) await loadLog(dev);
+  }
+  async function rejectCommand(id: string) {
+    const { error } = await supabase.from("companion_commands").update({ status: "rejected" }).eq("id", id).eq("user_id", uid);
+    setMsg(error ? error.message : "تم رفض الأمر.");
+    if (dev) await loadLog(dev);
   }
   async function resumeSystem() {
     await (supabase as any).from("companion_settings").upsert({ user_id: uid, emergency_stopped: false, updated_at: new Date().toISOString() });
@@ -250,6 +262,7 @@ function CompanionPage() {
           {cmds.map((c) => (
             <div key={c.id} className="flex items-center justify-between gap-2 border-b py-1 text-sm">
               <span>{c.kind} {c.payload?.url ?? c.payload?.text ?? ""} — {c.status}{c.error ? ` (${c.error})` : ""}</span>
+              {c.status === "queued" && c.requires_approval && <span className="flex gap-1"><Button size="sm" onClick={() => void approveCommand(c.id)}>موافقة</Button><Button size="sm" variant="outline" onClick={() => void rejectCommand(c.id)}>رفض</Button></span>}
             </div>
           ))}
           {events.map((e) => (

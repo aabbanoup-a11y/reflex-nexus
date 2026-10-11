@@ -7,18 +7,46 @@ plugins {
 android {
     namespace = "com.abanoubai.companion"
     compileSdk = 35
+    ndkVersion = "27.2.12479018"
     defaultConfig {
         applicationId = "com.abanoubai.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13
-        versionName = "0.6.7"
-        buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL") ?: "https://c--f343cb8e-77bb-41d3-b7e1-5d6f7dc4998f-prod.lovable.cloud"}\"")
-        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY") ?: "sb_publishable_F8v4MSocHPMF0RSQpbZFvw_-DivRfUB"}\"")
+        versionCode = 19
+        versionName = "0.8.3"
+        buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL") ?: "https://wobfdslqlmvlatyrtgkd.supabase.co"}\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY") ?: "sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ"}\"")
+        ndk { abiFilters += listOf("arm64-v8a") }
     }
-    buildTypes { release { isMinifyEnabled = false } }
+    signingConfigs {
+        create("release") {
+            // Reuse the local debug keystore so this release can update the APK already built
+            // in this project without requiring a user-supplied signing secret.
+            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
     buildFeatures { buildConfig = true }
+    externalNativeBuild {
+        cmake { path = file("src/main/cpp/CMakeLists.txt") }
+    }
 }
+
+val copyQwenModel by tasks.registering(Copy::class) {
+    from("../models/qwen2.5-0.5b-instruct-q4_k_m.gguf")
+    into("src/main/assets/models")
+    rename { "qwen.gguf" }
+}
+
+tasks.named("preBuild") { dependsOn(copyQwenModel) }
 
 kotlin { jvmToolchain(17) }
 

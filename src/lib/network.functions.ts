@@ -68,6 +68,7 @@ export const networkTurn = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => Turn.parse(i))
   .handler(async ({ data, context }): Promise<TurnReply> => {
     const n = await import("./network.server");
+    const modelCall = (id: string, system: string, messages: { role: "user" | "assistant"; content: string }[]) => n.callModel(id, system, messages, context.accessToken);
     if (!n.knownModel(data.model)) throw new Error("نموذج غير معروف");
     const isManager = data.model === MANAGER_ID;
     const me = isManager ? { label: MANAGER_LABEL } : NET_MODELS.find((m) => m.id === data.model)!;
@@ -103,15 +104,15 @@ export const networkTurn = createServerFn({ method: "POST" })
     let used = isManager ? fallback : data.model;
     let text = "";
     try {
-      text = await n.callModel(used, HINT(me.label, sharedMemory, isManager), msgs);
+      text = await modelCall(used, HINT(me.label, sharedMemory, isManager), msgs);
     } catch (e) {
       console.error("model failed", data.model, e);
       let recovered = false;
       for (const candidate of fallbacks) {
         if (candidate === used) continue;
-        try { used = candidate; text = await n.callModel(candidate, HINT(me.label, sharedMemory, isManager), msgs); recovered = true; break; } catch { /* جرّب المزود التالي */ }
+        try { used = candidate; text = await modelCall(candidate, HINT(me.label, sharedMemory, isManager), msgs); recovered = true; break; } catch { /* جرّب المزود التالي */ }
       }
-      if (!recovered) throw new Error("كل مسارات الذكاء الاصطناعي غير متاحة حاليًا؛ جرّب مرة أخرى لاحقًا أو راجع إعدادات الموصلات.");
+      if (!recovered) throw new Error("تعذر الاتصال بالمصادر السحابية الآن؛ تم الاحتفاظ بالطلب للمحاولة المحلية.");
     }
     if (data.mode === "opinion") {
       return { model: data.model, usedModel: used, text: text.replace(/\[\[[\s\S]*?\]\]/g, "").trim(), tools: [] };
@@ -147,7 +148,7 @@ export const networkTurn = createServerFn({ method: "POST" })
         const role = (m[1] ?? "general").trim().toLowerCase();
         const specialist = specialists[role] ?? fallback;
         await run(`👤 ${role} ← ${specialist}`, async () => ({
-          text: await n.callModel(specialist, HINT(`وكيل ${role}`, sharedMemory, false), [{ role: "user", content: `${m[2]!.trim()}\n\nالسياق المشترك:\n${transcript}` }]),
+          text: await modelCall(specialist, HINT(`وكيل ${role}`, sharedMemory, false), [{ role: "user", content: `${m[2]!.trim()}\n\nالسياق المشترك:\n${transcript}` }]),
         }));
       }
     }
@@ -156,7 +157,7 @@ export const networkTurn = createServerFn({ method: "POST" })
       await run(`🌐 متصفح ${m[1]}`, async () => {
         const r = await n.browse(m[1]!);
         const reader = NET_MODELS.find((x) => x.browser && x.id.startsWith("cf/"))!.id;
-        const sum = await n.callModel(reader, "إنت نموذج المتصفح. لخّص محتوى الصفحة بالعربية في نقاط قصيرة.", [{ role: "user", content: r.text }]).catch(() => r.text.slice(0, 800));
+        const sum = await modelCall(reader, "إنت نموذج المتصفح. لخّص محتوى الصفحة بالعربية في نقاط قصيرة.", [{ role: "user", content: r.text }]).catch(() => r.text.slice(0, 800));
         return { text: sum, shot: r.shot };
       });
     }
@@ -164,7 +165,7 @@ export const networkTurn = createServerFn({ method: "POST" })
       if (jobs++ >= 6) break;
       const peer = n.knownModel(m[1]!) ? m[1]! : fallback;
       await run(`💬 ${me.label} ← ${NET_MODELS.find((x) => x.id === peer)?.label}`, async () => ({
-        text: await n.callModel(peer, `نموذج "${me.label}" في الشبكة بيسألك. رد بالعربية باختصار.`, [{ role: "user", content: m[2]!.trim() || "?" }]),
+        text: await modelCall(peer, `نموذج "${me.label}" في الشبكة بيسألك. رد بالعربية باختصار.`, [{ role: "user", content: m[2]!.trim() || "?" }]),
       }));
     }
     const DB_TABLES = ["tasks", "network_messages", "companion_commands", "companion_events", "companion_devices", "mood_checkins", "daily_reports", "ai_runs", "profiles"] as const;
@@ -326,7 +327,7 @@ export const networkTurn = createServerFn({ method: "POST" })
     if (phoneResults.length) {
       const resultText = phoneResults.map((t) => `${t.tool}: ${t.ok ? "نجح" : "فشل"}\n${t.text.slice(0, 5000)}`).join("\n\n");
       try {
-        const summary = await n.callModel(used, "إنت مراجع تنفيذ. لخّص بالعربية المصرية ما حدث فعلًا في الهاتف من النتائج التالية. لا تصدر أي أوامر ولا تخترع عناصر أو نجاحات غير موجودة. اذكر الخطوة التي فشلت والسبب والخطوة التالية المنطقية.", [{ role: "user", content: `الطلب الأصلي: ${requestText}\nنتائج التنفيذ:\n${resultText}` }]);
+        const summary = await modelCall(used, "إنت مراجع تنفيذ. لخّص بالعربية المصرية ما حدث فعلًا في الهاتف من النتائج التالية. لا تصدر أي أوامر ولا تخترع عناصر أو نجاحات غير موجودة. اذكر الخطوة التي فشلت والسبب والخطوة التالية المنطقية.", [{ role: "user", content: `الطلب الأصلي: ${requestText}\nنتائج التنفيذ:\n${resultText}` }]);
         text = `${text}\n\nملخص التنفيذ الفعلي:\n${summary}`;
       } catch { /* لا نفشل المهمة إذا تعذر نموذج التلخيص */ }
     }

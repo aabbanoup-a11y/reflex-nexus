@@ -6,22 +6,42 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.core.content.ContextCompat
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.Locale
 
 /**
- * Small offline command router. It is intentionally deterministic: it can run
- * without the cloud, but it never pretends to be a local copy of the 50 cloud
- * models. Unknown requests are saved as pending text for the cloud agent.
+ * Offline command router. Known commands use deterministic fallbacks; unknown
+ * requests are planned by the embedded Qwen model and then validated locally.
  */
 object LocalAgentController {
     private const val PREFS = "companion"
     private const val PENDING = "offline_agent_pending"
+    private const val PENDING_PLAN = "offline_agent_pending_plan"
+    private const val PENDING_REASON = "offline_agent_pending_reason"
+    @Volatile private var qwen: QwenEngine? = null
 
     fun handle(context: Context, spoken: String): String {
         val text = spoken.trim()
         if (text.isBlank()) return "لم أسمع أمرًا واضحًا"
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val pendingPlan = prefs.getString(PENDING_PLAN, null)
+        if (pendingPlan != null) {
+            if (isAffirmative(text)) {
+                val steps = runCatching { Json.parseToJsonElement(pendingPlan) as JsonArray }.getOrNull()
+                prefs.edit().remove(PENDING_PLAN).remove(PENDING_REASON).apply()
+                if (steps != null) return run(context, "batch", buildJsonObject { put("steps", steps); put("return_to_chat", "true") })
+                return "الخطة المؤجلة غير صالحة؛ لم أنفذها."
+            }
+            if (isNegative(text)) {
+                prefs.edit().remove(PENDING_PLAN).remove(PENDING_REASON).apply()
+                return "ألغيت الخطة ولم أنفذ الأمر."
+            }
+            return "لدي خطة حساسة معلقة. اكتب نعم للتنفيذ أو لا للإلغاء."
+        }
         // Keep local listening alive even when Android recreates the activity.
         runCatching { ContextCompat.startForegroundService(context, Intent(context, CompanionForegroundService::class.java)) }
         val command = stripWakeWord(text)
@@ -30,11 +50,54 @@ object LocalAgentController {
         if (containsAny(lower, "حالتي", "ملخص", "اعمل ايه", "عمل ايه", "البطارية", "الشبكة", "النت")) {
             return DeviceInventory.device(context)
         }
+        if (containsAny(lower, "حالة النموذج", "الموديل المحلي", "النموذج المحلي", "model status")) {
+            val engine = qwen ?: synchronized(this) { qwen ?: QwenEngine(context).also { qwen = it } }
+            return engine.status()
+        }
+        if (containsAny(lower, "التطبيقات المثبتة", "كل التطبيقات", "قائمة التطبيقات")) {
+            return DeviceInventory.apps(context)
+        }
+        if (containsAny(lower, "صلاحيات التطبيق", "الصلاحيات", "permissions")) {
+            return DeviceInventory.permissions(context, null)
+        }
         if (containsAny(lower, "الملفات", "فحص الملفات", "الصور", "الفيديوهات")) {
             return DeviceInventory.files(context)
         }
         if (containsAny(lower, "الإشعارات", "الرسائل الأخيرة", "اشعارات")) {
             return if (NotificationInbox.enabled) DeviceInventory.notifications() else "فعّل الوصول إلى الإشعارات أولًا من إعدادات AbanoubAI"
+        }
+        if (containsAny(lower, "لقطة شاشة", "سكرين شوت", "screenshot")) {
+            return run(context, "screenshot", buildPayload())
+        }
+
+        if (containsAny(lower, "افتح الكاميرا", "شغل الكاميرا", "شغّل الكاميرا", "الكاميرا")) {
+            return run(context, "open_camera", buildPayload())
+        }
+        if (containsAny(lower, "افتح الواي فاي", "إعدادات الواي فاي", "wifi")) {
+            return run(context, "open_settings", buildPayload("setting" to "wifi"))
+        }
+        if (containsAny(lower, "افتح البلوتوث", "إعدادات البلوتوث", "bluetooth")) {
+            return run(context, "open_settings", buildPayload("setting" to "bluetooth"))
+        }
+        if (containsAny(lower, "افتح إعدادات إمكانية الوصول", "إعدادات إمكانية الوصول", "accessibility")) {
+            return run(context, "open_settings", buildPayload("setting" to "accessibility"))
+        }
+
+        // Offline planner for the common multi-step request: open YouTube and search.
+        if (containsAny(lower, "يوتيوب", "youtube") && containsAny(lower, "ابحث", "بحث", "عن", "أغنية", "اغنية")) {
+            val query = ((Regex("(?:عن|على|في)\\s+(.+)", RegexOption.IGNORE_CASE).find(command)?.groupValues?.getOrNull(1)?.trim() ?: "")
+                .ifBlank { command.replace(Regex(".*?(يوتيوب|youtube)", RegexOption.IGNORE_CASE), "").trim() })
+                .take(300)
+            if (query.isNotBlank()) {
+                val steps = buildJsonArray {
+                    add(buildJsonObject { put("kind", "open_app"); put("payload", buildPayload("package" to "com.google.android.youtube")) })
+                    add(buildJsonObject { put("kind", "wait"); put("payload", buildPayload("ms" to "1200")) })
+                    add(buildJsonObject { put("kind", "tap_description"); put("if_text", "بحث"); put("payload", buildPayload("text" to "بحث")) })
+                    add(buildJsonObject { put("kind", "tap_description"); put("if_text", "Search"); put("payload", buildPayload("text" to "Search")) })
+                    add(buildJsonObject { put("kind", "type_text"); put("payload", buildPayload("text" to query, "submit" to "true")) })
+                }
+                return run(context, "batch", buildJsonObject { put("steps", steps); put("return_to_chat", "true") })
+            }
         }
 
         val app = appPackages.entries.firstOrNull { (name, _) -> lower.contains(name) }
@@ -57,14 +120,68 @@ object LocalAgentController {
         }
         if (global != null) return run(context, global, buildPayload())
 
+        // Deterministic safety nets for the most common underspecified requests.
+        if (containsAny(lower, "النوتة", "النوت", "الملاحظات", "note", "notepad") &&
+            containsAny(lower, "افتح", "شغل", "اكتب", "اكتبي")) {
+            val noteText = Regex("(?:اكتب|اكتبي|دوّن|دون)\\s+(.+)", RegexOption.IGNORE_CASE)
+                .find(command)?.groupValues?.getOrNull(1)?.trim()
+            val steps = buildJsonArray {
+                add(buildJsonObject { put("kind", "open_note"); put("payload", buildPayload()) })
+                add(buildJsonObject { put("kind", "wait"); put("payload", buildPayload("ms" to "1200")) })
+                if (!noteText.isNullOrBlank()) add(buildJsonObject { put("kind", "type_text"); put("payload", buildPayload("text" to noteText)) })
+            }
+            return run(context, "batch", buildJsonObject { put("steps", steps); put("return_to_chat", "true") })
+        }
+
+        // Real local LLM planner. It is loaded lazily and never calls the network.
+        val planned = runCatching {
+            val engine = qwen ?: synchronized(this) { qwen ?: QwenEngine(context).also { qwen = it } }
+            OfflinePlan.fromModel(engine.plan(command, PhoneContext.snapshot(context)))
+        }.getOrNull()
+        if (planned != null) {
+            val reason = confirmationReason(planned, command)
+            if (reason != null) {
+                prefs.edit().putString(PENDING_PLAN, planned.toString()).putString(PENDING_REASON, reason).apply()
+                return "الخطة جاهزة، لكن فيها خطوة قد تؤثر على شخص أو بيانات خارجية. $reason\nهل أنت متأكد؟ اكتب نعم للتنفيذ أو لا للإلغاء."
+            }
+            return run(context, "batch", buildJsonObject { put("steps", planned); put("return_to_chat", "true") })
+        }
+
+        // Local conversational fallback, still offline and never a fake execution claim.
+        val localReply = runCatching {
+            val engine = qwen ?: synchronized(this) { qwen ?: QwenEngine(context).also { qwen = it } }
+            engine.chat(command)
+        }.getOrDefault("")
+        if (localReply.isNotBlank()) return "📱 محلي Offline\n$localReply"
+
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(PENDING, command.take(2000)).apply()
-        return "حفظت الطلب محليًا. عند عودة الاتصال سيعالجه AbanoupAi السحابي؛ هذا الطلب غير معروف للوكيل المحلي الآن."
+        return "حفظت الطلب محليًا. الأوامر الأساسية تعمل بدون إنترنت، أما هذا الطلب فيحتاج نموذجًا محليًا مدمجًا أو اتصالًا سحابيًا عند عودة الشبكة."
     }
 
     fun pending(context: Context): String? = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(PENDING, null)
 
-    fun clearPending(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(PENDING).apply()
+    fun clearPending(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(PENDING).remove(PENDING_PLAN).remove(PENDING_REASON).apply()
+
+    private fun isAffirmative(text: String): Boolean = text.trim().lowercase(Locale.ROOT) in setOf("نعم", "ايوه", "أيوه", "اه", "أه", "yes", "نعم نفذ", "نفذ")
+    private fun isNegative(text: String): Boolean = text.trim().lowercase(Locale.ROOT) in setOf("لا", "لأ", "الغاء", "إلغاء", "cancel", "مش موافق")
+
+    private fun confirmationReason(steps: JsonArray, request: String): String? {
+        val lower = request.lowercase(Locale.ROOT)
+        if (containsAny(lower, "بحث", "ابحث", "search")) return null
+        steps.forEach { item ->
+            val step = item as? JsonObject ?: return@forEach
+            val kind = step["kind"]?.toString()?.trim('"').orEmpty()
+            val payload = step["payload"]?.toString().orEmpty().lowercase(Locale.ROOT)
+            if ((kind == "type_text" && payload.contains("submit")) ||
+                payload.contains("إرسال") || payload.contains("ارسال") || payload.contains("send") ||
+                payload.contains("حذف") || payload.contains("delete") || payload.contains("شراء") ||
+                payload.contains("دفع") || payload.contains("payment")) {
+                return "قد يؤدي هذا إلى إرسال أو حذف أو شراء، وهذا أثر لا يمكنني افتراض أنك تريده من دون تأكيد صريح."
+            }
+        }
+        return null
+    }
 
     private fun run(context: Context, kind: String, payload: JsonObject): String {
         val record = buildJsonObject { put("payload", payload) }

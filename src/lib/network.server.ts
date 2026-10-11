@@ -52,11 +52,25 @@ async function sse(body: ReadableStream<Uint8Array>, on: (e: any) => void) {
   }
 }
 
-export async function callModel(id: string, system: string, messages: Msg[]): Promise<string> {
+export async function callModel(id: string, system: string, messages: Msg[], accessToken?: string): Promise<string> {
   if (id.startsWith("local/")) id = "cf/@cf/meta/llama-3.1-8b-instruct-fast";
   const key = env("LOVABLE_API_KEY");
   let text = "";
   if (id.startsWith("cf/")) {
+    const workerUrl = optionalEnv("CLOUDFLARE_AI_GATEWAY_URL");
+    if (workerUrl && accessToken) {
+      const r = await fetch(`${workerUrl.replace(/\/$/, "")}/ai/chat`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: id.slice(3), messages: [{ role: "system", content: system }, ...messages], max_tokens: 1500 }),
+      });
+      if (!r.ok) throw new Error(`${r.status}:${(await r.text()).slice(0, 200)}`);
+      const j = (await r.json()) as any;
+      text = String(j?.result?.response ?? j?.result?.choices?.[0]?.message?.content ?? "");
+      text = text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+      if (!text) throw new Error("empty");
+      return text;
+    }
     const nativeToken = optionalEnv("CLOUDFLARE_API_TOKEN");
     const nativeAccount = optionalEnv("CLOUDFLARE_ACCOUNT_ID");
     if (nativeToken && nativeAccount) {
