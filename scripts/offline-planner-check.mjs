@@ -8,14 +8,15 @@ const qwen = fs.readFileSync("android-companion/app/src/main/java/com/abanoubai/
 const context = fs.readFileSync("android-companion/app/src/main/java/com/abanoubai/companion/PhoneContext.kt", "utf8");
 
 assert.match(qwen, /fun plan\(request: String, phoneContext: String/);
-assert.match(controller, /OfflinePlan\.fromModel\(engine\.plan\(command, PhoneContext\.snapshot\(context\)\)\)/);
+assert.match(controller, /OfflinePlan\.fromModel\(engine\.plan\(command, phoneContext, LocalLearning\.rag\(context, command\)\)\)/);
+assert.match(controller, /engine\.verifyPlan\(command, planned\.toString\(\), phoneContext\)/);
 assert.match(context, /DeviceInventory\.device/);
 assert.match(context, /readScreen/);
 assert.match(planner, /"open_note"/);
 assert.match(planner, /"press_enter"/);
 assert.match(planner, /fun validate\(steps: JsonArray\)/);
 assert.match(controller, /put\("return_to_chat", "true"\)/);
-assert.match(controller, /هل أنت متأكد\؟/);
+assert.match(controller, /تأكيد صريح/);
 assert.match(controller, /isAffirmative/);
 assert.match(controller, /isNegative/);
 assert.match(controller, /confirmationReason/);
