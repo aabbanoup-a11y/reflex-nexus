@@ -262,6 +262,20 @@ class MainActivity : AppCompatActivity() {
             setTextColor(0xffffd180.toInt())
             setPadding(0, 12, 0, 16)
         })
+        root.addView(TextView(this).apply {
+            text = "اختيار النموذج المحلي — الافتراضي: SmolLM2 360M (أفضل توازن لـ OPPO A15 2GB)"
+            textSize = 18f
+            setTextColor(0xff9be7a1.toInt())
+            setPadding(0, 12, 0, 8)
+        })
+        val selectedModel = getSharedPreferences("companion", MODE_PRIVATE).getString("local_model_id", ModelCatalog.recommended.id)
+        ModelCatalog.all.forEach { model ->
+            root.addView(button("المستوى ${model.level}: ${model.label} — ${model.sizeLabel} — RAM ${model.ramLabel}${if (model.id == selectedModel) " ✓" else ""}") {
+                val id = LocalAgentController.selectModel(this, model.id)
+                Toast.makeText(this, "تم اختيار ${ModelCatalog.byId(id).label}", Toast.LENGTH_SHORT).show()
+                showOfflineHub()
+            })
+        }
         val input = EditText(this).apply {
             hint = "اكتب: أبانوباي افتح Chrome"
             setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.white))

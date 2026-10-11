@@ -46,6 +46,10 @@ object LocalAgentController {
         runCatching { ContextCompat.startForegroundService(context, Intent(context, CompanionForegroundService::class.java)) }
         val command = stripWakeWord(text)
         val lower = command.lowercase(Locale.ROOT)
+        Regex("(?:احفظ|سجل)\\s+(.+?)\\s+(?:باسم|كاسم)\\s+(.+)", RegexOption.IGNORE_CASE).find(command)?.let {
+            LocalLearning.rememberContact(context, it.groupValues[2].trim(), it.groupValues[1].trim())
+            return "حفظت ${it.groupValues[2].trim()} في ذاكرة الهاتف المحلية."
+        }
 
         if (containsAny(lower, "حالتي", "ملخص", "اعمل ايه", "عمل ايه", "البطارية", "الشبكة", "النت")) {
             return DeviceInventory.device(context)
@@ -134,17 +138,16 @@ object LocalAgentController {
         }
 
         // Real local LLM planner. It is loaded lazily and never calls the network.
-        val planned = runCatching {
-            val engine = qwen ?: synchronized(this) { qwen ?: QwenEngine(context).also { qwen = it } }
-            OfflinePlan.fromModel(engine.plan(command, PhoneContext.snapshot(context)))
-        }.getOrNull()
+        val engine = qwen ?: synchronized(this) { qwen ?: QwenEngine(context).also { qwen = it } }
+        val phoneContext = PhoneContext.snapshot(context)
+        val planned = runCatching { OfflinePlan.fromModel(engine.plan(command, phoneContext, LocalLearning.rag(context, command))) }.getOrNull()
         if (planned != null) {
-            val reason = confirmationReason(planned, command)
-            if (reason != null) {
-                prefs.edit().putString(PENDING_PLAN, planned.toString()).putString(PENDING_REASON, reason).apply()
-                return "الخطة جاهزة، لكن فيها خطوة قد تؤثر على شخص أو بيانات خارجية. $reason\nهل أنت متأكد؟ اكتب نعم للتنفيذ أو لا للإلغاء."
+            val verified = engine.verifyPlan(command, planned.toString(), phoneContext)
+            if (!verified) {
+                val retry = runCatching { OfflinePlan.fromModel(engine.plan("صحح الخطة السابقة واجعلها قابلة للتنفيذ: $command", phoneContext, LocalLearning.rag(context, command))) }.getOrNull()
+                if (retry != null) return executePlanned(context, command, retry, engine, false)
             }
-            return run(context, "batch", buildJsonObject { put("steps", planned); put("return_to_chat", "true") })
+            return executePlanned(context, command, planned, engine)
         }
 
         // Local conversational fallback, still offline and never a fake execution claim.
@@ -157,6 +160,23 @@ object LocalAgentController {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(PENDING, command.take(2000)).apply()
         return "حفظت الطلب محليًا. الأوامر الأساسية تعمل بدون إنترنت، أما هذا الطلب فيحتاج نموذجًا محليًا مدمجًا أو اتصالًا سحابيًا عند عودة الشبكة."
+    }
+
+    fun selectModel(context: Context, id: String): String {
+        val engine = qwen ?: synchronized(this) { qwen ?: QwenEngine(context).also { qwen = it } }
+        return engine.selectModel(id)
+    }
+
+    private fun executePlanned(context: Context, request: String, steps: JsonArray, engine: QwenEngine, allowRetry: Boolean = true): String {
+        val result = run(context, "batch", buildJsonObject { put("steps", steps); put("return_to_chat", "true") })
+        if (allowRetry && (result.lowercase(Locale.ROOT).contains("failed") || result.contains("فشل"))) {
+            val corrected = runCatching {
+                OfflinePlan.fromModel(engine.plan("أعد المحاولة باستخدام مرادفات الضغط مثل click_text أو tap_description للعناصر الظاهرة، ثم نفّذ: $request", PhoneContext.snapshot(context), LocalLearning.rag(context, request)))
+            }.getOrNull()
+            if (corrected != null) return executePlanned(context, request, corrected, engine, false)
+        }
+        if (!result.lowercase(Locale.ROOT).contains("failed") && !result.contains("فشل")) LocalLearning.rememberSuccess(context, request, steps.toString())
+        return result
     }
 
     fun pending(context: Context): String? = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(PENDING, null)

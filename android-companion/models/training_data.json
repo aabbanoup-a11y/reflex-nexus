@@ -1,0 +1,1442 @@
+[
+  {
+    "id": 1,
+    "request": "افتح يوتيوب",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.google.android.youtube"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 2,
+    "request": "افتح واتساب",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.whatsapp"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 3,
+    "request": "افتح كروم",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.android.chrome"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 4,
+    "request": "افتح تيليجرام",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "org.telegram.messenger"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 5,
+    "request": "افتح الإعدادات",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.android.settings"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 6,
+    "request": "ارجع",
+    "plan": [
+      {
+        "kind": "back",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 7,
+    "request": "اذهب للرئيسية",
+    "plan": [
+      {
+        "kind": "home",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 8,
+    "request": "اعرض التطبيقات الأخيرة",
+    "plan": [
+      {
+        "kind": "recents",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 9,
+    "request": "افتح الكاميرا",
+    "plan": [
+      {
+        "kind": "open_camera",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 10,
+    "request": "افتح الواي فاي",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "wifi"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 11,
+    "request": "افتح البلوتوث",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "bluetooth"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 12,
+    "request": "افتح إعدادات إمكانية الوصول",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "accessibility"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 13,
+    "request": "انتظر حتى تظهر كلمة بحث",
+    "plan": [
+      {
+        "kind": "wait_for_text",
+        "payload": {
+          "text": "بحث",
+          "timeout_ms": "5000"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 14,
+    "request": "اضغط بحث",
+    "plan": [
+      {
+        "kind": "tap_text",
+        "payload": {
+          "text": "بحث"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 15,
+    "request": "اكتب مرحبا",
+    "plan": [
+      {
+        "kind": "type_text",
+        "payload": {
+          "text": "مرحبا"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 16,
+    "request": "ابحث عن اغنية في يوتيوب",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.google.android.youtube"
+        }
+      },
+      {
+        "kind": "wait",
+        "payload": {
+          "ms": "1200"
+        }
+      },
+      {
+        "kind": "tap_description",
+        "payload": {
+          "text": "بحث"
+        }
+      },
+      {
+        "kind": "type_text",
+        "payload": {
+          "text": "اغنية",
+          "submit": "true"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 17,
+    "request": "امسح النص",
+    "plan": [
+      {
+        "kind": "clear_text",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 18,
+    "request": "اضغط دخول",
+    "plan": [
+      {
+        "kind": "press_enter",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 19,
+    "request": "مرر لأسفل",
+    "plan": [
+      {
+        "kind": "scroll",
+        "payload": {
+          "dir": "down"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 20,
+    "request": "مرر لأعلى",
+    "plan": [
+      {
+        "kind": "scroll",
+        "payload": {
+          "dir": "up"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 21,
+    "request": "افتح يوتيوب رقم 21",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.google.android.youtube"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 22,
+    "request": "افتح واتساب رقم 22",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.whatsapp"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 23,
+    "request": "افتح كروم رقم 23",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.android.chrome"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 24,
+    "request": "افتح تيليجرام رقم 24",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "org.telegram.messenger"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 25,
+    "request": "افتح الإعدادات رقم 25",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.android.settings"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 26,
+    "request": "ارجع رقم 26",
+    "plan": [
+      {
+        "kind": "back",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 27,
+    "request": "اذهب للرئيسية رقم 27",
+    "plan": [
+      {
+        "kind": "home",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 28,
+    "request": "اعرض التطبيقات الأخيرة رقم 28",
+    "plan": [
+      {
+        "kind": "recents",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 29,
+    "request": "افتح الكاميرا رقم 29",
+    "plan": [
+      {
+        "kind": "open_camera",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 30,
+    "request": "افتح الواي فاي رقم 30",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "wifi"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 31,
+    "request": "افتح البلوتوث رقم 31",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "bluetooth"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 32,
+    "request": "افتح إعدادات إمكانية الوصول رقم 32",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "accessibility"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 33,
+    "request": "انتظر حتى تظهر كلمة بحث رقم 33",
+    "plan": [
+      {
+        "kind": "wait_for_text",
+        "payload": {
+          "text": "بحث",
+          "timeout_ms": "5000"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 34,
+    "request": "اضغط بحث رقم 34",
+    "plan": [
+      {
+        "kind": "tap_text",
+        "payload": {
+          "text": "بحث"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 35,
+    "request": "اكتب مرحبا رقم 35",
+    "plan": [
+      {
+        "kind": "type_text",
+        "payload": {
+          "text": "مرحبا"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 36,
+    "request": "ابحث عن اغنية في يوتيوب رقم 36",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.google.android.youtube"
+        }
+      },
+      {
+        "kind": "wait",
+        "payload": {
+          "ms": "1200"
+        }
+      },
+      {
+        "kind": "tap_description",
+        "payload": {
+          "text": "بحث"
+        }
+      },
+      {
+        "kind": "type_text",
+        "payload": {
+          "text": "اغنية",
+          "submit": "true"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 37,
+    "request": "امسح النص رقم 37",
+    "plan": [
+      {
+        "kind": "clear_text",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 38,
+    "request": "اضغط دخول رقم 38",
+    "plan": [
+      {
+        "kind": "press_enter",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 39,
+    "request": "مرر لأسفل رقم 39",
+    "plan": [
+      {
+        "kind": "scroll",
+        "payload": {
+          "dir": "down"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 40,
+    "request": "مرر لأعلى رقم 40",
+    "plan": [
+      {
+        "kind": "scroll",
+        "payload": {
+          "dir": "up"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 41,
+    "request": "افتح يوتيوب رقم 41",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.google.android.youtube"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 42,
+    "request": "افتح واتساب رقم 42",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.whatsapp"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 43,
+    "request": "افتح كروم رقم 43",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.android.chrome"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 44,
+    "request": "افتح تيليجرام رقم 44",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "org.telegram.messenger"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 45,
+    "request": "افتح الإعدادات رقم 45",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.android.settings"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 46,
+    "request": "ارجع رقم 46",
+    "plan": [
+      {
+        "kind": "back",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 47,
+    "request": "اذهب للرئيسية رقم 47",
+    "plan": [
+      {
+        "kind": "home",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 48,
+    "request": "اعرض التطبيقات الأخيرة رقم 48",
+    "plan": [
+      {
+        "kind": "recents",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 49,
+    "request": "افتح الكاميرا رقم 49",
+    "plan": [
+      {
+        "kind": "open_camera",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 50,
+    "request": "افتح الواي فاي رقم 50",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "wifi"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 51,
+    "request": "افتح البلوتوث رقم 51",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "bluetooth"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 52,
+    "request": "افتح إعدادات إمكانية الوصول رقم 52",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "accessibility"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 53,
+    "request": "انتظر حتى تظهر كلمة بحث رقم 53",
+    "plan": [
+      {
+        "kind": "wait_for_text",
+        "payload": {
+          "text": "بحث",
+          "timeout_ms": "5000"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 54,
+    "request": "اضغط بحث رقم 54",
+    "plan": [
+      {
+        "kind": "tap_text",
+        "payload": {
+          "text": "بحث"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 55,
+    "request": "اكتب مرحبا رقم 55",
+    "plan": [
+      {
+        "kind": "type_text",
+        "payload": {
+          "text": "مرحبا"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 56,
+    "request": "ابحث عن اغنية في يوتيوب رقم 56",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.google.android.youtube"
+        }
+      },
+      {
+        "kind": "wait",
+        "payload": {
+          "ms": "1200"
+        }
+      },
+      {
+        "kind": "tap_description",
+        "payload": {
+          "text": "بحث"
+        }
+      },
+      {
+        "kind": "type_text",
+        "payload": {
+          "text": "اغنية",
+          "submit": "true"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 57,
+    "request": "امسح النص رقم 57",
+    "plan": [
+      {
+        "kind": "clear_text",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 58,
+    "request": "اضغط دخول رقم 58",
+    "plan": [
+      {
+        "kind": "press_enter",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 59,
+    "request": "مرر لأسفل رقم 59",
+    "plan": [
+      {
+        "kind": "scroll",
+        "payload": {
+          "dir": "down"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 60,
+    "request": "مرر لأعلى رقم 60",
+    "plan": [
+      {
+        "kind": "scroll",
+        "payload": {
+          "dir": "up"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 61,
+    "request": "افتح يوتيوب رقم 61",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.google.android.youtube"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 62,
+    "request": "افتح واتساب رقم 62",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.whatsapp"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 63,
+    "request": "افتح كروم رقم 63",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.android.chrome"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 64,
+    "request": "افتح تيليجرام رقم 64",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "org.telegram.messenger"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 65,
+    "request": "افتح الإعدادات رقم 65",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.android.settings"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 66,
+    "request": "ارجع رقم 66",
+    "plan": [
+      {
+        "kind": "back",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 67,
+    "request": "اذهب للرئيسية رقم 67",
+    "plan": [
+      {
+        "kind": "home",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 68,
+    "request": "اعرض التطبيقات الأخيرة رقم 68",
+    "plan": [
+      {
+        "kind": "recents",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 69,
+    "request": "افتح الكاميرا رقم 69",
+    "plan": [
+      {
+        "kind": "open_camera",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 70,
+    "request": "افتح الواي فاي رقم 70",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "wifi"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 71,
+    "request": "افتح البلوتوث رقم 71",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "bluetooth"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 72,
+    "request": "افتح إعدادات إمكانية الوصول رقم 72",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "accessibility"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 73,
+    "request": "انتظر حتى تظهر كلمة بحث رقم 73",
+    "plan": [
+      {
+        "kind": "wait_for_text",
+        "payload": {
+          "text": "بحث",
+          "timeout_ms": "5000"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 74,
+    "request": "اضغط بحث رقم 74",
+    "plan": [
+      {
+        "kind": "tap_text",
+        "payload": {
+          "text": "بحث"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 75,
+    "request": "اكتب مرحبا رقم 75",
+    "plan": [
+      {
+        "kind": "type_text",
+        "payload": {
+          "text": "مرحبا"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 76,
+    "request": "ابحث عن اغنية في يوتيوب رقم 76",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.google.android.youtube"
+        }
+      },
+      {
+        "kind": "wait",
+        "payload": {
+          "ms": "1200"
+        }
+      },
+      {
+        "kind": "tap_description",
+        "payload": {
+          "text": "بحث"
+        }
+      },
+      {
+        "kind": "type_text",
+        "payload": {
+          "text": "اغنية",
+          "submit": "true"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 77,
+    "request": "امسح النص رقم 77",
+    "plan": [
+      {
+        "kind": "clear_text",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 78,
+    "request": "اضغط دخول رقم 78",
+    "plan": [
+      {
+        "kind": "press_enter",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 79,
+    "request": "مرر لأسفل رقم 79",
+    "plan": [
+      {
+        "kind": "scroll",
+        "payload": {
+          "dir": "down"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 80,
+    "request": "مرر لأعلى رقم 80",
+    "plan": [
+      {
+        "kind": "scroll",
+        "payload": {
+          "dir": "up"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 81,
+    "request": "افتح يوتيوب رقم 81",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.google.android.youtube"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 82,
+    "request": "افتح واتساب رقم 82",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.whatsapp"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 83,
+    "request": "افتح كروم رقم 83",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.android.chrome"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 84,
+    "request": "افتح تيليجرام رقم 84",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "org.telegram.messenger"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 85,
+    "request": "افتح الإعدادات رقم 85",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.android.settings"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 86,
+    "request": "ارجع رقم 86",
+    "plan": [
+      {
+        "kind": "back",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 87,
+    "request": "اذهب للرئيسية رقم 87",
+    "plan": [
+      {
+        "kind": "home",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 88,
+    "request": "اعرض التطبيقات الأخيرة رقم 88",
+    "plan": [
+      {
+        "kind": "recents",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 89,
+    "request": "افتح الكاميرا رقم 89",
+    "plan": [
+      {
+        "kind": "open_camera",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 90,
+    "request": "افتح الواي فاي رقم 90",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "wifi"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 91,
+    "request": "افتح البلوتوث رقم 91",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "bluetooth"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 92,
+    "request": "افتح إعدادات إمكانية الوصول رقم 92",
+    "plan": [
+      {
+        "kind": "open_settings",
+        "payload": {
+          "setting": "accessibility"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 93,
+    "request": "انتظر حتى تظهر كلمة بحث رقم 93",
+    "plan": [
+      {
+        "kind": "wait_for_text",
+        "payload": {
+          "text": "بحث",
+          "timeout_ms": "5000"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 94,
+    "request": "اضغط بحث رقم 94",
+    "plan": [
+      {
+        "kind": "tap_text",
+        "payload": {
+          "text": "بحث"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 95,
+    "request": "اكتب مرحبا رقم 95",
+    "plan": [
+      {
+        "kind": "type_text",
+        "payload": {
+          "text": "مرحبا"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 96,
+    "request": "ابحث عن اغنية في يوتيوب رقم 96",
+    "plan": [
+      {
+        "kind": "open_app",
+        "payload": {
+          "package": "com.google.android.youtube"
+        }
+      },
+      {
+        "kind": "wait",
+        "payload": {
+          "ms": "1200"
+        }
+      },
+      {
+        "kind": "tap_description",
+        "payload": {
+          "text": "بحث"
+        }
+      },
+      {
+        "kind": "type_text",
+        "payload": {
+          "text": "اغنية",
+          "submit": "true"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 97,
+    "request": "امسح النص رقم 97",
+    "plan": [
+      {
+        "kind": "clear_text",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 98,
+    "request": "اضغط دخول رقم 98",
+    "plan": [
+      {
+        "kind": "press_enter",
+        "payload": {}
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 99,
+    "request": "مرر لأسفل رقم 99",
+    "plan": [
+      {
+        "kind": "scroll",
+        "payload": {
+          "dir": "down"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  },
+  {
+    "id": 100,
+    "request": "مرر لأعلى رقم 100",
+    "plan": [
+      {
+        "kind": "scroll",
+        "payload": {
+          "dir": "up"
+        }
+      }
+    ],
+    "language": "ar",
+    "source": "seed"
+  }
+]

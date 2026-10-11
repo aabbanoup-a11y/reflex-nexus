@@ -4,55 +4,56 @@ import android.content.Context
 import java.io.File
 import org.json.JSONObject
 
-/** Local-only Qwen GGUF engine. It never performs network access. */
+/** Local-only multi-model GGUF engine. Models are copied from the selected app asset. */
 class QwenEngine(private val context: Context) {
-    companion object {
-        private const val MODEL_ASSET = "models/qwen.gguf"
-        private const val MODEL_FILE = "qwen2.5-0.5b-instruct-q4_k_m.gguf"
-        init { System.loadLibrary("qwen-native") }
-    }
-
+    companion object { private const val PREFS = "companion"; private const val MODEL_KEY = "local_model_id"; init { System.loadLibrary("qwen-native") } }
     @Volatile private var loaded = false
-    private val modelFile: File get() = File(context.filesDir, MODEL_FILE)
+    @Volatile private var loadedId = ""
+    private val prefs get() = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private val selected: LocalModel get() = ModelCatalog.byId(prefs.getString(MODEL_KEY, ModelCatalog.recommended.id) ?: ModelCatalog.recommended.id)
+    private val modelFile: File get() = File(context.filesDir, selected.fileName)
 
-    @Synchronized
-    fun load(): Boolean {
-        if (loaded) return true
+    @Synchronized fun selectModel(id: String): String {
+        val model = ModelCatalog.byId(id)
+        if (loadedId != model.id) { close(); prefs.edit().putString(MODEL_KEY, model.id).apply() }
+        return model.id
+    }
+    fun selectedModel(): LocalModel = selected
+
+    @Synchronized fun load(): Boolean {
+        val model = selected
+        if (loaded && loadedId == model.id) return true
         return runCatching {
-            if (!modelFile.exists() || modelFile.length() < 100_000_000L) {
-                context.assets.open(MODEL_ASSET).use { input ->
-                    modelFile.outputStream().use { output -> input.copyTo(output, 1024 * 1024) }
-                }
+            if (!modelFile.exists() || modelFile.length() < 50_000_000L) {
+                context.assets.open("models/${model.fileName}").use { input -> modelFile.outputStream().use { output -> input.copyTo(output, 1024 * 1024) } }
             }
-            loaded = nativeLoad(modelFile.absolutePath)
-            loaded
+            loaded = nativeLoad(modelFile.absolutePath); loadedId = if (loaded) model.id else ""; loaded
         }.getOrElse { false }
     }
 
-    @Synchronized
-    fun chat(prompt: String): String {
+    @Synchronized fun chat(prompt: String): String {
         if (!load()) return ""
-        val formatted = "<|im_start|>system\nأنت مساعد محلي يعمل بدون إنترنت. أجب بالعربية باختصار، ولا تذكر أنك نموذج سحابي.<|im_end|>\n<|im_start|>user\n$prompt<|im_end|>\n<|im_start|>assistant\n"
+        val formatted = "<|im_start|>system\n${selected.systemPrompt}\nأجب بالعربية باختصار.<|im_end|>\n<|im_start|>user\n$prompt<|im_end|>\n<|im_start|>assistant\n"
         return runCatching { nativeGenerate(formatted, 192).trim() }.getOrDefault("")
     }
 
-    /** Generates a constrained action proposal; OfflinePlan validates it before execution. */
-    @Synchronized
-    fun plan(request: String, phoneContext: String = "{}"): String {
+    @Synchronized fun plan(request: String, phoneContext: String = "{}", rag: String = ""): String {
         if (!load()) return ""
-        val formatted = "<|im_start|>system\nأنت مخطط أوفلاين للهاتف. أخرج JSON فقط ولا تضف أي شرح. استخدم حالة الهاتف لاختيار التطبيق والخطوة التالية، ولا تدّع نجاح خطوة لم تُنفذ.<|im_end|>\n<|im_start|>user\n${OfflinePlan.prompt(request, phoneContext)}<|im_end|>\n<|im_start|>assistant\n"
+        val prompt = OfflinePlan.prompt(request, phoneContext, rag)
+        val formatted = "<|im_start|>system\n${selected.systemPrompt}\nأنت مخطط هاتف محلي. أخرج JSON فقط ولا تدّع نجاحًا لم يحدث.<|im_end|>\n<|im_start|>user\n$prompt<|im_end|>\n<|im_start|>assistant\n"
         return runCatching { nativeGenerate(formatted, 512).trim() }.getOrDefault("")
     }
 
-    fun isReady(): Boolean = loaded
-    fun status(): String = JSONObject()
-        .put("model", "Qwen2.5-0.5B-Instruct GGUF")
-        .put("loaded", loaded)
-        .put("size_bytes", if (modelFile.exists()) modelFile.length() else 0)
-        .put("network_required", false)
-        .toString()
-    fun close() { runCatching { nativeShutdown() }; loaded = false }
+    @Synchronized fun verifyPlan(request: String, plan: String, phoneContext: String): Boolean {
+        if (!load()) return true
+        val prompt = "راجع الخطة التالية للهاتف. أجب بكلمة YES إذا كانت مناسبة للطلب والحالة، أو NO فقط إذا فيها خطوة غير ممكنة.\nالطلب: $request\nالحالة: $phoneContext\nالخطة: $plan"
+        val formatted = "<|im_start|>system\n${selected.systemPrompt}<|im_end|>\n<|im_start|>user\n$prompt<|im_end|>\n<|im_start|>assistant\n"
+        return runCatching { nativeGenerate(formatted, 12).trim().uppercase().contains("YES") }.getOrDefault(true)
+    }
 
+    fun isReady(): Boolean = loaded
+    fun status(): String = JSONObject().put("model", selected.label).put("model_id", selected.id).put("loaded", loaded).put("size_bytes", if (modelFile.exists()) modelFile.length() else 0).put("network_required", false).toString()
+    fun close() { runCatching { nativeShutdown() }; loaded = false; loadedId = "" }
     private external fun nativeLoad(path: String): Boolean
     private external fun nativeGenerate(prompt: String, maxTokens: Int): String
     private external fun nativeShutdown()

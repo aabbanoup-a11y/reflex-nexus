@@ -66,15 +66,14 @@ export function ChatSidebar() {
       void navigate({ to: "/auth" });
       return;
     }
-    const { data, error } = await supabase
-      .from("conversations")
-      .insert({ title: "محادثة جديدة", user_id: user.id })
-      .select("id")
-      .single();
-    if (error || !data) {
-      toast.error(error?.message ?? "ما قدرتش أبدأ المحادثة");
-      return;
-    }
+    const branchId = crypto.randomUUID();
+    const conversationId = crypto.randomUUID();
+    const db = supabase as any;
+    const branch = await db.from("memory_branches").insert({ id: branchId, user_id: user.id, name: "فرع محادثة جديدة", root_context: "" }).select("id").single();
+    if (branch.error) { toast.error(branch.error.message); return; }
+    const { data, error } = await db.from("conversations").insert({ id: conversationId, title: "محادثة جديدة", user_id: user.id, branch_id: branchId }).select("id").single();
+    if (error || !data) { toast.error(error?.message ?? "ما قدرتش أبدأ المحادثة"); return; }
+    await db.from("memory_branches").update({ conversation_id: conversationId }).eq("id", branchId).eq("user_id", user.id);
     setOpen(false);
     await navigate({ to: "/chat/$id", params: { id: data.id } });
   };
