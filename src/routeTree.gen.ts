@@ -20,6 +20,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedCompanionRouteImport } from './routes/_authenticated/companion'
 import { Route as AuthenticatedMemoryRouteImport } from './routes/_authenticated/memory'
 import { Route as AuthenticatedPathsUiRouteImport } from './routes/_authenticated/paths-ui'
+import { Route as ChatIdRouteImport } from './routes/chat/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -75,6 +76,11 @@ const AuthenticatedPathsUiRoute = AuthenticatedPathsUiRouteImport.update({
   path: '/paths-ui',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ChatIdRoute = ChatIdRouteImport.update({
+  id: '/chat/$id',
+  path: '/chat/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/companion': typeof AuthenticatedCompanionRoute
   '/memory': typeof AuthenticatedMemoryRoute
   '/paths-ui': typeof AuthenticatedPathsUiRoute
+  '/chat/$id': typeof ChatIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/companion': typeof AuthenticatedCompanionRoute
   '/memory': typeof AuthenticatedMemoryRoute
   '/paths-ui': typeof AuthenticatedPathsUiRoute
+  '/chat/$id': typeof ChatIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/_authenticated/companion': typeof AuthenticatedCompanionRoute
   '/_authenticated/memory': typeof AuthenticatedMemoryRoute
   '/_authenticated/paths-ui': typeof AuthenticatedPathsUiRoute
+  '/chat/$id': typeof ChatIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/companion'
     | '/memory'
     | '/paths-ui'
+    | '/chat/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/companion'
     | '/memory'
     | '/paths-ui'
+    | '/chat/$id'
   id:
     | '__root__'
     | '/'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/_authenticated/companion'
     | '/_authenticated/memory'
     | '/_authenticated/paths-ui'
+    | '/chat/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -163,6 +175,7 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   NetworkRoute: typeof NetworkRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ChatIdRoute: typeof ChatIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -244,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPathsUiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/chat/$id': {
+      id: '/chat/$id'
+      path: '/chat/$id'
+      fullPath: '/chat/$id'
+      preLoaderRoute: typeof ChatIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -271,6 +291,7 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   NetworkRoute: NetworkRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ChatIdRoute: ChatIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
