@@ -263,7 +263,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 12, 0, 16)
         })
         root.addView(TextView(this).apply {
-            text = "اختيار النموذج المحلي — الافتراضي: SmolLM2 360M (أفضل توازن لـ OPPO A15 2GB)"
+            text = "النموذج المحلي المضمّن: Qwen2.5 0.5B Instruct Q4 — يعمل دون إنترنت"
             textSize = 18f
             setTextColor(0xff9be7a1.toInt())
             setPadding(0, 12, 0, 8)

@@ -42,11 +42,8 @@ android {
 
 val localModelId = (project.findProperty("LOCAL_MODEL") as String?) ?: "pro"
 val localModelFile = when (localModelId) {
-    "lite" -> "smollm2-135m-q4_k_m.gguf"
     "pro" -> "qwen2.5-0.5b-instruct-q4_k_m.gguf"
-    "qwen-q2" -> "qwen2.5-0.5b-q2_k.gguf"
-    "smollm17" -> "smollm2-1.7b-q2_k.gguf"
-    else -> "smollm2-360m-q4_k_m.gguf"
+    else -> error("LOCAL_MODEL='$localModelId' غير متاح: الأصل المضمّن الوحيد هو Qwen2.5 0.5B Instruct Q4")
 }
 
 val copyQwenModel by tasks.registering(Copy::class) {
