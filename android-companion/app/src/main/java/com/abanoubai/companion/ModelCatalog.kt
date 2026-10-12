@@ -19,6 +19,6 @@ object ModelCatalog {
         LocalModel("qwen2.5-0.5b-q3", "qwen2.5-0.5b-q3_k_m.gguf", "Qwen2.5 0.5B Q3", 4, "412 MB", "1.5 GB+", "أنت مساعد ذكي يحول طلبات المستخدم العربي لخطط JSON دقيقة. مثال: افتح واتساب -> [{\"action\":\"open_app\",\"app\":\"whatsapp\"}]"),
         LocalModel("smollm2-1.7b", "smollm2-1.7b-q2_k.gguf", "SmolLM2 1.7B Q2", 5, "643 MB", "3 GB+", "أنت مساعد ذكي يحول طلبات المستخدم العربي لخطط JSON دقيقة. مثال: افتح واتساب -> [{\"action\":\"open_app\",\"app\":\"whatsapp\"}]"),
     )
-    val recommended = all[1]
+    val recommended = LocalModel("qwen2.5-0.5b-q4", "qwen2.5-0.5b-instruct-q4_k_m.gguf", "Qwen2.5 0.5B Instruct Q4 (مضمّن)", 4, "469 MB", "1.5 GB+", "أنت مساعد ذكي يحول طلبات المستخدم العربي لخطط JSON دقيقة. أخرج JSON فقط.")
     fun byId(id: String): LocalModel = all.firstOrNull { it.id == id } ?: recommended
 }

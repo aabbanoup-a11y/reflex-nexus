@@ -25,7 +25,7 @@ class QwenEngine(private val context: Context) {
         if (loaded && loadedId == model.id) return true
         return runCatching {
             if (!modelFile.exists() || modelFile.length() < 50_000_000L) {
-                context.assets.open("models/${model.fileName}").use { input -> modelFile.outputStream().use { output -> input.copyTo(output, 1024 * 1024) } }
+                context.assets.open("models/qwen.gguf").use { input -> modelFile.outputStream().use { output -> input.copyTo(output, 1024 * 1024) } }
             }
             loaded = nativeLoad(modelFile.absolutePath); loadedId = if (loaded) model.id else ""; loaded
         }.getOrElse { false }

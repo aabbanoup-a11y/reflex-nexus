@@ -12,8 +12,8 @@ android {
         applicationId = "com.abanoubai.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 19
-        versionName = "0.8.3"
+        versionCode = 20
+        versionName = "0.8.4"
         buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL") ?: "https://wobfdslqlmvlatyrtgkd.supabase.co"}\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY") ?: "sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ"}\"")
         ndk { abiFilters += listOf("arm64-v8a") }
@@ -40,10 +40,10 @@ android {
     }
 }
 
-val localModelId = (project.findProperty("LOCAL_MODEL") as String?) ?: "balanced"
+val localModelId = (project.findProperty("LOCAL_MODEL") as String?) ?: "pro"
 val localModelFile = when (localModelId) {
     "lite" -> "smollm2-135m-q4_k_m.gguf"
-    "pro" -> "qwen2.5-0.5b-q3_k_m.gguf"
+    "pro" -> "qwen2.5-0.5b-instruct-q4_k_m.gguf"
     "qwen-q2" -> "qwen2.5-0.5b-q2_k.gguf"
     "smollm17" -> "smollm2-1.7b-q2_k.gguf"
     else -> "smollm2-360m-q4_k_m.gguf"
