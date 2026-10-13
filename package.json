@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test:companion": "node scripts/companion-policy-check.mjs",
     "test:offline-planner": "node scripts/offline-planner-check.mjs",
+    "self-diagnostic": "node scripts/self-diagnostic.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

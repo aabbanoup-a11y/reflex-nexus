@@ -1,0 +1,91 @@
+name: AbanoubAI Self Maintenance
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 3 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "supabase/migrations/**"
+      - "cloudflare-worker/**"
+      - "android-companion/**"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: self-maintenance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose-web:
+    name: Diagnose and build web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/self-diagnostic.mjs
+      - run: npm run test:offline-planner
+      - run: npm run test:companion
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: self-diagnostic-web
+          path: self-diagnostic.json
+          if-no-files-found: ignore
+
+  build-android:
+    name: Build Android companion
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools platforms;android-35 build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+      - run: gradle wrapper --gradle-version 8.10.2
+        working-directory: android-companion
+      - run: ./gradlew assembleDebug -PSUPABASE_URL=${{ secrets.SUPABASE_URL }} -PSUPABASE_PUBLISHABLE_KEY=${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        working-directory: android-companion
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: self-maintenance-debug-apk
+          path: android-companion/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: ignore
+
+  report-failure:
+    name: Report failure without exposing secrets
+    if: ${{ always() && (needs.diagnose-web.result == 'failure' || needs.build-android.result == 'failure') }}
+    needs: [diagnose-web, build-android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create or update one maintenance issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WEB_RESULT: ${{ needs.diagnose-web.result }}
+          ANDROID_RESULT: ${{ needs.build-android.result }}
+        run: |
+          title="[self-maintenance] فشل فحص AbanoubAI"
+          body="فشل الفحص الذاتي في commit ${GITHUB_SHA}.\n\nweb: ${WEB_RESULT}\nandroid: ${ANDROID_RESULT}\n\nافتح تفاصيل التشغيل والـartifacts من GitHub Actions. لا يحتوي هذا البلاغ على أسرار."
+          issue=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number')
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body" --label "maintenance" || gh issue create --title "$title" --body "$body"
+          fi
