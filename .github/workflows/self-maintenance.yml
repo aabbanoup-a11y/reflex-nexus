@@ -12,6 +12,9 @@ on:
       - "supabase/migrations/**"
       - "cloudflare-worker/**"
       - "android-companion/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/dependabot.yml"
       - ".github/workflows/**"
 
 permissions:
