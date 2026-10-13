@@ -124,6 +124,42 @@ function toBase64(buf: ArrayBuffer) {
   return btoa(s);
 }
 
+
+// يعرّف النموذج السحابي بالـ500 أمر والـ100 مهارة والـ50 مسار من قاعدة البيانات،
+// ويسمح له بتنفيذ أي طلب مش موجود في الكتالوج بنفسه.
+let catalogCache: { text: string; at: number } | undefined;
+async function capabilityCatalogPrompt(admin: any): Promise<string> {
+  if (catalogCache && Date.now() - catalogCache.at < 10 * 60_000) return catalogCache.text;
+  try {
+    const [cmd, skl, pth] = await Promise.all([
+      admin.from("command_catalog").select("domain, action, requires_approval").limit(1000),
+      admin.from("skill_catalog").select("slug").limit(500),
+      admin.from("path_catalog").select("slug").limit(500),
+    ]);
+    if (cmd.error || skl.error || pth.error) throw cmd.error ?? skl.error ?? pth.error;
+    const byDomain = new Map<string, string[]>();
+    for (const c of cmd.data ?? []) {
+      const list = byDomain.get(c.domain) ?? [];
+      list.push(c.requires_approval ? `${c.action}*` : c.action);
+      byDomain.set(c.domain, list);
+    }
+    const commands = [...byDomain].map(([d, a]) => `${d}: ${a.join(", ")}`).join("\n");
+    const text = [
+      `قدراتك: ${cmd.data?.length ?? 0} أمر، ${skl.data?.length ?? 0} مهارة، ${pth.data?.length ?? 0} مسار.`,
+      `الأوامر (مجال: أفعال):\n${commands}`,
+      `المهارات: ${(skl.data ?? []).map((s: any) => s.slug).join(", ")}`,
+      `المسارات: ${(pth.data ?? []).map((x: any) => x.slug).join(", ")}`,
+      "نفّذ أي طلب مباشرة من غير ما تطلب موافقة. اسأل \"هل أنت متأكد؟\" مرة واحدة بس قبل الأوامر المعلّمة بـ * (حذف، إرسال/مشاركة لحد، فلوس، أمان)، وأي رد زي آه/تمام/نفذ يعني موافقة، وزي لا/بلاش/إلغاء يعني رفض.",
+      "لو الطلب مش موجود في الأوامر أو المهارات أو المسارات، اعمله بنفسك بأفضل طريقة متاحة ومتقولش إنه غير مدعوم.",
+    ].join("\n\n");
+    catalogCache = { text, at: Date.now() };
+    return text;
+  } catch (err) {
+    console.error("capability catalog unavailable", err);
+    return "";
+  }
+}
+
 export const askAssistant = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => Input.parse(input))
   .handler(async ({ data }): Promise<ChatReply> => {
@@ -171,9 +207,11 @@ export const askAssistant = createServerFn({ method: "POST" })
       }
     }
 
+    const catalog = await capabilityCatalogPrompt(supabaseAdmin);
+    const baseSystem = catalog ? `${data.system}\n\n${catalog}` : data.system;
     const system = data.memories.length
-      ? `${data.system}\n\nمعلومات وافق المستخدم إنك تفتكرها عنه (استخدمها بلطف ولا تذكرها حرفياً):\n- ${data.memories.slice(0, 40).join("\n- ")}`
-      : data.system;
+      ? `${baseSystem}\n\nمعلومات وافق المستخدم إنك تفتكرها عنه (استخدمها بلطف ولا تذكرها حرفياً):\n- ${data.memories.slice(0, 40).join("\n- ")}`
+      : baseSystem;
 
     let lastError = "";
     for (const model of chain) {

@@ -40,7 +40,8 @@ object LocalAgentController {
                 prefs.edit().remove(PENDING_PLAN).remove(PENDING_REASON).apply()
                 return "ألغيت الخطة ولم أنفذ الأمر."
             }
-            return "لدي خطة حساسة معلقة. اكتب نعم للتنفيذ أو لا للإلغاء."
+            // Neither yes nor no: the user moved on. Drop the risky plan and handle the new request.
+            prefs.edit().remove(PENDING_PLAN).remove(PENDING_REASON).apply()
         }
         // Keep local listening alive even when Android recreates the activity.
         runCatching { ContextCompat.startForegroundService(context, Intent(context, CompanionForegroundService::class.java)) }
@@ -142,6 +143,11 @@ object LocalAgentController {
         val phoneContext = PhoneContext.snapshot(context)
         val planned = runCatching { OfflinePlan.fromModel(engine.plan(command, phoneContext, LocalLearning.rag(context, command))) }.getOrNull()
         if (planned != null) {
+            val reason = confirmationReason(planned, command)
+            if (reason != null) {
+                prefs.edit().putString(PENDING_PLAN, planned.toString()).putString(PENDING_REASON, reason).apply()
+                return "الخطة جاهزة، لكن فيها خطوة قد تؤثر على شخص أو بيانات خارجية. $reason\nهل أنت متأكد؟ رد بآه أو تمام للتنفيذ، أو لا أو بلاش للإلغاء."
+            }
             val verified = engine.verifyPlan(command, planned.toString(), phoneContext)
             if (!verified) {
                 val retry = runCatching { OfflinePlan.fromModel(engine.plan("صحح الخطة السابقة واجعلها قابلة للتنفيذ: $command", phoneContext, LocalLearning.rag(context, command))) }.getOrNull()
@@ -183,8 +189,29 @@ object LocalAgentController {
 
     fun clearPending(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(PENDING).remove(PENDING_PLAN).remove(PENDING_REASON).apply()
 
-    private fun isAffirmative(text: String): Boolean = text.trim().lowercase(Locale.ROOT) in setOf("نعم", "ايوه", "أيوه", "اه", "أه", "yes", "نعم نفذ", "نفذ")
-    private fun isNegative(text: String): Boolean = text.trim().lowercase(Locale.ROOT) in setOf("لا", "لأ", "الغاء", "إلغاء", "cancel", "مش موافق")
+    private fun normalizeReply(text: String): String = text.lowercase(Locale.ROOT)
+        .replace(Regex("[أإآ]"), "ا").replace("ى", "ي").replace("ة", "ه")
+        .replace(Regex("[^\\p{L}\\p{N}\\s]"), " ").replace(Regex("\\s+"), " ").trim()
+
+    private val YES_WORDS = setOf("نعم", "ايوه", "ايوا", "اه", "ااه", "يس", "yes", "y", "ok", "okay", "اوك", "اوكي",
+        "تمام", "موافق", "وافق", "نفذ", "نفذه", "نفذها", "كمل", "يلا", "اكيد", "طبعا", "ماشي", "اكد", "متاكد", "go", "sure")
+    private val NO_WORDS = setOf("لا", "لاء", "no", "n", "الغاء", "الغي", "الغيه", "بلاش", "ارفض", "رفض", "مرفوض", "وقف",
+        "اوقف", "استني", "cancel", "stop", "متنفذش", "ماتنفذش", "مش")
+
+    private fun replyWords(text: String): List<String> = normalizeReply(text).split(" ").filter { it.isNotBlank() }
+
+    /** Short reply (up to 4 words) that signals approval and contains no refusal word. */
+    private fun isAffirmative(text: String): Boolean {
+        val words = replyWords(text)
+        if (words.isEmpty() || words.size > 4) return false
+        return words.none { it in NO_WORDS } && words.any { it in YES_WORDS }
+    }
+
+    private fun isNegative(text: String): Boolean {
+        val words = replyWords(text)
+        if (words.isEmpty() || words.size > 4) return false
+        return words.any { it in NO_WORDS }
+    }
 
     private fun confirmationReason(steps: JsonArray, request: String): String? {
         val lower = request.lowercase(Locale.ROOT)
@@ -193,10 +220,12 @@ object LocalAgentController {
             val step = item as? JsonObject ?: return@forEach
             val kind = step["kind"]?.toString()?.trim('"').orEmpty()
             val payload = step["payload"]?.toString().orEmpty().lowercase(Locale.ROOT)
+            // Only truly risky effects need a "yes": sending to others, deleting, paying,
+            // uninstalling, or factory/password changes. Everything else runs directly.
             if ((kind == "type_text" && payload.contains("submit")) ||
-                payload.contains("إرسال") || payload.contains("ارسال") || payload.contains("send") ||
-                payload.contains("حذف") || payload.contains("delete") || payload.contains("شراء") ||
-                payload.contains("دفع") || payload.contains("payment")) {
+                containsAny(payload, "إرسال", "ارسال", "send", "حذف", "امسح", "delete",
+                    "شراء", "اشتري", "دفع", "payment", "purchase",
+                    "uninstall", "factory", "ضبط المصنع", "كلمة السر", "password")) {
                 return "قد يؤدي هذا إلى إرسال أو حذف أو شراء، وهذا أثر لا يمكنني افتراض أنك تريده من دون تأكيد صريح."
             }
         }

@@ -36,3 +36,8 @@ android-companion/.gradle/
 android-companion/app/build/
 android-companion/local.properties
 artifacts/
+
+# Secrets
+.env
+.env.*
+!.env.example
