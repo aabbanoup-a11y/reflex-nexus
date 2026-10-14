@@ -3,6 +3,7 @@ package com.abanoubai.companion
 import android.annotation.SuppressLint
 import android.Manifest
 import android.app.AppOpsManager
+import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
@@ -85,8 +86,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        showDashboard()
-        CompanionRuntime.start(this)
+        // WebView plus a 469 MB GGUF is unsafe as the launch path on OPPO A15
+        // class devices. Start in the native hub; the dashboard remains available
+        // from its button and the local commands remain usable without a network.
+        if (isLowMemoryDevice()) showOfflineHub() else showDashboard()
+        if (!isLowMemoryDevice()) CompanionRuntime.start(this)
         if (getSharedPreferences("companion", MODE_PRIVATE).getBoolean("enabled", false)) {
             ContextCompat.startForegroundService(this, Intent(this, CompanionForegroundService::class.java))
         }
@@ -398,5 +402,12 @@ class MainActivity : AppCompatActivity() {
         val caps = manager.getNetworkCapabilities(network) ?: return false
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
             caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    private fun isLowMemoryDevice(): Boolean {
+        val manager = getSystemService(ACTIVITY_SERVICE) as? ActivityManager ?: return false
+        val info = ActivityManager.MemoryInfo()
+        manager.getMemoryInfo(info)
+        return manager.isLowRamDevice || info.totalMem <= 2_500L * 1024L * 1024L
     }
 }

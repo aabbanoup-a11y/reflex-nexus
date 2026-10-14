@@ -46,9 +46,11 @@ Java_com_abanoubai_companion_QwenEngine_nativeGenerate(JNIEnv * env, jobject, js
     if (llama_tokenize(vocab, input.c_str(), (int32_t) input.size(), tokens.data(), tokens.size(), true, true) < 0) return env->NewStringUTF("");
 
     auto ctx_params = llama_context_default_params();
-    ctx_params.n_ctx = std::min<uint32_t>(4096, std::max<uint32_t>(1024, n_prompt + maxTokens + 8));
-    ctx_params.n_batch = std::min<uint32_t>(512, ctx_params.n_ctx);
-    ctx_params.n_threads = std::max(2, std::min(4, (int) sysconf(_SC_NPROCESSORS_ONLN) - 1));
+    // Keep the context small for 2 GB Android devices. The model is optional;
+    // deterministic handlers remain available if allocation still fails.
+    ctx_params.n_ctx = std::min<uint32_t>(2048, std::max<uint32_t>(768, n_prompt + maxTokens + 8));
+    ctx_params.n_batch = std::min<uint32_t>(64, ctx_params.n_ctx);
+    ctx_params.n_threads = std::max(2, std::min(2, (int) sysconf(_SC_NPROCESSORS_ONLN)));
     ctx_params.n_threads_batch = ctx_params.n_threads;
     llama_context * ctx = llama_init_from_model(g_model, ctx_params);
     if (!ctx) return env->NewStringUTF("");
@@ -70,7 +72,7 @@ Java_com_abanoubai_companion_QwenEngine_nativeGenerate(JNIEnv * env, jobject, js
         llama_sampler_free(sampler); llama_batch_free(batch); llama_free(ctx); return env->NewStringUTF("");
     }
     int pos = n_prompt;
-    const int limit = std::clamp((int) maxTokens, 1, 256);
+    const int limit = std::clamp((int) maxTokens, 1, 160);
     for (int i = 0; i < limit; ++i) {
         const llama_token token = llama_sampler_sample(sampler, ctx, -1);
         if (llama_vocab_is_eog(vocab, token)) break;

@@ -1,6 +1,7 @@
 package com.abanoubai.companion
 
 import android.content.Context
+import android.app.ActivityManager
 import java.io.File
 import org.json.JSONObject
 
@@ -23,6 +24,13 @@ class QwenEngine(private val context: Context) {
     @Synchronized fun load(): Boolean {
         val model = selected
         if (loaded && loadedId == model.id) return true
+        // OPPO A15-class devices commonly expose about 2 GB RAM. The bundled
+        // 0.5B GGUF needs substantially more than the Android heap alone;
+        // refusing the load is safer than killing the whole process with OOM.
+        val memory = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        memory?.getMemoryInfo(info)
+        if (memory?.isLowRamDevice == true || info.availMem < 1_200L * 1024L * 1024L) return false
         return runCatching {
             if (!modelFile.exists() || modelFile.length() < 50_000_000L) {
                 context.assets.open("models/qwen.gguf").use { input -> modelFile.outputStream().use { output -> input.copyTo(output, 1024 * 1024) } }
@@ -52,7 +60,15 @@ class QwenEngine(private val context: Context) {
     }
 
     fun isReady(): Boolean = loaded
-    fun status(): String = JSONObject().put("model", selected.label).put("model_id", selected.id).put("loaded", loaded).put("size_bytes", if (modelFile.exists()) modelFile.length() else 0).put("network_required", false).toString()
+    fun status(): String {
+        val memory = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        memory?.getMemoryInfo(info)
+        return JSONObject().put("model", selected.label).put("model_id", selected.id)
+            .put("loaded", loaded).put("size_bytes", if (modelFile.exists()) modelFile.length() else 0)
+            .put("network_required", false).put("safe_mode", memory?.isLowRamDevice == true || info.availMem < 1_200L * 1024L * 1024L)
+            .put("message", if (memory?.isLowRamDevice == true || info.availMem < 1_200L * 1024L * 1024L) "تم تعطيل النموذج مؤقتًا لحماية الهاتف من الإغلاق؛ الأوامر الأساسية تعمل محليًا." else "النموذج جاهز عند الطلب.").toString()
+    }
     fun close() { runCatching { nativeShutdown() }; loaded = false; loadedId = "" }
     private external fun nativeLoad(path: String): Boolean
     private external fun nativeGenerate(prompt: String, maxTokens: Int): String
