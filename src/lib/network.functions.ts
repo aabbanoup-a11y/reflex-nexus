@@ -189,7 +189,7 @@ export const networkTurn = createServerFn({ method: "POST" })
         return { text: "اتضاف ✓" };
       });
     }
-    for (const m of text.matchAll(/\[\[CF:\s*([a-z0-9_\/?=&.-]+)\s*\]\]/gi)) {
+    for (const m of text.matchAll(/\[\[CF:\s*([a-z0-9_/?=&.-]+)\s*\]\]/gi)) {
       if (jobs++ >= 12) break;
       await run(`☁️ Cloudflare ${m[1]}`, async () => ({ text: await n.cfGet(m[1]!) }));
     }

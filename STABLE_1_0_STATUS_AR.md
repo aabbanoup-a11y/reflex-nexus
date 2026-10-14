@@ -125,3 +125,28 @@ SHA-256:
 [11]: https://support.microsoft.com/en-us/microsoft-365-copilot/cowork-take-control-actions "Microsoft Cowork actions"
 [12]: https://www.rabbit.tech/updates "Rabbit OS3 updates"
 [13]: https://www.rabbit.tech/terms-of-use "Rabbit terms and limitations"
+
+
+## تحديث تدقيق 2026-10-14
+
+- تشغيل `AbanoubAI Self Maintenance` على GitHub نجح بالكامل على commit `51653ca` بعد إصلاح عدم تطابق `package-lock.json` مع `package.json`.
+- `npm ci` يعمل الآن في بيئة نظيفة.
+- `self-diagnostic` أعاد `healthy-source` دون إخفاقات.
+- اختبارات `offline-planner` و`companion` وبناء الويب نجحت.
+- ESLint أصبح يخرج بلا أخطاء، مع 59 تحذيرًا فقط من استخدام `any` وبعض قواعد Fast Refresh وReact Hooks القديمة. هذه ليست أخطاء بناء، لكنها ديون تقنية يجب تقليلها تدريجيًا.
+- أحدث Android Actions الناجحة تضمنت بناء Companion، بينما التشغيل الفاشل الأقدم ليس آخر حالة.
+
+### تحديثات المنافسين
+
+في 8 أكتوبر 2026 أعلنت Google Gemini agent كوكيل عمل موحدًا بذاكرة ومهارات وأدوات ووصلات وتشغيل مستمر وتنسيق وكلاء فرعيين، مع ضوابط هوية وصلاحيات وعزل وتكلفة. هذا يؤكد أن مسار AbanoubAI الصحيح هو فصل الوكيل عن النموذج وإدارة manifest للمهارات والأدوات، لا إضافة أسماء نماذج فقط. [14]
+
+توثيق Google Computer Use الحالي يصف حلقة صريحة: النموذج يقترح فعل واجهة، التطبيق ينفذه، ثم يرسل لقطة الحالة الجديدة. كما يميز بين السماح وطلب التأكيد والمنع، ويدعم كشف Prompt Injection اختياريًا. هذه الآلية يجب أن تكون أساس المسارات السحابية المرئية في AbanoubAI. [15]
+
+توثيق Android المحدث في 8 أكتوبر يثبت أن Gemini Nano/AICore مناسب لمهام محلية مثل Prompt والتلخيص والتدقيق وإعادة الصياغة ووصف الصور والتعرف على الكلام، لكنه يذكر حدود الرموز والجهاز والقدرة، ويوصي بالاستدلال الهجين عند تعذر المحلي. هذا لا يثبت أن الوكيل السحابي يعمل دون شبكة. [16]
+
+توثيق Anthropic الحالي يعلن Computer Use كـGA في toolset أحدث، لكنه يطلب بيئة يملكها التطبيق، وعزلًا وصلاحيات قليلة وقائمة نطاقات وموافقة بشرية للأفعال المؤثرة. كما يوضح أن Browser Use أنسب للمهام المحصورة في الويب. [17]
+
+[14]: https://cloud.google.com/blog/products/ai-machine-learning/welcome-to-gemini-at-work-2026 "إعلان Gemini agent في Google Cloud"
+[15]: https://ai.google.dev/gemini-api/docs/generate-content/computer-use "توثيق Google Computer Use"
+[16]: https://developer.android.com/ai/gemini-nano "توثيق Gemini Nano وAICore"
+[17]: https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool "توثيق Anthropic Computer Use"
