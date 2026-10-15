@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState, type TouchEvent } from "react
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   BookOpen,
-  Clock3,
   Folder,
   Image,
   Laptop,
@@ -27,7 +26,6 @@ const navItems: NavItem[] = [
   { label: "Library", icon: BookOpen, to: "/library" },
   { label: "Projects", icon: Folder, to: "/projects" },
   { label: "Remote", icon: Laptop, to: "/remote" },
-  { label: "Scheduled", icon: Clock3, to: "/scheduled" },
   { label: "Plugins", icon: Plug, to: "/plugins" },
 ];
 

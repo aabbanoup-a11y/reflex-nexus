@@ -12,8 +12,8 @@ android {
         applicationId = "com.abanoubai.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 22
-        versionName = "0.8.6"
+        versionCode = 23
+        versionName = "0.9.0"
         buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL") ?: "https://wobfdslqlmvlatyrtgkd.supabase.co"}\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY") ?: "sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ"}\"")
         ndk { abiFilters += listOf("arm64-v8a") }
@@ -35,24 +35,7 @@ android {
         }
     }
     buildFeatures { buildConfig = true }
-    externalNativeBuild {
-        cmake { path = file("src/main/cpp/CMakeLists.txt") }
-    }
 }
-
-val localModelId = (project.findProperty("LOCAL_MODEL") as String?) ?: "pro"
-val localModelFile = when (localModelId) {
-    "pro" -> "qwen2.5-0.5b-instruct-q4_k_m.gguf"
-    else -> error("LOCAL_MODEL='$localModelId' غير متاح: الأصل المضمّن الوحيد هو Qwen2.5 0.5B Instruct Q4")
-}
-
-val copyQwenModel by tasks.registering(Copy::class) {
-    from("../models/$localModelFile")
-    into("src/main/assets/models")
-    rename { "qwen.gguf" }
-}
-
-tasks.named("preBuild") { dependsOn(copyQwenModel) }
 
 kotlin { jvmToolchain(17) }
 

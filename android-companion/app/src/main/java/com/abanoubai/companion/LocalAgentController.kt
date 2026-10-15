@@ -14,8 +14,8 @@ import kotlinx.serialization.json.put
 import java.util.Locale
 
 /**
- * Offline command router. Known commands use deterministic fallbacks; unknown
- * requests are planned by the embedded Qwen model and then validated locally.
+ * Lightweight phone command router. Known commands use deterministic handlers;
+ * complex unknown requests are delegated to the cloud page when connected.
  */
 object LocalAgentController {
     private const val PREFS = "companion"

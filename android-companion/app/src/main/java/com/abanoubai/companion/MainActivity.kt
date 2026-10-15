@@ -87,9 +87,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // WebView plus a 469 MB GGUF is unsafe as the launch path on OPPO A15
-        // class devices. Start in the native hub; the dashboard remains available
-        // from its button and the local commands remain usable without a network.
+        // Keep the Companion lightweight: complex planning is cloud-first and
+        // the dashboard opens in the external browser on low-RAM devices.
         if (isLowMemoryDevice()) {
             showOfflineHub()
             if (isNetworkAvailable()) openDashboardExternal()
@@ -278,7 +277,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 12, 0, 16)
         })
         root.addView(TextView(this).apply {
-            text = "النموذج المحلي المضمّن: Qwen2.5 0.5B Instruct Q4 — يعمل دون إنترنت"
+            text = "النموذج المحلي مفصول — التطبيق خفيف، والتخطيط يتم عبر النماذج السحابية عند الاتصال"
             textSize = 18f
             setTextColor(0xff9be7a1.toInt())
             setPadding(0, 12, 0, 8)
@@ -328,7 +327,7 @@ class MainActivity : AppCompatActivity() {
         })
         root.addView(button("فتح صفحة AbanoupAi عند توفر الإنترنت") {
             if (isNetworkAvailable()) openDashboardExternal()
-            else Toast.makeText(this, "لا يوجد إنترنت؛ استمر في استخدام النموذج المحلي.", Toast.LENGTH_LONG).show()
+            else Toast.makeText(this, "لا يوجد إنترنت؛ الأوامر الهاتفية الأساسية فقط تعمل محليًا.", Toast.LENGTH_LONG).show()
         })
         setContentView(ScrollView(this).apply { addView(root) })
     }

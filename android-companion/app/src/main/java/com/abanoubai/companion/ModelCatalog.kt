@@ -1,6 +1,6 @@
 package com.abanoubai.companion
 
-/** Models bundled/selected for low-memory Android devices. */
+/** Cloud-only catalog: no local model is bundled in the lightweight APK. */
 data class LocalModel(
     val id: String,
     val fileName: String,
@@ -12,9 +12,15 @@ data class LocalModel(
 )
 
 object ModelCatalog {
-    val all = listOf(
-        LocalModel("qwen2.5-0.5b-q4", "qwen2.5-0.5b-instruct-q4_k_m.gguf", "Qwen2.5 0.5B Instruct Q4 (مضمّن فعليًا)", 4, "469 MB", "1.5 GB+", "أنت مساعد ذكي يحول طلبات المستخدم العربي لخطط JSON دقيقة. أخرج JSON فقط.")
+    val all: List<LocalModel> = emptyList()
+    val recommended = LocalModel(
+        id = "cloud-only",
+        fileName = "",
+        label = "النماذج السحابية",
+        level = 0,
+        sizeLabel = "0 MB داخل التطبيق",
+        ramLabel = "RAM منخفضة",
+        systemPrompt = "يتم التخطيط عبر بوابة AbanoubAI السحابية.",
     )
-    val recommended = all.first()
-    fun byId(id: String): LocalModel = all.firstOrNull { it.id == id } ?: recommended
+    fun byId(id: String): LocalModel = recommended
 }

@@ -23,13 +23,9 @@ for (const file of [
 const gradle = readFileSync(join(root, "android-companion/app/build.gradle.kts"), "utf8");
 const modelFile = gradle.includes("qwen2.5-0.5b-instruct-q4_k_m.gguf")
   ? "qwen2.5-0.5b-instruct-q4_k_m.gguf"
-  : "";
-check("تحديد أصل النموذج المحلي", modelFile.length > 0, modelFile || "لم يتم العثور على اسم GGUF");
-check(
-  "توحيد أصل Qwen المحلي",
-  modelFile === "qwen2.5-0.5b-instruct-q4_k_m.gguf",
-  modelFile || "غير معروف",
-);
+  : "cloud-only";
+check("وضع نموذج Android", modelFile === "cloud-only", "لا يوجد GGUF داخل APK؛ التخطيط عبر السحابة");
+check("إزالة أصل GGUF من البناء", !gradle.includes("LOCAL_MODEL") && !exists("android-companion/app/src/main/assets/models/qwen.gguf"), "لا توجد مهمة نسخ أو asset للنموذج المحلي");
 check(
   "اسم إصدار Android موجود",
   /versionName\s*=\s*"[^"]+"/.test(gradle),
