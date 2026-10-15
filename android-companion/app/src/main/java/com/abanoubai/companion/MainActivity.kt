@@ -40,6 +40,7 @@ import androidx.core.content.ContextCompat
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
     private var showingDashboard = false
+    private var showingOfflineHub = false
 
     inner class Bridge {
         private val prefs get() = getSharedPreferences("companion", MODE_PRIVATE)
@@ -89,7 +90,10 @@ class MainActivity : AppCompatActivity() {
         // WebView plus a 469 MB GGUF is unsafe as the launch path on OPPO A15
         // class devices. Start in the native hub; the dashboard remains available
         // from its button and the local commands remain usable without a network.
-        if (isLowMemoryDevice()) showOfflineHub() else showDashboard()
+        if (isLowMemoryDevice()) {
+            showOfflineHub()
+            if (isNetworkAvailable()) openDashboardExternal()
+        } else showDashboard()
         if (!isLowMemoryDevice()) CompanionRuntime.start(this)
         if (getSharedPreferences("companion", MODE_PRIVATE).getBoolean("enabled", false)) {
             ContextCompat.startForegroundService(this, Intent(this, CompanionForegroundService::class.java))
@@ -221,7 +225,13 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 18, 0, 12)
         }
         root.addView(note)
-        root.addView(button("فتح لوحة AbanoubAI وتسجيل الدخول") { showDashboard() })
+        root.addView(button("فتح الصفحة عند توفر الإنترنت — الوضع المحلي عند عدم الاتصال") {
+            if (isNetworkAvailable()) openDashboardExternal()
+            else {
+                Toast.makeText(this, "لا يوجد إنترنت؛ الوضع المحلي جاهز الآن.", Toast.LENGTH_LONG).show()
+                showOfflineHub()
+            }
+        })
         root.addView(button("فتح إعدادات التطبيق مباشرة") {
             openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
         })
@@ -249,6 +259,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showOfflineHub() {
         showingDashboard = false
+        showingOfflineHub = true
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24, 24, 24, 24)
@@ -315,7 +326,10 @@ class MainActivity : AppCompatActivity() {
                 }.onFailure { reply.text = it.message ?: "تعذر تشغيل الميكروفون" }
             }
         })
-        root.addView(button("إعادة فتح لوحة AbanoupAi عند توفر الإنترنت") { showDashboard() })
+        root.addView(button("فتح صفحة AbanoupAi عند توفر الإنترنت") {
+            if (isNetworkAvailable()) openDashboardExternal()
+            else Toast.makeText(this, "لا يوجد إنترنت؛ استمر في استخدام النموذج المحلي.", Toast.LENGTH_LONG).show()
+        })
         setContentView(ScrollView(this).apply { addView(root) })
     }
 
@@ -333,16 +347,21 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (!showingDashboard && !::web.isInitialized) showSetupHub()
+        if (!showingDashboard && !showingOfflineHub && !::web.isInitialized) showSetupHub()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun showDashboard() {
+        if (isLowMemoryDevice()) {
+            openDashboardExternal()
+            return
+        }
         if (!isNetworkAvailable()) {
             showOfflineHub()
             return
         }
         showingDashboard = true
+        showingOfflineHub = false
         CookieManager.getInstance().setAcceptCookie(true)
         web = WebView(this).apply {
             CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
@@ -381,6 +400,15 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(web)
         web.loadUrl("https://$SITE_HOST/")
+    }
+
+    private fun openDashboardExternal() {
+        runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://$SITE_HOST/")))
+            Toast.makeText(this, "تم فتح صفحة AbanoupAi في المتصفح لتقليل استهلاك ذاكرة التطبيق.", Toast.LENGTH_LONG).show()
+        }.onFailure {
+            Toast.makeText(this, "تعذر فتح المتصفح؛ استخدم الوضع المحلي داخل التطبيق.", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onPause() {

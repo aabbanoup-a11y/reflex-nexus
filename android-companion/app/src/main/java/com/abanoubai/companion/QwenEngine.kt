@@ -24,13 +24,13 @@ class QwenEngine(private val context: Context) {
     @Synchronized fun load(): Boolean {
         val model = selected
         if (loaded && loadedId == model.id) return true
-        // OPPO A15-class devices commonly expose about 2 GB RAM. The bundled
-        // 0.5B GGUF needs substantially more than the Android heap alone;
-        // refusing the load is safer than killing the whole process with OOM.
+        // OPPO A15-class devices commonly expose about 2 GB RAM. Allow the
+        // bundled model only when there is a measurable free-memory margin;
+        // the native context is kept small to avoid an OOM crash.
         val memory = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
         val info = ActivityManager.MemoryInfo()
         memory?.getMemoryInfo(info)
-        if (memory?.isLowRamDevice == true || info.availMem < 1_200L * 1024L * 1024L) return false
+        if (info.availMem < 500L * 1024L * 1024L) return false
         return runCatching {
             if (!modelFile.exists() || modelFile.length() < 50_000_000L) {
                 context.assets.open("models/qwen.gguf").use { input -> modelFile.outputStream().use { output -> input.copyTo(output, 1024 * 1024) } }
@@ -42,14 +42,14 @@ class QwenEngine(private val context: Context) {
     @Synchronized fun chat(prompt: String): String {
         if (!load()) return ""
         val formatted = "<|im_start|>system\n${selected.systemPrompt}\nأجب بالعربية باختصار.<|im_end|>\n<|im_start|>user\n$prompt<|im_end|>\n<|im_start|>assistant\n"
-        return runCatching { nativeGenerate(formatted, 192).trim() }.getOrDefault("")
+        return runCatching { nativeGenerate(formatted, 96).trim() }.getOrDefault("")
     }
 
     @Synchronized fun plan(request: String, phoneContext: String = "{}", rag: String = ""): String {
         if (!load()) return ""
         val prompt = OfflinePlan.prompt(request, phoneContext, rag)
         val formatted = "<|im_start|>system\n${selected.systemPrompt}\nأنت مخطط هاتف محلي. أخرج JSON فقط ولا تدّع نجاحًا لم يحدث.<|im_end|>\n<|im_start|>user\n$prompt<|im_end|>\n<|im_start|>assistant\n"
-        return runCatching { nativeGenerate(formatted, 512).trim() }.getOrDefault("")
+        return runCatching { nativeGenerate(formatted, 256).trim() }.getOrDefault("")
     }
 
     @Synchronized fun verifyPlan(request: String, plan: String, phoneContext: String): Boolean {
@@ -66,8 +66,8 @@ class QwenEngine(private val context: Context) {
         memory?.getMemoryInfo(info)
         return JSONObject().put("model", selected.label).put("model_id", selected.id)
             .put("loaded", loaded).put("size_bytes", if (modelFile.exists()) modelFile.length() else 0)
-            .put("network_required", false).put("safe_mode", memory?.isLowRamDevice == true || info.availMem < 1_200L * 1024L * 1024L)
-            .put("message", if (memory?.isLowRamDevice == true || info.availMem < 1_200L * 1024L * 1024L) "تم تعطيل النموذج مؤقتًا لحماية الهاتف من الإغلاق؛ الأوامر الأساسية تعمل محليًا." else "النموذج جاهز عند الطلب.").toString()
+            .put("network_required", false).put("safe_mode", info.availMem < 500L * 1024L * 1024L)
+            .put("message", if (info.availMem < 500L * 1024L * 1024L) "الذاكرة المتاحة منخفضة جدًا الآن؛ أغلق التطبيقات الأخرى ثم أعد المحاولة." else "النموذج المحلي جاهز عند الطلب.").toString()
     }
     fun close() { runCatching { nativeShutdown() }; loaded = false; loadedId = "" }
     private external fun nativeLoad(path: String): Boolean

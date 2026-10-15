@@ -4,9 +4,6 @@ compatibility_date = "2026-10-09"
 account_id = "64311aaf504fdb9b9d3d8a8680f50ffd"
 workers_dev = true
 
-[triggers]
-crons = ["0 3 * * *"]
-
 [vars]
 INTEGRATION_MESH_URL = ""
 SUPABASE_URL = "https://wobfdslqlmvlatyrtgkd.supabase.co"
