@@ -358,11 +358,7 @@ class MainActivity : AppCompatActivity() {
                 when (title) {
                     "المساعد والمحادثات" -> showNativeChat()
                     "الذاكرة وربط الهاتف" -> showSetupHub()
-                    else -> Toast.makeText(
-                        this,
-                        "القسم «$title» لم يُنقل إلى واجهة أصلية مكتملة بعد. لن أفتح الموقع أو المتصفح بدلًا منه.",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    else -> showNativeSection(title, detail)
                 }
             }
             items.addView(card)
@@ -372,6 +368,81 @@ class MainActivity : AppCompatActivity() {
         root.addView(button("العودة للمحادثة") { showNativeChat() })
         root.addView(button("إعدادات وصلاحيات الهاتف") { showSetupHub() })
         setContentView(root)
+    }
+
+    /**
+     * Native feature landing screens. Actions that Android can perform safely are real
+     * actions; cloud-backed features remain clearly identified until their API is wired.
+     */
+    private fun showNativeSection(title: String, detail: String) {
+        showingDashboard = false
+        showingOfflineHub = true
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(20, 20, 20, 16)
+            setBackgroundColor(0xff101418.toInt())
+        }
+        root.addView(TextView(this).apply {
+            text = title
+            textSize = 25f
+            gravity = Gravity.CENTER
+            setTextColor(0xff9be7a1.toInt())
+            setPadding(0, 8, 0, 16)
+        })
+        root.addView(TextView(this).apply {
+            text = detail
+            textSize = 15f
+            setTextColor(-1)
+            setPadding(14, 14, 14, 14)
+            setBackgroundColor(0xff20272e.toInt())
+        })
+        val body = TextView(this).apply {
+            textSize = 15f
+            setTextColor(0xffd3dbe0.toInt())
+            setPadding(4, 18, 4, 18)
+        }
+        when (title) {
+            "الصور والملفات" -> {
+                body.text = "اختَر ملفًا من منتقي Android. يظل اختيار الملف ومشاركته تحت سيطرتك."
+                root.addView(body)
+                root.addView(button("اختيار ملف من الهاتف") {
+                    runCatching {
+                        startActivity(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                            type = "*/*"
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        })
+                    }.onFailure { Toast.makeText(this, "تعذر فتح منتقي الملفات", Toast.LENGTH_LONG).show() }
+                })
+                root.addView(button("فحص فهرس الوسائط المتاح") {
+                    val result = runCatching { DeviceInventory.files(this) }
+                        .getOrElse { "تعذر قراءة فهرس الوسائط: ${it.message ?: "خطأ غير معروف"}" }
+                    body.text = result
+                })
+            }
+            "المشروعات والمكتبة" -> {
+                body.text = "هذه الشاشة أصلية داخل Android. محتوى المشروعات والمكتبة يحتاج ربطًا موثقًا بواجهة الحساب قبل عرض بياناتك؛ لن أعرض بيانات تجريبية على أنها حقيقية."
+                root.addView(body)
+                root.addView(button("نسخ حالة القسم") {
+                    val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("حالة المشروعات والمكتبة", body.text))
+                    Toast.makeText(this, "تم نسخ الحالة", Toast.LENGTH_SHORT).show()
+                })
+            }
+            "المهام المجدولة والإضافات" -> {
+                body.text = "لن أغيّر المهام المجدولة أو أشغّل إضافات من الهاتف قبل ربطها بواجهة مصادقة وصلاحيات الحساب. إدارة المهام الحالية متاحة في TickTick، والربط داخل التطبيق ما زال مطلوبًا."
+                root.addView(body)
+                root.addView(button("فتح المحادثة للمساعدة في مهمة") { showNativeChat() })
+            }
+            else -> {
+                body.text = "القسم ظاهر داخل التطبيق، لكن لا أعتبر وظائفه السحابية مكتملة قبل ربطها بالخلفية واختبارها."
+                root.addView(body)
+            }
+        }
+        root.addView(button("المحادثة") { showNativeChat() })
+        root.addView(button("العودة لمساحة العمل") { showNativeWorkspace() })
+        root.addView(button("إعدادات وصلاحيات الهاتف") { showSetupHub() })
+        setContentView(ScrollView(this).apply { addView(root) })
     }
 
     private fun showNativeChat() {
