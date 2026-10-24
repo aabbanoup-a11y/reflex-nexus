@@ -51,7 +51,17 @@ class MainActivity : AppCompatActivity() {
             val changed = prefs.getString("access_token", null) != accessToken || prefs.getString("device_id", null) != deviceId
             prefs.edit().putString("device_id", deviceId).putString("access_token", accessToken)
                 .putString("refresh_token", refreshToken).putBoolean("enabled", true).apply()
-            ContextCompat.startForegroundService(this@MainActivity, Intent(this@MainActivity, CompanionForegroundService::class.java))
+            // Pairing can happen through the WebView bridge. Keep an OS-level
+            // foreground-service startup failure from escaping this bridge call
+            // and taking down the dashboard; the pairing state is still saved.
+            runCatching {
+                ContextCompat.startForegroundService(this@MainActivity, Intent(this@MainActivity, CompanionForegroundService::class.java))
+            }.onFailure { error ->
+                android.util.Log.e("AbanoubAICompanion", "Unable to start companion service after pairing", error)
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "تعذر تشغيل الاتصال في الخلفية؛ ستظل الواجهة متاحة.", Toast.LENGTH_LONG).show()
+                }
+            }
             if (changed) runOnUiThread { CompanionRuntime.restart(this@MainActivity) }
         }
 
