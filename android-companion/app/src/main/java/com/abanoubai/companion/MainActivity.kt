@@ -445,6 +445,53 @@ class MainActivity : AppCompatActivity() {
         setContentView(ScrollView(this).apply { addView(root) })
     }
 
+    private fun requestCloudSynthesis(prompt: String): String {
+        val prefs = getSharedPreferences("companion", MODE_PRIVATE)
+        val token = prefs.getString("access_token", null)
+            ?: throw IllegalStateException("سجّل الدخول واربط جلسة الحساب أولًا")
+        val publishableKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY
+        if (publishableKey.isBlank()) throw IllegalStateException("مفتاح Supabase العام غير مضبوط في بناء التطبيق")
+        val messages = org.json.JSONArray()
+        val saved = runCatching { org.json.JSONArray(prefs.getString("native_cloud_history", "[]") ?: "[]") }.getOrNull()
+        if (saved != null) for (i in maxOf(0, saved.length() - 8) until saved.length()) {
+            val row = saved.optJSONObject(i) ?: continue
+            val role = row.optString("role")
+            val text = row.optString("content")
+            if ((role == "user" || role == "assistant") && text.isNotBlank()) {
+                messages.put(JSONObject().put("role", role).put("content", text.take(5000)))
+            }
+        }
+        val payload = JSONObject().put("message", prompt).put("history", messages)
+        val request = okhttp3.Request.Builder()
+            .url(BuildConfig.SUPABASE_URL.trimEnd('/') + "/functions/v1/reflex-nexus-chat")
+            .header("Authorization", "Bearer $token")
+            .header("apikey", publishableKey)
+            .post(okhttp3.RequestBody.create(
+                okhttp3.MediaType.parse("application/json; charset=utf-8"), payload.toString()
+            ))
+            .build()
+        val client = okhttp3.OkHttpClient.Builder()
+            .callTimeout(75, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+        client.newCall(request).execute().use { response ->
+            val body = response.body()?.string().orEmpty()
+            val data = runCatching { JSONObject(body) }.getOrNull()
+                ?: throw IllegalStateException("رد غير مفهوم من الخادم (HTTP ${response.code()})")
+            if (!response.isSuccessful) throw IllegalStateException(data.optString("error", "HTTP ${response.code()}"))
+            val answer = data.optString("answer")
+            if (answer.isBlank()) throw IllegalStateException("لم يصل رد من النماذج")
+            val count = data.optInt("successfulModels", 0)
+            val status = if (data.optBoolean("synthesized")) "تم دمج ${count} نماذج" else "رد من ${count} نموذج/نماذج"
+            val stored = org.json.JSONArray(prefs.getString("native_cloud_history", "[]") ?: "[]")
+            stored.put(JSONObject().put("role", "user").put("content", prompt))
+            stored.put(JSONObject().put("role", "assistant").put("content", answer))
+            val trimmed = org.json.JSONArray()
+            for (i in maxOf(0, stored.length() - 24) until stored.length()) trimmed.put(stored.get(i))
+            prefs.edit().putString("native_cloud_history", trimmed.toString()).apply()
+            return "$answer\n\n— $status"
+        }
+    }
+
     private fun showNativeChat() {
         showingDashboard = false
         showingOfflineHub = true
@@ -535,8 +582,20 @@ class MainActivity : AppCompatActivity() {
             addMessage("AbanoupAI", "بفحص الطلب…")
             val pendingIndex = transcript.childCount - 1
             Thread {
-                val result = runCatching { LocalAgentController.handle(this, prompt) }
-                    .getOrElse { "تعذر تنفيذ الطلب: ${it.message ?: "خطأ غير معروف"}" }
+                val localCommand = prompt.startsWith("أبانوباي", ignoreCase = true) ||
+                    prompt.startsWith("افتح ", ignoreCase = true) ||
+                    prompt.startsWith("شغل ", ignoreCase = true) ||
+                    prompt.startsWith("شغّل ", ignoreCase = true) ||
+                    prompt.startsWith("ارجع", ignoreCase = true) ||
+                    prompt.startsWith("الرئيسية", ignoreCase = true) ||
+                    prompt.startsWith("افتح ", ignoreCase = true)
+                val result = if (localCommand) {
+                    runCatching { LocalAgentController.handle(this, prompt) }
+                        .getOrElse { "تعذر تنفيذ الأمر المحلي: ${it.message ?: "خطأ غير معروف"}" }
+                } else {
+                    runCatching { requestCloudSynthesis(prompt) }
+                        .getOrElse { "تعذر الاتصال بالمساعد السحابي: ${it.message ?: "تحقق من تسجيل الدخول والإنترنت"}" }
+                }
                 runOnUiThread {
                     if (pendingIndex in 0 until transcript.childCount) {
                         transcript.removeViewAt(pendingIndex)
