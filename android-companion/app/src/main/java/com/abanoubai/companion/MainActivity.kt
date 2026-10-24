@@ -106,8 +106,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Native-first launch: show the app's own chat UI instead of a website wrapper.
-        showNativeChat()
+        // Native-first launch: keep the user in the Android app. The native workspace
+        // is the migration landing screen; it must not silently fall back to a browser.
+        showNativeWorkspace()
         // Keep the dashboard usable even if background companion initialization fails.
         if (!isLowMemoryDevice()) {
             runCatching { CompanionRuntime.start(this) }
