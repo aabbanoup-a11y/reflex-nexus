@@ -248,12 +248,15 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 18, 0, 12)
         }
         root.addView(note)
-        root.addView(button("فتح الصفحة عند توفر الإنترنت — الوضع المحلي عند عدم الاتصال") {
-            if (isNetworkAvailable()) openDashboardExternal()
-            else {
-                Toast.makeText(this, "لا يوجد إنترنت؛ الوضع المحلي جاهز الآن.", Toast.LENGTH_LONG).show()
-                showOfflineHub()
-            }
+        root.addView(button("لوحة العمل — واجهة أصلية قيد النقل") {
+            // Do not launch a browser or external dashboard. Until native route parity is
+            // implemented and tested, keep the user inside this Android app.
+            Toast.makeText(
+                this,
+                "لوحة الموقع لم تُنقل بالكامل إلى Android بعد. لن أفتح متصفحًا بدلًا من التطبيق.",
+                Toast.LENGTH_LONG
+            ).show()
+            showNativeWorkspace()
         })
         root.addView(button("فتح إعدادات التطبيق مباشرة") {
             openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
@@ -278,6 +281,83 @@ class MainActivity : AppCompatActivity() {
                 { error -> runOnUiThread { Toast.makeText(this, error, Toast.LENGTH_LONG).show() } },
             )
         }.onFailure { Toast.makeText(this, it.message ?: "تعذر تشغيل الميكروفون", Toast.LENGTH_LONG).show() }
+    }
+
+    /**
+     * Native workspace landing screen. This intentionally stays inside the app and
+     * labels routes that are not yet ported rather than silently opening the website.
+     * Feature screens must replace these entries incrementally as native parity lands.
+     */
+    private fun showNativeWorkspace() {
+        showingDashboard = false
+        showingOfflineHub = true
+        val bg = 0xff101418.toInt()
+        val panel = 0xff20272e.toInt()
+        val accent = 0xff9be7a1.toInt()
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(18, 18, 18, 12)
+            setBackgroundColor(bg)
+        }
+        root.addView(TextView(this).apply {
+            text = "AbanoupAI"
+            textSize = 27f
+            gravity = Gravity.CENTER
+            setTextColor(-1)
+        })
+        root.addView(TextView(this).apply {
+            text = "مساحة العمل — تطبيق Android أصلي"
+            textSize = 16f
+            gravity = Gravity.CENTER
+            setTextColor(accent)
+            setPadding(0, 4, 0, 12)
+        })
+        root.addView(TextView(this).apply {
+            text = "التحويل شغّال على مراحل. الأقسام التالية لم تُنقل وظائفها كاملة بعد؛ لذلك لن يتم فتح الموقع في متصفح خارجي أو الادعاء بأنها مكتملة."
+            textSize = 14f
+            setTextColor(-1)
+            setPadding(12, 12, 12, 12)
+            setBackgroundColor(panel)
+        })
+        val scroll = ScrollView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
+        }
+        val items = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 8, 0, 8) }
+        val routes = listOf(
+            "الشبكة والصفحة الرئيسية" to "الخطوة الأولى بعد تأسيس التنقل الأصلي",
+            "المساعد والمحادثات" to "المحادثة المحلية متاحة؛ ربط السحابة يحتاج اختبارًا مستقلًا",
+            "المشروعات والمكتبة" to "لم تُنقل بعد",
+            "الصور والملفات" to "لم تُنقل بعد",
+            "المهام المجدولة والإضافات" to "لم تُنقل بعد",
+            "الذاكرة وربط الهاتف" to "إدارة الأذونات والربط متاحة جزئيًا"
+        )
+        routes.forEach { (title, detail) ->
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(14, 12, 14, 12)
+                setBackgroundColor(panel)
+                layoutParams = LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    setMargins(0, 6, 0, 6)
+                }
+            }
+            card.addView(TextView(this).apply {
+                text = title
+                textSize = 17f
+                setTextColor(accent)
+            })
+            card.addView(TextView(this).apply {
+                text = detail
+                textSize = 13f
+                setTextColor(0xffd3dbe0.toInt())
+                setPadding(0, 4, 0, 0)
+            })
+            items.addView(card)
+        }
+        scroll.addView(items)
+        root.addView(scroll)
+        root.addView(button("العودة للمحادثة") { showNativeChat() })
+        root.addView(button("إعدادات وصلاحيات الهاتف") { showSetupHub() })
+        setContentView(root)
     }
 
     private fun showNativeChat() {
