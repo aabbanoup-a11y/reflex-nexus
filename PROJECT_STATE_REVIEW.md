@@ -88,3 +88,57 @@
 | Supabase security/performance | REVIEW REQUIRED | advisors قرئت؛ لا تغيير إنتاجي قبل فحص الدوال والسياسات |
 
 **العائق التالي الوحيد:** إصلاح معالجة قيم Supabase الفارغة في Gradle وإعادة البناء والتحقق من artifact قبل طلب اختبار Oppo.
+
+
+---
+
+## جولة صيانة — 2026-10-24 (بعد مراجعة main الحالية)
+
+### مصدر الحقيقة
+- المستودع: `aabbanoup-a11y/reflex-nexus`، الفرع `main`.
+- HEAD الحالي: [`c34ffcd361342e212915e140d8297adf73cec2b6`](https://github.com/aabbanoup-a11y/reflex-nexus/commit/c34ffcd361342e212915e140d8297adf73cec2b6).
+- تمت مراجعة هذا الملف، `ABANOUPAI_AGENT_PLAN.md`، `OFFLINE_AGENT_PLAN_AR.md`، خطتي Lovable التاريخيتين، ومهام مشروع TickTick. لم تُستخدم نسخ Cloudflare/Replit/Base44 كمصدر أحدث.
+
+### تغيير هذه الجولة — Android build configuration
+- أُصلح التعامل مع قيمة Gradle الفارغة باستخدام `takeIf { it.isNotBlank() }`.
+- أثناء المراجعة اتضح أن وضع مفتاح Supabase publishable المعروف سابقًا في fallback سيعيد استخدام قيمة موجودة في تاريخ المستودع، وهذا يخالف قاعدة عدم إعادة استخدام مفاتيح مكشوفة سابقًا. لذلك أزال commit `c34ffcd` هذا الـ fallback، وأصبح المفتاح الفارغ يمنع الاتصال برسالة Log غير حساسة بدل محاولة اتصال فاشلة.
+- لا يوجد مفتاح جديد في الكود أو السجل. يحتاج الاتصال السحابي إلى مفتاح publishable جديد/معتمد يضبطه صاحب المشروع في GitHub Actions Secrets خارج الدردشة.
+- Commit: [`c34ffcd`](https://github.com/aabbanoup-a11y/reflex-nexus/commit/c34ffcd361342e212915e140d8297adf73cec2b6).
+
+### CI والأدلة
+- [Android Companion APK run 40103698960](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/40103698960): **IN PROGRESS** عند تسجيل هذه الجولة؛ لا يوجد artifact جديد معتمد بعد.
+- [Self Maintenance run 40103698852](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/40103698852): **PENDING** عند تسجيل هذه الجولة.
+- [Self Maintenance run 40103567520](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/40103567520): فحوص الويب و`test:offline-planner` و`test:companion` و`npm run build` نجحت على commit `8f0a6db`. لا يُعتمد artifact Android من ذلك commit لأنه استخدم fallback لمفتاح سبق ظهوره في المستودع.
+- APK Debug فقط، ولا توجد نتيجة اختبار على Oppo حتى الآن.
+
+### Android crash — ما ثبت وما لم يثبت
+- الجهاز المستهدف حسب بلاغ المستخدم: OPPO A15، Android 10 / ColorOS 7.2، ذاكرة 2GB. العرض: التطبيق يبقى مفتوحًا حتى الضغط على «فتح صفحة AbanoupAI»، ثم يختفي.
+- في `MainActivity`، مسار الضغط يفرض WebView داخل التطبيق على جهاز منخفض الذاكرة. لا توجد حتى الآن stack trace من Logcat أو نتيجة اختبار على الجهاز تثبت إن كان السبب انهيار WebView renderer أو خروجًا إلى المتصفح أو سببًا آخر.
+- معالجة استثناءات بدء الخدمة السابقة لا تثبت حل هذا العطل. حالة السبب الجذري والإصلاح على الهاتف: **BLOCKED / UNCONFIRMED**.
+- يجب أن يتضمن اختبار الجولة التالية فتح لوحة الويب على الجهاز، مع التقاط رسالة الخطأ/Logcat إن تكرر العطل. لا يُعلن الإصلاح قبل ذلك.
+
+### Supabase — قراءة فقط
+- قرئت Security وPerformance Advisors، وتعريفات دوال `SECURITY DEFINER` والسياسات المرتبطة بجداول الأدوار والموافقات وسجل التدقيق والصلاحيات.
+- 14 دالة `SECURITY DEFINER` قابلة للتنفيذ من `authenticated`. الفحص أظهر أن الدوال التي راجعتها تضبط `search_path=public` وتتحقق من الدور داخل الدوال الحساسة، كما أن ACL الذي قرئ يعرض منح EXECUTE إلى `authenticated` وليس إلى `PUBLIC`. لا يُطبّق revoke جماعي قبل التحقق من الاستدعاءات المقصودة وسياسات RLS.
+- `public.webauthn_challenges`: RLS مفعّل ولا توجد سياسات؛ يلزم التحقق من مسار Edge Function/الخادم الذي يستخدم الجدول قبل اقتراح migration.
+- Performance Advisor أبلغ عن 44 مفتاحًا أجنبيًا بلا فهرس تغطية، إضافة إلى تحذيرات السياسات والفهارس الأخرى. لا تغييرات على الإنتاج ولا migration في هذه الجولة.
+
+### قدرات ونواقص أخرى
+- **Web/agent tests:** آخر فحوص مثبتة على `8f0a6db` ناجحة؛ لم يكتمل CI للـ HEAD الجديد بعد.
+- **Local inference:** `QwenEngine.kt` حاليًا stub؛ `load() = false` و`model_id = cloud-only`. تشغيل LLM محلي دون إنترنت على Android = **BLOCKED / NOT IMPLEMENTED**؛ لا توجد مقارنة أداء فعلية أو fine-tuning مثبت.
+- **Connectors:** أدوات فعلية متاحة في جلسة ChatGPT تشمل GitHub وSupabase وCloudflare وHugging Face وLovable وReplit وVercel وTickTick والملفات والمهام المجدولة. هذا يثبت توفر واجهات الموصلات هنا فقط، ولا يثبت نجاح كل عملية read/write أو أن كل خدمة متصلة بحساب المشروع. البحث عبر الويب متاح؛ لا يوجد في هذه الجولة اختبار متصفح عام تفاعلي مستقل أو تكامل Base44 موثّق. Lovable يظل قراءة فقط حتى 2026-10-31.
+- **Release:** لا يوجد إثبات توقيع Release بمفتاح توزيع دائم. Debug لا يساوي Release.
+
+### الحالة الحالية
+| المجال | الحالة | الدليل / العائق |
+|---|---|---|
+| Gradle blank property handling | CODE UPDATED | `c34ffcd`; CI لم ينته بعد |
+| عدم إعادة استخدام المفتاح المكشوف | PASS على الكود الحالي | لا fallback للمفتاح؛ يحتاج صاحب المشروع إلى ضبط secret جديد خارج الدردشة |
+| Android build/artifact للـ HEAD الحالي | BLOCKED / IN PROGRESS | run 40103698960 |
+| سبب انهيار Oppo | BLOCKED | لا Logcat ولا اختبار جهاز بعد |
+| Web/agent test suite | PASS على commit أسبق فقط | run 40103567520؛ إعادة تحقق HEAD الحالي مطلوبة |
+| Supabase security | REVIEW REQUIRED | لا تغيير إنتاجي؛ يلزم تحليل استعمال WebAuthn قبل migration |
+| Offline LLM | NOT IMPLEMENTED | `QwenEngine` cloud-only stub |
+| Release signing | BLOCKED | مفتاح توزيع دائم غير مثبت |
+
+**العائق التالي الوحيد:** اكتمال CI للـ HEAD `c34ffcd` ثم الحصول على إعداد مفتاح publishable جديد/معتمد عبر GitHub Secrets خارج الدردشة؛ بعد ذلك اختبار WebView على OPPO A15. لا ترسل أي أسرار في المحادثة.
