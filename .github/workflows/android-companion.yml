@@ -28,6 +28,10 @@ jobs:
           packages: "platform-tools platforms;android-35 build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - run: gradle wrapper --gradle-version 8.10.2
+      - name: Run Android lint checks
+        run: ./gradlew lintDebug
+      - name: Run Android unit tests
+        run: ./gradlew testDebugUnitTest
       - name: Build debug APK
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
