@@ -538,7 +538,11 @@ class MainActivity : AppCompatActivity() {
                 val result = runCatching { LocalAgentController.handle(this, prompt) }
                     .getOrElse { "تعذر تنفيذ الطلب: ${it.message ?: "خطأ غير معروف"}" }
                 runOnUiThread {
-                    if (pendingIndex in 0 until transcript.childCount) transcript.removeViewAt(pendingIndex)
+                    if (pendingIndex in 0 until transcript.childCount) {
+                        transcript.removeViewAt(pendingIndex)
+                        if (history.isNotEmpty()) history.removeAt(history.lastIndex)
+                        saveHistory()
+                    }
                     addMessage("AbanoupAI", result)
                     send.isEnabled = true
                 }
