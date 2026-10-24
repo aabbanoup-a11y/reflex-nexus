@@ -84,7 +84,7 @@ jobs:
           WEB_RESULT: ${{ needs.diagnose-web.result }}
           ANDROID_RESULT: ${{ needs.build-android.result }}
         run: |
-          title="[self-maintenance] فشل فحص AbanoupAI"
+          title="[self-maintenance] فشل فحص AbanoubAI"
           body="فشل الفحص الذاتي في commit ${GITHUB_SHA}.\n\nweb: ${WEB_RESULT}\nandroid: ${ANDROID_RESULT}\n\nافتح تفاصيل التشغيل والـartifacts من GitHub Actions. لا يحتوي هذا البلاغ على أسرار."
           issue=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number')
           if [ -n "$issue" ]; then
