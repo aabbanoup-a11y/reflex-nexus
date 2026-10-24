@@ -480,7 +480,16 @@ class MainActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
             setBackgroundColor(panel)
         }
-        fun addMessage(who: String, text: String) {
+        val chatPrefs = getSharedPreferences("native_chat_history", MODE_PRIVATE)
+        val history = mutableListOf<Pair<String, String>>()
+        fun saveHistory() {
+            val rows = org.json.JSONArray()
+            history.takeLast(100).forEach { (who, message) ->
+                rows.put(JSONObject().put("who", who).put("text", message))
+            }
+            chatPrefs.edit().putString("messages", rows.toString()).apply()
+        }
+        fun addMessage(who: String, text: String, persist: Boolean = true) {
             val bubble = TextView(this).apply {
                 this.text = "$who\n$text"
                 textSize = 16f
@@ -491,9 +500,25 @@ class MainActivity : AppCompatActivity() {
             transcript.addView(bubble, LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                 setMargins(0, 0, 0, 12)
             })
+            if (persist) {
+                history.add(who to text)
+                if (history.size > 100) history.removeAt(0)
+                saveHistory()
+            }
             scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
         }
-        addMessage("AbanoupAI", "أهلًا! دي واجهة المحادثة الأصلية داخل التطبيق. الأوامر المحلية متاحة. ربط المحادثة السحابية بالخلفية الآمنة ما زال خطوة مستقلة، ولن أعتبره مكتملًا قبل اختباره.")
+        val stored = runCatching { org.json.JSONArray(chatPrefs.getString("messages", "[]") ?: "[]") }.getOrNull()
+        if (stored != null) {
+            for (index in 0 until stored.length()) {
+                val row = stored.optJSONObject(index) ?: continue
+                val who = row.optString("who")
+                val message = row.optString("text")
+                if (who.isNotBlank() && message.isNotBlank()) addMessage(who, message, persist = false)
+            }
+        }
+        if (history.isEmpty()) {
+            addMessage("AbanoupAI", "أهلًا! دي واجهة المحادثة الأصلية داخل التطبيق. الأوامر المحلية متاحة. ربط المحادثة السحابية بالخلفية الآمنة ما زال خطوة مستقلة، ولن أعتبره مكتملًا قبل اختباره.")
+        }
         val input = EditText(this).apply {
             hint = "اكتب رسالة أو أمر للهاتف…"
             setTextColor(-1)
