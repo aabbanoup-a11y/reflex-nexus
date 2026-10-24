@@ -96,7 +96,7 @@
 
 ### مصدر الحقيقة
 - المستودع: `aabbanoup-a11y/reflex-nexus`، الفرع `main`.
-- HEAD الحالي: [`c34ffcd361342e212915e140d8297adf73cec2b6`](https://github.com/aabbanoup-a11y/reflex-nexus/commit/c34ffcd361342e212915e140d8297adf73cec2b6).
+- آخر تغيير كود Android في هذه الجولة: [`c34ffcd361342e212915e140d8297adf73cec2b6`](https://github.com/aabbanoup-a11y/reflex-nexus/commit/c34ffcd361342e212915e140d8297adf73cec2b6).
 - تمت مراجعة هذا الملف، `ABANOUPAI_AGENT_PLAN.md`، `OFFLINE_AGENT_PLAN_AR.md`، خطتي Lovable التاريخيتين، ومهام مشروع TickTick. لم تُستخدم نسخ Cloudflare/Replit/Base44 كمصدر أحدث.
 
 ### تغيير هذه الجولة — Android build configuration
