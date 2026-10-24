@@ -206,3 +206,41 @@
 | إصلاح crash على Oppo | BLOCKED — يحتاج اختبار الهاتف وسجل الخطأ عند تكراره |
 
 **العائق التالي الوحيد:** على مالك المشروع ضبط SUPABASE_URL وSUPABASE_PUBLISHABLE_KEY المعتمدين في GitHub Actions Secrets من إعدادات المستودع، دون إرسال أي سر في المحادثة. بعدها يعاد CI، ثم يختبر المستخدم APK على OPPO. لا يُعلن حل crash قبل ذلك.
+
+
+---
+
+## جولة مراجعة مؤتمتة — 2026-10-24 19:42 Africa/Cairo
+
+### المرجع الحالي والأدلة
+- قبل هذا التحديث كان HEAD على main هو `4829c106ed0426cf7b026b64b87843f4d732f80d`; هذا التحديث توثيقي فقط.
+- Workflow Android: [android-companion.yml](https://github.com/aabbanoup-a11y/reflex-nexus/blob/main/.github/workflows/android-companion.yml)، blob SHA `4d1f7e8812377c137c91ffaaca16ca298b1a39e0`. يحتوي بالفعل على خطوة `Validate Supabase build configuration` التي ترفض المتغيرات الفارغة.
+- [Android run 40108803077](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/40108803077): **FAIL (رفض متوقع)** عند خطوة التحقق؛ لم يُنفّذ assembleDebug ولم ينتج APK. سجل التشغيل عرض رسالة غياب SUPABASE_URL فقط، ولم يعرض قيمة سرّية.
+- [Self-maintenance run 40108971750](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/40108971750): فشل Android عند التحقق نفسه؛ اختبارات الويب `self-diagnostic`, `test:offline-planner`, `test:companion`, و`npm run build` نجحت. artifact المتاح هو `self-diagnostic-web` فقط، وليس APK.
+- آخر APK مثبت المصدر في الأدلة هو artifact من [run 40105194899](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/40105194899)، commit `23bf3a604896ca4cc707360bdaaf2192324996cb`. هو Debug قديم؛ لا يثبت اتصال السحابة أو سلامة التشغيل على OPPO A15.
+- Supabase project `wobfdslqlmvlatyrtgkd` حالته ACTIVE_HEALTHY، ولا توجد Edge Functions منشورة حسب قائمة المشروع.
+- قرأت سياسات RLS للدردشة: `conversations_owner` تربط `auth.uid() = user_id`؛ `messages_owner` تتحقق من ملكية المستخدم والمحادثة؛ `conversation_messages_owner` تربط المستخدم بالصف. جداول الكتالوج للقراءة من authenticated. `webauthn_challenges` ما زالت بلا سياسات حسب Security Advisor.
+- استعلام الدوال أظهر 14 SECURITY DEFINER مع `search_path=public`. لم أغير أي سياسة أو دالة أو بيانات إنتاجية.
+
+### اكتشاف أمني جديد — BLOCKED للإصلاح حتى تأكيد مسار المصادقة
+- `src/lib/network.functions.ts` يستخدم `.middleware([requireCloudAuth])`.
+- `src/lib/chat.functions.ts` في المقابل يصدّر `askAssistant` دون middleware مصادقة؛ ويستورد server-side `supabaseAdmin` الذي يتجاوز RLS، ثم يقبل attachment path من العميل طالما يبدأ بـ `u/` من دون ربطه بهوية المستخدم في هذا handler.
+- لا أغيّر الكود في هذه الجولة لأن طريقة تمرير bearer token إلى `askAssistant` من الويب لم تُثبت بعد؛ إضافة middleware دون اختبار ذلك قد تكسر الدردشة الحالية. فُتح [Issue #17](https://github.com/aabbanoup-a11y/reflex-nexus/issues/17) لتصميم واختبار المصادقة وملكية المرفقات قبل الإصلاح.
+- **PASS:** مراجعة الكود/السياسات وقراءة سجلات CI.
+- **FAIL (متوقع):** بناء Android بسبب غياب أسرار الإعداد المطلوبة؛ لم يُرفع APK.
+- **BLOCKED:** اختبار OPPO A15 (Android 10، 2GB)، ربط الدردشة السحابية من Android، واختبار auth end-to-end.
+- لم يُنفّذ أي تغيير إنتاجي في Supabase.
+
+### المنافسون — مصادر رسمية حديثة تمت مراجعتها
+- OpenAI Agents SDK: تحديث 15 أبريل 2026 يضيف بيئات sandbox مضبوطة، وملاءمة العمل طويل المدى عبر الملفات والأدوات؛ التوثيق يشرح handoffs وtracing.
+- Manus: إعلان Manus 2.0 في 28 سبتمبر 2026 يذكر Cascade agent harness وCloud Computer وAutomations؛ تدوينات 1 أكتوبر تغطي Video Editor وGame Dev، وتدوينة 13 أكتوبر تذكر شراكة OPPO.
+- Perplexity Changelog: إدخال 19 أكتوبر 2026 يذكر نماذج Computer أسرع، Decisions API وضوابط صلاحيات connectors؛ تحديث 5 أكتوبر يذكر automations ومخرجات تفاعلية وتوليد فيديو عبر مزودين.
+- Google Gemini Computer Use docs: توثّق تحكمًا في browser/mobile/desktop مع تنفيذ إجراءات على العميل وسياسات أمان وكشف prompt injection اختياريًا.
+- n8n Agents: إعلان 25 سبتمبر 2026 يتيح استخدام workflows كأدوات يحددها المستخدم.
+- Open Interpreter Desktop FAQ: يوضح أن الملفات تبقى محلية، وأن العمل دون إنترنت يتطلب نموذجًا محليًا؛ ما يحتاج ويب/API يفشل عند عدم الاتصال.
+- لم أعتبر أي قدرة من هذه المنتجات قدرة متاحة داخل AbanoupAI دون تكامل واختبار فعلي.
+
+### خطوة الجولة والنتيجة
+الخطوة الآمنة المنفذة كانت التحقق من أن بوابة CI ترفض إعدادات Supabase الفارغة، ثم توثيق النتائج ومخاطر مصادقة `askAssistant` بدل إجراء تعديل قد يكسر المصادقة. لا يوجد ادعاء بعمل مستمر بين التشغيلات.
+
+**العائق التالي الوحيد:** تحديد مسار bearer-token الصحيح للدردشة في الويب، ثم إضافة مصادقة وملكية مرفقات واختبارات رفض unauthenticated/cross-user قبل أي دمج سحابي في Android.
