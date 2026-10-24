@@ -500,11 +500,9 @@ class MainActivity : AppCompatActivity() {
             transcript.addView(bubble, LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                 setMargins(0, 0, 0, 12)
             })
-            if (persist) {
-                history.add(who to text)
-                if (history.size > 100) history.removeAt(0)
-                saveHistory()
-            }
+            history.add(who to text)
+            if (history.size > 100) history.removeAt(0)
+            if (persist) saveHistory()
             scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
         }
         val stored = runCatching { org.json.JSONArray(chatPrefs.getString("messages", "[]") ?: "[]") }.getOrNull()
