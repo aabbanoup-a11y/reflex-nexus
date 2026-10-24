@@ -355,8 +355,8 @@ class MainActivity : AppCompatActivity() {
                 }.onFailure { reply.text = it.message ?: "تعذر تشغيل الميكروفون" }
             }
         })
-        root.addView(button("فتح صفحة AbanoupAi عند توفر الإنترنت") {
-            if (isNetworkAvailable()) openDashboardExternal()
+        root.addView(button("فتح صفحة AbanoupAi داخل التطبيق") {
+            if (isNetworkAvailable()) showDashboard(forceInApp = true)
             else Toast.makeText(this, "لا يوجد إنترنت؛ الأوامر الهاتفية الأساسية فقط تعمل محليًا.", Toast.LENGTH_LONG).show()
         })
         setContentView(ScrollView(this).apply { addView(root) })
@@ -380,8 +380,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun showDashboard() {
-        if (isLowMemoryDevice()) {
+    private fun showDashboard(forceInApp: Boolean = false) {
+        // Default to the lighter external browser on low-RAM startup, but honor
+        // an explicit user tap to open the dashboard inside Companion.
+        if (isLowMemoryDevice() && !forceInApp) {
             openDashboardExternal()
             return
         }
