@@ -543,10 +543,10 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun showDashboard(forceInApp: Boolean = false) {
-        // Default to the lighter external browser on low-RAM startup, but honor
-        // an explicit user tap to open the dashboard inside Companion.
+        // Never send the user to an external browser as a substitute for a native screen.
+        // The native workspace is the safe fallback until the requested route is ported.
         if (isLowMemoryDevice() && !forceInApp) {
-            openDashboardExternal()
+            showNativeWorkspace()
             return
         }
         if (!isNetworkAvailable()) {
