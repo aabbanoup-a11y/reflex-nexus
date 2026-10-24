@@ -169,3 +169,40 @@
 | اختبار الهاتف والانهيار | BLOCKED / ينتظر اختبار OPPO |
 
 **العائق التالي الوحيد:** تثبيت APK التشخيصي على OPPO واختبار فتح المحادثة ثم أمر آمن؛ إذا تكرر الخروج، أرسل نص الخطأ أو Logcat دون أي بيانات دخول. بعد ذلك يُفحص مسار الشات السحابي منفصلًا ولا يضاف endpoint إلا بعد إثبات route/Edge Function موجودة ومراجعة المصادقة وRLS.
+
+
+---
+
+## جولة صيانة — 2026-10-24 18:54 Africa/Cairo
+
+### المرجع الحالي والأدلة
+- كان main عند بدء الجولة على [83aa747c90d42891ff508d579542f04626968eed](https://github.com/aabbanoup-a11y/reflex-nexus/commit/83aa747c90d42891ff508d579542f04626968eed). بعد تعديل CI أصبح HEAD [8beee12f066f5932ce047c3601ad3a02d54fd61a](https://github.com/aabbanoup-a11y/reflex-nexus/commit/8beee12f066f5932ce047c3601ad3a02d54fd61a).
+- راجعت main، ملف الحالة والخطط، أحدث Android artifact/run، وسجل TickTick لمهمة Crash Android ومهمة اختبار Oppo ومهمة تحديث واجهة Android.
+- Artifact السابق من [run 40105194899](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/40105194899) ما زال صالحًا وغير منتهي: artifact ID 12563929491، الحجم المضغوط 5,848,279 بايت، ينتهي في 2027-01-22. تم تنزيل ZIP من GitHub ومقارنة digest: 7aae2856eba1db40dee73245bf3a1e409f68a3e0a49f1ed7ab0dd092195222c3؛ يطابق digest المنشور. الملف الداخلي app-debug.apk حجمه 6,810,203 بايت وSHA-256 هو 69261ac25ea922c2dc1e2513337ef050c997d83b8a50d99a9e9b7db85c78aba4.
+- هذا Debug فقط، مبني على commit 23bf3a604896ca4cc707360bdaaf2192324996cb؛ لا يثبت اتصال السحابة أو إصلاح crash على OPPO.
+
+### تغيير CI الآمن
+- Commit [0508ad702a37583bac65c053fbb13f8c3af96fdb](https://github.com/aabbanoup-a11y/reflex-nexus/commit/0508ad702a37583bac65c053fbb13f8c3af96fdb): أضاف خطوة تحقق من SUPABASE_URL وSUPABASE_PUBLISHABLE_KEY إلى .github/workflows/android-companion.yml.
+- Commit [8beee12f066f5932ce047c3601ad3a02d54fd61a](https://github.com/aabbanoup-a11y/reflex-nexus/commit/8beee12f066f5932ce047c3601ad3a02d54fd61a): أضاف التحقق نفسه إلى مسار Android المكرر في .github/workflows/self-maintenance.yml حتى لا يستطيع المسار الثاني بناء APK بقيم فارغة.
+- الاختبار المحلي للـ shell guard: bash -n = PASS؛ متغيرات فارغة أعادت exit code 1 ورسالة واضحة تطلب إعداد SUPABASE_URL، دون طباعة قيم أسرار.
+- [Android run 40108803077](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/40108803077): FAIL متوقع عند Validate Supabase build configuration؛ البناء ورفع APK تم تخطيهما، لأن SUPABASE_URL فارغ.
+- [Self Maintenance run 40108971750](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/40108971750): فحوص الويب self-diagnostic وtest:offline-planner وtest:companion وnpm run build = PASS؛ بناء Android فشل عند guard كما هو مقصود، ولم ينتج APK جديدًا. خطوة الإبلاغ الآلية عن الفشل انتهت بنجاح.
+- لا يحتوي الكود على service-role ولا أُضيف أي سر إلى المستودع. لم يتغير أي شيء في بيانات أو صلاحيات Supabase الإنتاجية.
+
+### مراجعة التكامل السحابي وSupabase — قراءة فقط
+- واجهة الويب الفعلية موجودة في src/routes/chat.$id.tsx وتستدعي askAssistant من src/lib/chat.functions.ts؛ الدالة تستخدم بوابة الذكاء الاصطناعي التابعة لـ Lovable. لم يُثبت دمج هذا المسار داخل واجهة Android الأصلية.
+- قائمة Supabase Edge Functions للمشروع wobfdslqlmvlatyrtgkd أعادت قائمة فارغة؛ لا توجد Edge Function منشورة يمكن الاستناد إليها كواجهة دردشة في هذا الفحص.
+- Security Advisor: 14 دالة SECURITY DEFINER متاحة لـ authenticated، وpublic.webauthn_challenges لديها RLS بلا سياسات. Performance Advisor: 44 مفتاحًا أجنبيًا بلا فهرس تغطية. قرئت النتائج فقط؛ لا migration ولا تغييرات إنتاجية.
+- اختبار OPPO A15 ما زال BLOCKED / لم يُنفّذ. لا يوجد دليل يثبت حل الانهيار على الجهاز.
+
+### الحالة بعد الجولة
+| الفحص | الحالة |
+|---|---|
+| تنزيل artifact والتحقق من digest وAPK الداخلي | PASS |
+| Web tests/build في run 40108971750 | PASS |
+| رفض CI بناء Android عند غياب الإعدادات | PASS — guard عمل كما صُمم |
+| بناء APK جديد من HEAD الحالي | BLOCKED — يحتاج إعداد publishable key معتمد في GitHub Actions Secrets |
+| ربط الدردشة السحابية داخل Android | BLOCKED — لا Edge Function منشورة، والمسار الحالي يعتمد على server function/بوابة Lovable |
+| إصلاح crash على Oppo | BLOCKED — يحتاج اختبار الهاتف وسجل الخطأ عند تكراره |
+
+**العائق التالي الوحيد:** على مالك المشروع ضبط SUPABASE_URL وSUPABASE_PUBLISHABLE_KEY المعتمدين في GitHub Actions Secrets من إعدادات المستودع، دون إرسال أي سر في المحادثة. بعدها يعاد CI، ثم يختبر المستخدم APK على OPPO. لا يُعلن حل crash قبل ذلك.
