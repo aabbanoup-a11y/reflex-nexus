@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { hasCrisisSignal } from "./safety";
+import { isOwnedChatAttachmentPath } from "./chat-attachment-policy";
+import { requireCloudAuth } from "@/integrations/supabase/runtime-auth";
 
 const Attachment = z.object({ path: z.string().min(1), mime: z.string().min(1), name: z.string().min(1) });
 
@@ -162,7 +164,8 @@ async function capabilityCatalogPrompt(admin: any): Promise<string> {
 
 export const askAssistant = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => Input.parse(input))
-  .handler(async ({ data }): Promise<ChatReply> => {
+  .middleware([requireCloudAuth])
+  .handler(async ({ data, context }): Promise<ChatReply> => {
     const key = process.env["LOVABLE_API_KEY"];
     if (!key) throw new Error("خدمة الذكاء الاصطناعي غير متاحة حالياً");
 
@@ -195,8 +198,10 @@ export const askAssistant = createServerFn({ method: "POST" })
     if (chain.length === 0) throw new Error("مفيش نموذج مفعّل يقدر يقرا نوع الملف ده.");
 
     const parts: Part[] = [];
+    // Attachments must belong to the authenticated user; never let the admin client
+    // sign or download another user's object from the shared bucket.
     for (const a of data.attachments.slice(0, 10)) {
-      if (!a.path.startsWith("u/")) continue;
+      if (!isOwnedChatAttachmentPath(a.path, context.userId)) throw new Error("مرفق غير صالح أو لا يخص حسابك.");
       if (a.mime.startsWith("image/")) {
         const { data: signed } = await supabaseAdmin.storage.from("chat-uploads").createSignedUrl(a.path, 3600);
         if (signed?.signedUrl) parts.push({ kind: "image", url: signed.signedUrl, mime: a.mime, name: a.name });

@@ -12,7 +12,8 @@
     "test:offline-planner": "node scripts/offline-planner-check.mjs",
     "self-diagnostic": "node scripts/self-diagnostic.mjs",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:chat-auth-policy": "node scripts/chat-auth-policy-check.mjs"
   },
   "overrides": {
     "rolldown": "1.2.1"
