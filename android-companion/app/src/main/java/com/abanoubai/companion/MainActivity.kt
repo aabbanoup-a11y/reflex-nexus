@@ -106,14 +106,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Keep the Companion lightweight: complex planning is cloud-first and
-        // the dashboard opens in the external browser on low-RAM devices.
-        if (isLowMemoryDevice()) {
-            // On low-RAM phones (including OPPO A15 variants), keep this Activity
-            // in the foreground. Launching the browser automatically made it look
-            // as if Companion immediately closed on every start.
-            showOfflineHub()
-        } else showDashboard()
+        // Native-first launch: show the app's own chat UI instead of a website wrapper.
+        showNativeChat()
         // Keep the dashboard usable even if background companion initialization fails.
         if (!isLowMemoryDevice()) {
             runCatching { CompanionRuntime.start(this) }
@@ -284,6 +278,91 @@ class MainActivity : AppCompatActivity() {
                 { error -> runOnUiThread { Toast.makeText(this, error, Toast.LENGTH_LONG).show() } },
             )
         }.onFailure { Toast.makeText(this, it.message ?: "تعذر تشغيل الميكروفون", Toast.LENGTH_LONG).show() }
+    }
+
+    private fun showNativeChat() {
+        showingDashboard = false
+        showingOfflineHub = true
+        val bg = 0xff101418.toInt()
+        val panel = 0xff20272e.toInt()
+        val accent = 0xff9be7a1.toInt()
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(18, 18, 18, 12)
+            setBackgroundColor(bg)
+        }
+        root.addView(TextView(this).apply {
+            text = "AbanoupAI"
+            textSize = 27f
+            gravity = Gravity.CENTER
+            setTextColor(-1)
+            setPadding(0, 8, 0, 2)
+        })
+        root.addView(TextView(this).apply {
+            text = "مساعدك — واجهة أندرويد مستقلة"
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setTextColor(0xffb7c4cc.toInt())
+            setPadding(0, 0, 0, 14)
+        })
+        val transcript = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(12, 12, 12, 12)
+        }
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            addView(transcript)
+            layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
+            setBackgroundColor(panel)
+        }
+        fun addMessage(who: String, text: String) {
+            val bubble = TextView(this).apply {
+                this.text = "$who\n$text"
+                textSize = 16f
+                setTextColor(if (who == "أنت") -1 else accent)
+                setPadding(12, 10, 12, 10)
+                setBackgroundColor(if (who == "أنت") 0xff303a43.toInt() else 0xff18231d.toInt())
+            }
+            transcript.addView(bubble, LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                setMargins(0, 0, 0, 12)
+            })
+            scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+        }
+        addMessage("AbanoupAI", "أهلًا! دي واجهة المحادثة الأصلية داخل التطبيق. الأوامر المحلية متاحة. ربط المحادثة السحابية بالخلفية الآمنة ما زال خطوة مستقلة، ولن أعتبره مكتملًا قبل اختباره.")
+        val input = EditText(this).apply {
+            hint = "اكتب رسالة أو أمر للهاتف…"
+            setTextColor(-1)
+            setHintTextColor(0xffaab4bb.toInt())
+            minLines = 1
+            maxLines = 4
+            setPadding(14, 8, 14, 8)
+        }
+        val send = button("إرسال") {}
+        fun submit() {
+            val prompt = input.text.toString().trim()
+            if (prompt.isBlank()) return
+            input.setText("")
+            addMessage("أنت", prompt)
+            send.isEnabled = false
+            addMessage("AbanoupAI", "بفحص الطلب…")
+            val pendingIndex = transcript.childCount - 1
+            Thread {
+                val result = runCatching { LocalAgentController.handle(this, prompt) }
+                    .getOrElse { "تعذر تنفيذ الطلب: ${it.message ?: "خطأ غير معروف"}" }
+                runOnUiThread {
+                    if (pendingIndex in 0 until transcript.childCount) transcript.removeViewAt(pendingIndex)
+                    addMessage("AbanoupAI", result)
+                    send.isEnabled = true
+                }
+            }.start()
+        }
+        send.setOnClickListener { submit() }
+        root.addView(scroll)
+        root.addView(input, LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 10, 0, 4) })
+        root.addView(send)
+        root.addView(button("استماع لأمر صوتي") { listenLocalAgent() })
+        root.addView(button("إعدادات وصلاحيات الهاتف") { showSetupHub() })
+        setContentView(root)
     }
 
     private fun showOfflineHub() {
