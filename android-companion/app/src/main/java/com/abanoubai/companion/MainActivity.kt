@@ -514,12 +514,8 @@ class MainActivity : AppCompatActivity() {
                 }.onFailure { reply.text = it.message ?: "تعذر تشغيل الميكروفون" }
             }
         })
-        root.addView(button("فتح تطبيق AbanoupAI") {
-            if (isNetworkAvailable()) {
-                showDashboard(forceInApp = true)
-            } else {
-                Toast.makeText(this, "لا يوجد إنترنت؛ اتصل بالإنترنت لفتح مساحة العمل داخل التطبيق.", Toast.LENGTH_LONG).show()
-            }
+        root.addView(button("مساحة العمل الأصلية") {
+            showNativeWorkspace()
         })
         setContentView(ScrollView(this).apply { addView(root) })
     }
