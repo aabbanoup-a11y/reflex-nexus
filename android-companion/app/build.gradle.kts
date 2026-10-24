@@ -29,9 +29,17 @@ android {
         }
     }
     buildTypes {
+        debug {
+            // Keep the diagnostic build installable beside the existing app so
+            // testing a crash fix does not erase the user's stored pairing data.
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
+            resValue("string", "app_label", "AbanoubAI Companion (اختبار)")
+        }
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
+            resValue("string", "app_label", "AbanoubAI Companion")
         }
     }
     buildFeatures { buildConfig = true }
