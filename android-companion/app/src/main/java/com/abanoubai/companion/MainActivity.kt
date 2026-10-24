@@ -51,8 +51,27 @@ class MainActivity : AppCompatActivity() {
             val changed = prefs.getString("access_token", null) != accessToken || prefs.getString("device_id", null) != deviceId
             prefs.edit().putString("device_id", deviceId).putString("access_token", accessToken)
                 .putString("refresh_token", refreshToken).putBoolean("enabled", true).apply()
-            ContextCompat.startForegroundService(this@MainActivity, Intent(this@MainActivity, CompanionForegroundService::class.java))
-            if (changed) runOnUiThread { CompanionRuntime.restart(this@MainActivity) }
+            // Guard service startup: Android/ColorOS may reject a foreground-service
+            // start. Do not let the exception escape the JavaScript bridge and close the UI.
+            runCatching {
+                ContextCompat.startForegroundService(
+                    this@MainActivity,
+                    Intent(this@MainActivity, CompanionForegroundService::class.java)
+                )
+            }.onFailure { error ->
+                android.util.Log.e("AbanoubAICompanion", "Pairing succeeded but background service could not start", error)
+                runOnUiThread {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "تم حفظ الاقتران، لكن تعذر تشغيل الاتصال في الخلفية. افتح التطبيق وحاول مرة أخرى.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+            if (changed) runOnUiThread {
+                runCatching { CompanionRuntime.restart(this@MainActivity) }
+                    .onFailure { android.util.Log.e("AbanoubAICompanion", "Could not restart companion runtime after pairing", it) }
+            }
         }
 
         @JavascriptInterface fun openAccessibility() = runOnUiThread { openSettings(Settings.ACTION_ACCESSIBILITY_SETTINGS) }
