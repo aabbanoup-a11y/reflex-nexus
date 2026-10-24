@@ -6,6 +6,10 @@ on:
     paths:
       - "android-companion/**"
       - ".github/workflows/android-companion.yml"
+  pull_request:
+    paths:
+      - "android-companion/**"
+      - ".github/workflows/android-companion.yml"
 
 jobs:
   build:
@@ -24,20 +28,10 @@ jobs:
           packages: "platform-tools platforms;android-35 build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - run: gradle wrapper --gradle-version 8.10.2
-      - name: Validate Supabase build configuration
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-        shell: bash
-        run: |
-          if [[ -z "${SUPABASE_URL//[[:space:]]/}" ]]; then
-            echo "::error::Missing required GitHub Actions secret SUPABASE_URL. Configure it in repository Settings > Secrets and variables > Actions."
-            exit 1
-          fi
-          if [[ -z "${SUPABASE_PUBLISHABLE_KEY//[[:space:]]/}" ]]; then
-            echo "::error::Missing required GitHub Actions secret SUPABASE_PUBLISHABLE_KEY. Use a publishable key only; never use a service-role key in the APK."
-            exit 1
-          fi
+      - name: Run Android lint checks
+        run: ./gradlew lintDebug
+      - name: Run Android unit tests
+        run: ./gradlew testDebugUnitTest
       - name: Build debug APK
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
