@@ -142,3 +142,30 @@
 | Release signing | BLOCKED | مفتاح توزيع دائم غير مثبت |
 
 **العائق التالي الوحيد:** اكتمال CI للـ HEAD `c34ffcd` ثم الحصول على إعداد مفتاح publishable جديد/معتمد عبر GitHub Secrets خارج الدردشة؛ بعد ذلك اختبار WebView على OPPO A15. لا ترسل أي أسرار في المحادثة.
+
+
+---
+
+## جولة تدقيق — 2026-10-24 18:10 Africa/Cairo
+
+### Artifact Android native chat — تم التحقق من التنزيل والسلامة
+- مصدر الكود: `main` عند commit [23bf3a604896ca4cc707360bdaaf2192324996cb](https://github.com/aabbanoup-a11y/reflex-nexus/commit/23bf3a604896ca4cc707360bdaaf2192324996cb)، ويغيّر `MainActivity.kt` لفتح واجهة محادثة Android أصلية بدل WebView عند البداية.
+- GitHub Actions: [run 40105194899](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/40105194899) — job `build` و`assembleDebug` = **PASS**.
+- Artifact: `abanoubai-companion-debug-apk`, ID `12563929491`, الحجم المضغوط 5,848,279 bytes، غير منتهي الصلاحية؛ انتهاء الصلاحية المسجل 2027-01-22 15:02:57 UTC.
+- تم تنزيل ZIP والتحقق من SHA-256: `7aae2856eba1db40dee73245bf3a1e409f68a3e0a49f1ed7ab0dd092195222c3` (يطابق digest المنشور من GitHub). يحتوي على `app-debug.apk` بحجم 6,810,203 bytes؛ SHA-256 للـ APK المستخرج `69261ac25ea922c2dc1e2513337ef050c997d83b8a50d99a9e9b7db85c78aba4`.
+- نوع النسخة: Debug فقط، مع `applicationIdSuffix=.test` وفق إعدادات Gradle؛ منفصلة عن الحزمة المثبتة، ولا تُعد Release.
+- قيد الاتصال: خطوات البناء في السجل مررت `SUPABASE_URL=` و`SUPABASE_PUBLISHABLE_KEY=` فارغين. نجاح assembleDebug يثبت نجاح البناء فقط، ولا يثبت الاتصال السحابي. واجهة المحادثة في commit المذكور تستدعي `LocalAgentController.handle(...)`; ربط الشات السحابي لم يُثبت أنه موجود أو مختبر في هذا المسار.
+- اختبار OPPO A15 / Android 10 / ColorOS 7.2: **BLOCKED — يحتاج المستخدم**. لا stack trace من الجهاز، ولا يجوز إعلان حل الانهيار قبل الاختبار الفعلي.
+- تغييرات كود/إنتاج في هذه الجولة: لا شيء؛ تم تنزيل artifact والتحقق منه وتوثيق الأدلة فقط.
+
+### نتيجة الجولة
+| الفحص | النتيجة |
+|---|---|
+| مراجعة HEAD وcommit | PASS |
+| CI assembleDebug | PASS |
+| تنزيل artifact والتحقق من ZIP digest | PASS |
+| APK حقيقي مستخرج من artifact | PASS |
+| اتصال السحابة داخل APK | BLOCKED / غير مثبت |
+| اختبار الهاتف والانهيار | BLOCKED / ينتظر اختبار OPPO |
+
+**العائق التالي الوحيد:** تثبيت APK التشخيصي على OPPO واختبار فتح المحادثة ثم أمر آمن؛ إذا تكرر الخروج، أرسل نص الخطأ أو Logcat دون أي بيانات دخول. بعد ذلك يُفحص مسار الشات السحابي منفصلًا ولا يضاف endpoint إلا بعد إثبات route/Edge Function موجودة ومراجعة المصادقة وRLS.
