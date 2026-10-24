@@ -106,8 +106,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Native-first launch: show the app's own chat UI instead of a website wrapper.
-        showNativeChat()
+        // Native-first launch: keep the user in the Android app. The native workspace
+        // is the migration landing screen; it must not silently fall back to a browser.
+        showNativeWorkspace()
         // Keep the dashboard usable even if background companion initialization fails.
         if (!isLowMemoryDevice()) {
             runCatching { CompanionRuntime.start(this) }
@@ -248,12 +249,15 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 18, 0, 12)
         }
         root.addView(note)
-        root.addView(button("فتح الصفحة عند توفر الإنترنت — الوضع المحلي عند عدم الاتصال") {
-            if (isNetworkAvailable()) openDashboardExternal()
-            else {
-                Toast.makeText(this, "لا يوجد إنترنت؛ الوضع المحلي جاهز الآن.", Toast.LENGTH_LONG).show()
-                showOfflineHub()
-            }
+        root.addView(button("لوحة العمل — واجهة أصلية قيد النقل") {
+            // Do not launch a browser or external dashboard. Until native route parity is
+            // implemented and tested, keep the user inside this Android app.
+            Toast.makeText(
+                this,
+                "لوحة الموقع لم تُنقل بالكامل إلى Android بعد. لن أفتح متصفحًا بدلًا من التطبيق.",
+                Toast.LENGTH_LONG
+            ).show()
+            showNativeWorkspace()
         })
         root.addView(button("فتح إعدادات التطبيق مباشرة") {
             openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
@@ -278,6 +282,167 @@ class MainActivity : AppCompatActivity() {
                 { error -> runOnUiThread { Toast.makeText(this, error, Toast.LENGTH_LONG).show() } },
             )
         }.onFailure { Toast.makeText(this, it.message ?: "تعذر تشغيل الميكروفون", Toast.LENGTH_LONG).show() }
+    }
+
+    /**
+     * Native workspace landing screen. This intentionally stays inside the app and
+     * labels routes that are not yet ported rather than silently opening the website.
+     * Feature screens must replace these entries incrementally as native parity lands.
+     */
+    private fun showNativeWorkspace() {
+        showingDashboard = false
+        showingOfflineHub = true
+        val bg = 0xff101418.toInt()
+        val panel = 0xff20272e.toInt()
+        val accent = 0xff9be7a1.toInt()
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(18, 18, 18, 12)
+            setBackgroundColor(bg)
+        }
+        root.addView(TextView(this).apply {
+            text = "AbanoupAI"
+            textSize = 27f
+            gravity = Gravity.CENTER
+            setTextColor(-1)
+        })
+        root.addView(TextView(this).apply {
+            text = "مساحة العمل — تطبيق Android أصلي"
+            textSize = 16f
+            gravity = Gravity.CENTER
+            setTextColor(accent)
+            setPadding(0, 4, 0, 12)
+        })
+        root.addView(TextView(this).apply {
+            text = "التحويل شغّال على مراحل. الأقسام التالية لم تُنقل وظائفها كاملة بعد؛ لذلك لن يتم فتح الموقع في متصفح خارجي أو الادعاء بأنها مكتملة."
+            textSize = 14f
+            setTextColor(-1)
+            setPadding(12, 12, 12, 12)
+            setBackgroundColor(panel)
+        })
+        val scroll = ScrollView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
+        }
+        val items = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 8, 0, 8) }
+        val routes = listOf(
+            "الشبكة والصفحة الرئيسية" to "الخطوة الأولى بعد تأسيس التنقل الأصلي",
+            "المساعد والمحادثات" to "المحادثة المحلية متاحة؛ ربط السحابة يحتاج اختبارًا مستقلًا",
+            "المشروعات والمكتبة" to "لم تُنقل بعد",
+            "الصور والملفات" to "لم تُنقل بعد",
+            "المهام المجدولة والإضافات" to "لم تُنقل بعد",
+            "الذاكرة وربط الهاتف" to "إدارة الأذونات والربط متاحة جزئيًا"
+        )
+        routes.forEach { (title, detail) ->
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(14, 12, 14, 12)
+                setBackgroundColor(panel)
+                layoutParams = LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    setMargins(0, 6, 0, 6)
+                }
+            }
+            card.addView(TextView(this).apply {
+                text = title
+                textSize = 17f
+                setTextColor(accent)
+            })
+            card.addView(TextView(this).apply {
+                text = detail
+                textSize = 13f
+                setTextColor(0xffd3dbe0.toInt())
+                setPadding(0, 4, 0, 0)
+            })
+            card.isClickable = true
+            card.isFocusable = true
+            card.setOnClickListener {
+                when (title) {
+                    "المساعد والمحادثات" -> showNativeChat()
+                    "الذاكرة وربط الهاتف" -> showSetupHub()
+                    else -> showNativeSection(title, detail)
+                }
+            }
+            items.addView(card)
+        }
+        scroll.addView(items)
+        root.addView(scroll)
+        root.addView(button("العودة للمحادثة") { showNativeChat() })
+        root.addView(button("إعدادات وصلاحيات الهاتف") { showSetupHub() })
+        setContentView(root)
+    }
+
+    /**
+     * Native feature landing screens. Actions that Android can perform safely are real
+     * actions; cloud-backed features remain clearly identified until their API is wired.
+     */
+    private fun showNativeSection(title: String, detail: String) {
+        showingDashboard = false
+        showingOfflineHub = true
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(20, 20, 20, 16)
+            setBackgroundColor(0xff101418.toInt())
+        }
+        root.addView(TextView(this).apply {
+            text = title
+            textSize = 25f
+            gravity = Gravity.CENTER
+            setTextColor(0xff9be7a1.toInt())
+            setPadding(0, 8, 0, 16)
+        })
+        root.addView(TextView(this).apply {
+            text = detail
+            textSize = 15f
+            setTextColor(-1)
+            setPadding(14, 14, 14, 14)
+            setBackgroundColor(0xff20272e.toInt())
+        })
+        val body = TextView(this).apply {
+            textSize = 15f
+            setTextColor(0xffd3dbe0.toInt())
+            setPadding(4, 18, 4, 18)
+        }
+        when (title) {
+            "الصور والملفات" -> {
+                body.text = "اختَر ملفًا من منتقي Android. يظل اختيار الملف ومشاركته تحت سيطرتك."
+                root.addView(body)
+                root.addView(button("اختيار ملف من الهاتف") {
+                    runCatching {
+                        startActivity(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                            type = "*/*"
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        })
+                    }.onFailure { Toast.makeText(this, "تعذر فتح منتقي الملفات", Toast.LENGTH_LONG).show() }
+                })
+                root.addView(button("فحص فهرس الوسائط المتاح") {
+                    val result = runCatching { DeviceInventory.files(this) }
+                        .getOrElse { "تعذر قراءة فهرس الوسائط: ${it.message ?: "خطأ غير معروف"}" }
+                    body.text = result
+                })
+            }
+            "المشروعات والمكتبة" -> {
+                body.text = "هذه الشاشة أصلية داخل Android. محتوى المشروعات والمكتبة يحتاج ربطًا موثقًا بواجهة الحساب قبل عرض بياناتك؛ لن أعرض بيانات تجريبية على أنها حقيقية."
+                root.addView(body)
+                root.addView(button("نسخ حالة القسم") {
+                    val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("حالة المشروعات والمكتبة", body.text))
+                    Toast.makeText(this, "تم نسخ الحالة", Toast.LENGTH_SHORT).show()
+                })
+            }
+            "المهام المجدولة والإضافات" -> {
+                body.text = "لن أغيّر المهام المجدولة أو أشغّل إضافات من الهاتف قبل ربطها بواجهة مصادقة وصلاحيات الحساب. إدارة المهام الحالية متاحة في TickTick، والربط داخل التطبيق ما زال مطلوبًا."
+                root.addView(body)
+                root.addView(button("فتح المحادثة للمساعدة في مهمة") { showNativeChat() })
+            }
+            else -> {
+                body.text = "القسم ظاهر داخل التطبيق، لكن لا أعتبر وظائفه السحابية مكتملة قبل ربطها بالخلفية واختبارها."
+                root.addView(body)
+            }
+        }
+        root.addView(button("المحادثة") { showNativeChat() })
+        root.addView(button("العودة لمساحة العمل") { showNativeWorkspace() })
+        root.addView(button("إعدادات وصلاحيات الهاتف") { showSetupHub() })
+        setContentView(ScrollView(this).apply { addView(root) })
     }
 
     private fun showNativeChat() {
@@ -434,12 +599,8 @@ class MainActivity : AppCompatActivity() {
                 }.onFailure { reply.text = it.message ?: "تعذر تشغيل الميكروفون" }
             }
         })
-        root.addView(button("فتح تطبيق AbanoupAI") {
-            if (isNetworkAvailable()) {
-                showDashboard(forceInApp = true)
-            } else {
-                Toast.makeText(this, "لا يوجد إنترنت؛ اتصل بالإنترنت لفتح مساحة العمل داخل التطبيق.", Toast.LENGTH_LONG).show()
-            }
+        root.addView(button("مساحة العمل الأصلية") {
+            showNativeWorkspace()
         })
         setContentView(ScrollView(this).apply { addView(root) })
     }
@@ -463,10 +624,10 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun showDashboard(forceInApp: Boolean = false) {
-        // Default to the lighter external browser on low-RAM startup, but honor
-        // an explicit user tap to open the dashboard inside Companion.
+        // Never send the user to an external browser as a substitute for a native screen.
+        // The native workspace is the safe fallback until the requested route is ported.
         if (isLowMemoryDevice() && !forceInApp) {
-            openDashboardExternal()
+            showNativeWorkspace()
             return
         }
         if (!isNetworkAvailable()) {
