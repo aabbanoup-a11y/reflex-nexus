@@ -355,9 +355,26 @@ class MainActivity : AppCompatActivity() {
                 }.onFailure { reply.text = it.message ?: "تعذر تشغيل الميكروفون" }
             }
         })
-        root.addView(button("فتح صفحة AbanoupAi داخل التطبيق") {
-            if (isNetworkAvailable()) showDashboard(forceInApp = true)
-            else Toast.makeText(this, "لا يوجد إنترنت؛ الأوامر الهاتفية الأساسية فقط تعمل محليًا.", Toast.LENGTH_LONG).show()
+        root.addView(button("فتح صفحة AbanoupAi في Chrome") {
+            if (!isNetworkAvailable()) {
+                Toast.makeText(this, "لا يوجد اتصال بالإنترنت. جرّب بعد الاتصال.", Toast.LENGTH_LONG).show()
+            } else {
+                // The OPPO A15 has only 2 GB RAM. Avoid creating a second WebView
+                // in-process, which can be killed by Android when the page is heavy.
+                // Launch Chrome explicitly, then fall back to Android's browser chooser.
+                val page = Uri.parse("https://$SITE_HOST/")
+                val launched = runCatching {
+                    startActivity(Intent(Intent.ACTION_VIEW, page).setPackage("com.android.chrome"))
+                }.isSuccess
+                if (!launched) {
+                    runCatching {
+                        startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW, page), "فتح صفحة AbanoupAi"))
+                    }.onFailure {
+                        android.util.Log.e("AbanoubAICompanion", "Could not launch dashboard browser", it)
+                        Toast.makeText(this, "تعذر فتح الصفحة. تأكد من تثبيت Chrome واتصال الإنترنت.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
         })
         setContentView(ScrollView(this).apply { addView(root) })
     }
