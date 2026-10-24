@@ -62,7 +62,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: gradle wrapper --gradle-version 8.10.2
         working-directory: android-companion
-      - run: ./gradlew assembleDebug -PSUPABASE_URL=${{ secrets.SUPABASE_URL }} -PSUPABASE_PUBLISHABLE_KEY=${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+      - name: Validate Supabase build configuration
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        shell: bash
+        run: |
+          if [[ -z "${SUPABASE_URL//[[:space:]]/}" ]]; then
+            echo "::error::Missing required GitHub Actions secret SUPABASE_URL. Configure it in repository Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if [[ -z "${SUPABASE_PUBLISHABLE_KEY//[[:space:]]/}" ]]; then
+            echo "::error::Missing required GitHub Actions secret SUPABASE_PUBLISHABLE_KEY. Use a publishable key only; never use a service-role key in the APK."
+            exit 1
+          fi
+      - name: Build debug APK
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: ./gradlew assembleDebug "-PSUPABASE_URL=$SUPABASE_URL" "-PSUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY"
         working-directory: android-companion
       - uses: actions/upload-artifact@v4
         if: always()
