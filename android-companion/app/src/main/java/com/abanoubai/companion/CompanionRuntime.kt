@@ -36,7 +36,10 @@ object CompanionRuntime {
         val accessToken = prefs.getString("access_token", null) ?: return
         val url = BuildConfig.SUPABASE_URL
         val key = BuildConfig.SUPABASE_PUBLISHABLE_KEY
-        if (!url.startsWith("https://") || key.startsWith("YOUR_")) return
+        if (!url.startsWith("https://") || key.isBlank() || key.startsWith("YOUR_")) {
+            android.util.Log.w("AbanoubAICompanion", "Cloud connection disabled: Supabase publishable key is not configured")
+            return
+        }
         val wsUrl = url.replace("https://", "wss://") + "/realtime/v1/websocket?apikey=$key&vsn=1.0.0"
         val request = Request.Builder().url(wsUrl).build()
         socket = http.newWebSocket(request, object : WebSocketListener() {

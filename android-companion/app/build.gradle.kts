@@ -15,7 +15,7 @@ android {
         versionCode = 23
         versionName = "0.9.0"
         buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL")?.toString()?.takeIf { it.isNotBlank() } ?: "https://wobfdslqlmvlatyrtgkd.supabase.co"}\"")
-        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY")?.toString()?.takeIf { it.isNotBlank() } ?: "sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ"}\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY")?.toString()?.takeIf { it.isNotBlank() } ?: ""}\"")
         ndk { abiFilters += listOf("arm64-v8a") }
     }
     signingConfigs {
