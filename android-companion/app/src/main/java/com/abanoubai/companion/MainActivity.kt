@@ -352,6 +352,19 @@ class MainActivity : AppCompatActivity() {
                 setTextColor(0xffd3dbe0.toInt())
                 setPadding(0, 4, 0, 0)
             })
+            card.isClickable = true
+            card.isFocusable = true
+            card.setOnClickListener {
+                when (title) {
+                    "المساعد والمحادثات" -> showNativeChat()
+                    "الذاكرة وربط الهاتف" -> showSetupHub()
+                    else -> Toast.makeText(
+                        this,
+                        "القسم «$title» لم يُنقل إلى واجهة أصلية مكتملة بعد. لن أفتح الموقع أو المتصفح بدلًا منه.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
             items.addView(card)
         }
         scroll.addView(items)
