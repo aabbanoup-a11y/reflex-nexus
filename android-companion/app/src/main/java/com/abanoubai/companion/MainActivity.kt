@@ -109,8 +109,10 @@ class MainActivity : AppCompatActivity() {
         // Keep the Companion lightweight: complex planning is cloud-first and
         // the dashboard opens in the external browser on low-RAM devices.
         if (isLowMemoryDevice()) {
+            // On low-RAM phones (including OPPO A15 variants), keep this Activity
+            // in the foreground. Launching the browser automatically made it look
+            // as if Companion immediately closed on every start.
             showOfflineHub()
-            if (isNetworkAvailable()) openDashboardExternal()
         } else showDashboard()
         // Keep the dashboard usable even if background companion initialization fails.
         if (!isLowMemoryDevice()) {
