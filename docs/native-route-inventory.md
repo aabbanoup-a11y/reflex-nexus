@@ -41,3 +41,22 @@ This is an inventory of the existing web app, not a claim that these routes are 
 
 ## Release gate
 Each row must be changed from **Not ported** only after a native screen exists and its acceptance checks have evidence. No WebView or external browser is an acceptable substitute for an unported route. Verify Android 10, small-screen/RTL layout, low-memory startup, authenticated Supabase requests and row-level security before release.
+
+
+## Detailed first-screen audit — `/` and `/network`
+Audited from current `main` sources:
+- `src/routes/index.tsx` maps the root route directly to the `Network` component in `src/routes/network.tsx`.
+- The screen's core behavior is not just static UI: it invokes `networkTurn` from `src/lib/network.functions.ts` and `askAssistant` from `src/lib/chat.functions.ts` through TanStack server functions, uses the model catalog in `src/lib/models30`, and references the Supabase runtime client.
+- The UI state includes chat thread/history, manager-vs-all-model mode, text input, pending file attachments, busy state, and phone-device/pairing/voice bridge hooks. Therefore, a faithful native port needs a native API contract for those server functions; it cannot safely be reproduced by adding a cosmetic chat box alone.
+- The current native `MainActivity.kt` still contains a WebView-based `showDashboard` path and browser-navigation logic. The previous commits route the new workspace button to a native placeholder, but **do not remove the WebView architecture**. The full non-WebView requirement remains open.
+- The next implementation gate is to define/test authenticated API endpoints for `networkTurn` and `askAssistant` (including attachments and user ownership), then implement the Android native Network screen against those endpoints. Do not expose server secrets in the APK and do not call internal server functions directly from the Android client without a supported authenticated API.
+
+### First-screen native acceptance checks
+1. The launcher renders a native Android view without instantiating a WebView.
+2. Manager/all-model selection matches the existing web screen's semantics.
+3. A user can type/send a prompt; loading, success, and error states are visible.
+4. File attachments are size/type validated and stored only under the authenticated user's path.
+5. Chat history is persisted/restored with an explicit user/session scope.
+6. Voice and pairing hooks request Android permissions only when needed and never silently trigger privileged actions.
+7. RTL, keyboard resize, accessibility labels, and small-screen behavior pass on Android 10.
+8. Network calls require a valid user session; RLS and cross-user access tests pass.
