@@ -43,7 +43,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: ./gradlew assembleDebug "-PSUPABASE_URL=$SUPABASE_URL" "-PSUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: abanoubai-companion-debug-apk
           path: android-companion/app/build/outputs/apk/debug/app-debug.apk
