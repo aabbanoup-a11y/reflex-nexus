@@ -40,7 +40,7 @@ jobs:
       - run: npm run test:offline-planner
       - run: npm run test:companion
       - run: npm run build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: self-diagnostic-web
@@ -64,7 +64,7 @@ jobs:
         working-directory: android-companion
       - run: ./gradlew assembleDebug -PSUPABASE_URL=${{ secrets.SUPABASE_URL }} -PSUPABASE_PUBLISHABLE_KEY=${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         working-directory: android-companion
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: self-maintenance-debug-apk
