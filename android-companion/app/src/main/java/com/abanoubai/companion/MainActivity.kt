@@ -93,9 +93,18 @@ class MainActivity : AppCompatActivity() {
             showOfflineHub()
             if (isNetworkAvailable()) openDashboardExternal()
         } else showDashboard()
-        if (!isLowMemoryDevice()) CompanionRuntime.start(this)
+        // Keep the dashboard usable even if background companion initialization fails.
+        if (!isLowMemoryDevice()) {
+            runCatching { CompanionRuntime.start(this) }
+                .onFailure { android.util.Log.e("AbanoubAICompanion", "Unable to initialize the companion runtime", it) }
+        }
         if (getSharedPreferences("companion", MODE_PRIVATE).getBoolean("enabled", false)) {
-            ContextCompat.startForegroundService(this, Intent(this, CompanionForegroundService::class.java))
+            runCatching {
+                ContextCompat.startForegroundService(this, Intent(this, CompanionForegroundService::class.java))
+            }.onFailure {
+                android.util.Log.e("AbanoubAICompanion", "Unable to start the background companion service", it)
+                Toast.makeText(this, "تعذر تشغيل الاتصال في الخلفية؛ ستظل الواجهة متاحة.", Toast.LENGTH_LONG).show()
+            }
         }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
