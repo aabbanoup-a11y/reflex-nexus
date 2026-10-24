@@ -200,7 +200,6 @@ export const askAssistant = createServerFn({ method: "POST" })
     const parts: Part[] = [];
     // Attachments must belong to the authenticated user; never let the admin client
     // sign or download another user's object from the shared bucket.
-    const ownedPrefix = `u/${context.userId}/`;
     for (const a of data.attachments.slice(0, 10)) {
       if (!isOwnedChatAttachmentPath(a.path, context.userId)) throw new Error("مرفق غير صالح أو لا يخص حسابك.");
       if (a.mime.startsWith("image/")) {
