@@ -1,32 +1,34 @@
 # Native Android migration — Reflex Nexus
 
-## Release goal: a reliable chat first
-Deliver one stable Android app whose primary job is to let the user sign in to the same account as the web app, choose a genuinely configured AI model, send messages, receive real provider responses, and retain/sync conversations where the backend supports it. The target network is 162 models/agents, but count only models whose provider, authentication, routing, and response path have been verified. A model tile or registry entry alone is not proof that a model works.
+## Product definition
+The user talks to **one AI assistant** in one chat. That assistant sends the question to a bounded set of enabled AI models, gathers their real answers, and returns **one final synthesized message**. The final answer should distinguish agreement from meaningful disagreement and must never invent a response from a model that timed out or failed. If some models fail, continue with the successful responses and briefly report partial coverage. The user should not have to manage separate model chats.
 
-## Phase 1 — release blockers only
-1. **Secure cloud chat:** review and finish PR #18 authentication/attachment ownership work; verify the Android client sends the authenticated session/Bearer token; keep privileged provider keys server-side.
-2. **Real model network:** inventory the configured model catalog and provider routes; test each provider path with a minimal real request; distinguish working, unavailable, and unverified models. Do not promise 162 live models until evidence supports it.
-3. **Native chat reliability:** sign-in/session handling, model selection, send/receive, conversation history and sync where supported, loading/error/timeout states, retry without duplicate messages, and clear unavailable-model errors.
-4. **500-command capacity target:** design the command/tool registry to support up to 500 registered commands with schemas, permissions, validation, logging, rate/cost limits, and tests. This is a capacity target, not a claim that 500 commands already exist or work. Initially expose only commands that have been implemented and tested.
-5. **Build and verify:** configure required GitHub Actions secrets through repository settings (never paste secrets into chat or source), run CI, produce a fresh APK, and smoke-test on Android 10/low-memory hardware before calling the release stable.
+## Phase 1 — ship the chat/network first
+1. **Secure API for Android:** define a stable server endpoint with Supabase user authentication on every request. Do not treat internal TanStack server-function transport as a public API without an explicit contract. Provider keys stay server-side.
+2. **Multi-model coordinator:** start with a small, configurable number of verified models in parallel, with timeouts, concurrency and cost caps. Collect actual model outputs and failures, then ask a configured manager model to synthesize one answer. Keep model IDs/results internally for audit/debugging; show one user-facing answer.
+3. **Real provider coverage:** inventory the provider configuration and test each model path. Classify models as working, unavailable, or unverified. The target is 162 models, but catalog entries do not count as working without successful real requests. Expand from a small reliable set only after evidence.
+4. **Native Android chat:** connect the native chat UI to the secure endpoint; support same-account sign-in/session, one final answer, conversation history/sync where backend support and permissions are verified, loading/errors/timeouts, and retry without duplicate messages.
+5. **Security and regression tests:** verify authenticated/unauthenticated requests, attachment ownership if used, provider quota ordering, rate/cost limits, partial model failures, synthesis, and no secret leakage.
+6. **Build and test:** run a current Android CI build, download the artifact from that exact successful run, and smoke-test login + multi-model answer on Android 10. Do not label an old artifact as current or claim success without evidence.
 
-## Phase 2 — explicitly deferred
-Defer assistant/team and employee pages, the wider skills catalog, workflows/routes, external integrations/connectors, local model inference, and unrelated website pages until Phase 1 chat/model reliability is demonstrated. Keep them tracked, but they must not delay the core release.
+## Phase 2 — only after the user confirms Phase 1 works
+- Design and implement a registry capable of up to 500 commands, with schemas, validation, permission checks, audit logs, cost/rate limits, and tests. Do not claim 500 commands exist until implemented and tested.
+- Then add 100 tested skills.
+- Then add 50 documented workflows and external integrations/connectors.
+- Other pages, including assistants/team and employees, are deferred until the user validates the core chat/network.
 
-## Security and product constraints
-- The web app on `main` remains the source of truth for existing backend contracts.
-- Do not copy provider secrets or privileged Supabase keys into the APK.
-- Preserve authenticated user boundaries and RLS; do not make production security changes without reviewing access and testing allowed/denied cases.
-- Do not fake provider responses or mark a model/command as working without test evidence.
+## Constraints
+- GitHub `main` is the source of truth for the web app and existing backend contracts.
+- Never put privileged Supabase keys or model-provider secrets in the APK, source, or chat.
+- Preserve user isolation and RLS; inspect before changing production security.
+- No fake responses and no pretending a configured name is a working model.
 - Target Android 10 / API 29 and low-memory devices where feasible.
-- Do not claim build, installation, model coverage, sync, or device QA succeeded unless logs or tests prove it.
+- Daily work should complete one small, high-value, testable code change. Record commit, test/CI evidence, PASS/FAIL/BLOCKED, and the next blocker in GitHub/TickTick. Documentation-only work does not substitute for implementation when a safe code change is possible.
 
-## Daily development rule
-Each daily maintenance run must complete **one small, high-value, verifiable change** toward Phase 1. Inspect the current GitHub state and CI first, choose the highest-priority safe blocker, implement and test one change, then record commit/CI/artifact evidence and the next blocker in GitHub/TickTick. If blocked by owner-only secrets or permissions, record the exact blocker and work on an independent safe task; never claim progress that did not occur. Avoid broad refactors and do not start Phase 2 work while Phase 1 release blockers remain.
-
-## Current known risks
-- Android native chat exists, but cloud connectivity and same-account sync are not yet proven.
-- `QwenEngine.load()` returns false; local inference is not implemented.
-- The model registry describes 50 network models plus a manager model; it does not establish that the user's target of 162 models is configured or operational.
-- GitHub Actions previously lacked required Supabase secrets; no fresh release APK is considered verified until a current workflow succeeds.
-- PR #18 covers chat authentication and attachment ownership and must be reviewed/tested before cloud chat is treated as secure.
+## Known blockers
+- Native Android chat currently calls `LocalAgentController`, so cloud model connectivity is not established.
+- Web `askAssistant` currently tries models sequentially and returns the first successful answer; it does not yet gather multiple model opinions into one synthesized answer.
+- `QwenEngine.load()` returns false and does not prove local inference works.
+- `src/lib/models30.ts` lists 50 network models plus a manager model; this does not prove 162 operational models.
+- PR #18 is still a draft security change. The reported workflow passed auth-policy structural checks and web build, not end-to-end provider/Storage tests or a current Android APK.
+- GitHub Actions previously had missing Supabase configuration. If required secrets are absent, the repository owner must add them in repository settings; do not request or expose secrets in chat.
