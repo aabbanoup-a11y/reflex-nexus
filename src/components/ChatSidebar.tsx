@@ -42,7 +42,7 @@ export function ChatSidebar() {
       setConversations([]);
       return;
     }
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("conversations")
       .select("id,title,created_at")
       .order("created_at", { ascending: false })

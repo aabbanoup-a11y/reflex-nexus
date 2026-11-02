@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -339,65 +339,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      conversations: {
-        Row: {
-          id: string
-          user_id: string
-          title: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          title?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          title?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      messages: {
-        Row: {
-          id: string
-          conversation_id: string
-          user_id: string
-          role: string
-          content: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          conversation_id: string
-          user_id: string
-          role: string
-          content: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          conversation_id?: string
-          user_id?: string
-          role?: string
-          content?: string
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "messages_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       network_messages: {
         Row: {
