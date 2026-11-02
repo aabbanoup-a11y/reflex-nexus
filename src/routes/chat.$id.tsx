@@ -32,8 +32,8 @@ function ChatPage() {
     let cancelled = false;
     void (async () => {
       const [{ data: conversation, error: conversationError }, { data: rows, error }] = await Promise.all([
-        supabase.from("conversations").select("title").eq("id", id).maybeSingle(),
-        supabase.from("messages").select("id,role,content,created_at").eq("conversation_id", id).order("created_at", { ascending: true }),
+        (supabase as any).from("conversations").select("title").eq("id", id).maybeSingle(),
+        (supabase as any).from("messages").select("id,role,content,created_at").eq("conversation_id", id).order("created_at", { ascending: true }),
       ]);
       if (cancelled) return;
       if (conversationError || error) {
@@ -62,7 +62,7 @@ function ChatPage() {
     const localUserMessage: Message = { id: crypto.randomUUID(), role: "user", content: prompt, created_at: new Date().toISOString() };
     setMessages((current) => [...current, localUserMessage]);
 
-    const { data: saved, error: saveError } = await supabase.from("messages").insert({ conversation_id: id, user_id: user.id, role: "user", content: prompt }).select("id,role,content,created_at").single();
+    const { data: saved, error: saveError } = await (supabase as any).from("messages").insert({ conversation_id: id, user_id: user.id, role: "user", content: prompt }).select("id,role,content,created_at").single();
     if (saveError) {
       toast.error("الرسالة ما اتحفظتش");
       setLoading(false);
@@ -72,7 +72,7 @@ function ChatPage() {
     if (messages.length === 0) {
       const nextTitle = prompt.slice(0, 42) || "محادثة جديدة";
       setTitle(nextTitle);
-      void supabase.from("conversations").update({ title: nextTitle, updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", user.id);
+      void (supabase as any).from("conversations").update({ title: nextTitle, updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", user.id);
     }
 
     const history: ChatTurn[] = [...messages, localUserMessage].map(({ role, content }) => ({ role: role === "system" ? "assistant" : role, content }));
@@ -110,7 +110,7 @@ function ChatPage() {
         }
       }
     }
-    const { data: savedReply, error: replyError } = await supabase.from("messages").insert({ conversation_id: id, user_id: user.id, role: "assistant", content: reply }).select("id,role,content,created_at").single();
+    const { data: savedReply, error: replyError } = await (supabase as any).from("messages").insert({ conversation_id: id, user_id: user.id, role: "assistant", content: reply }).select("id,role,content,created_at").single();
     if (replyError) toast.error("الرد ظهر محليًا لكن ما اتحفظش في Supabase");
     setMessages((current) => [...current, (savedReply as Message | null) ?? { id: crypto.randomUUID(), role: "assistant", content: reply, created_at: new Date().toISOString() }]);
     void model;
