@@ -4,13 +4,20 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { brokeredPreviewStorage } from "./previewAuthStorage";
 
+// Baked fallbacks so the published bundle works even when the build
+// environment has no .env file. Both values are public (URL + publishable key).
+const FALLBACK_URL = "https://c--f343cb8e-77bb-41d3-b7e1-5d6f7dc4998f-prod.lovable.cloud";
+const FALLBACK_KEY = "sb_publishable_F8v4MSocHPMF0RSQpbZFvw_-DivRfUB";
+
 function make() {
   const url =
     import.meta.env['VITE_SUPABASE_URL'] ||
-    (typeof process !== "undefined" ? process.env["SUPABASE_URL"] : undefined);
+    (typeof process !== "undefined" ? process.env["SUPABASE_URL"] : undefined) ||
+    FALLBACK_URL;
   const key =
     import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] ||
-    (typeof process !== "undefined" ? process.env["SUPABASE_PUBLISHABLE_KEY"] : undefined);
+    (typeof process !== "undefined" ? process.env["SUPABASE_PUBLISHABLE_KEY"] : undefined) ||
+    FALLBACK_KEY;
   if (!url || !key) throw new Error("Lovable Cloud connection is not configured");
   return createClient<Database>(url, key, {
     global: {
