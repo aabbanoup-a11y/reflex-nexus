@@ -130,7 +130,21 @@ export const networkTurn = createServerFn({ method: "POST" })
     const inferredPhone = inferPhoneTag(requestText);
     if (inferredPhone && (!text.includes("[[PHONE:") || searchIntent)) text = `${text.trim()}\n${inferredPhone}`;
 
+    // توسيع المهارات الجاهزة إلى دفعات هاتف قبل التنفيذ.
     const tools: ToolEvent[] = [];
+    text = text.replace(/\[\[SKILL:\s*([a-z0-9_]+)(?:\s*\|\s*([\s\S]*?))?\]\]/gi, (_m, id: string, argJson?: string) => {
+      try {
+        let args: Record<string, unknown> = {};
+        if (argJson?.trim()) args = JSON.parse(argJson.trim());
+        const steps = expandSkill(id.toLowerCase(), args);
+        const skill = `${id}: ${steps.length} خطوة`;
+        tools.push({ tool: `🧩 مهارة ${skill}`, ok: true, text: "تحوّلت إلى دفعة أوامر على الهاتف" });
+        return `[[PHONE_BATCH|${JSON.stringify({ steps })}]]`;
+      } catch (e) {
+        tools.push({ tool: `🧩 مهارة ${id}`, ok: false, text: e instanceof Error ? e.message : String(e) });
+        return "";
+      }
+    });
     const run = async (tool: string, f: () => Promise<Omit<ToolEvent, "tool" | "ok">>) => {
       try {
         tools.push({ tool, ok: true, ...(await f()) });
