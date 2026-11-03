@@ -13,7 +13,7 @@ export function validateCron(cron: string) {
 export function scheduleJob(input: Omit<ScheduledJob, "id">): ScheduledJob {
   return { ...input, cron: validateCron(input.cron), name: input.name.trim().slice(0, 120), instruction: input.instruction?.trim().slice(0, 4000) ?? "", timezone: input.timezone || "Africa/Cairo" };
 }
-function nextRun(cron: string, from: Date) {
+export function nextRun(cron: string, from: Date) {
   const parts = cron.trim().split(/\s+/); const next = new Date(from.getTime() + 60_000);
   if (parts.length === 5 && parts[0] !== "*" && parts[1] !== "*") { next.setHours(Number(parts[1]) || 0, Number(parts[0]) || 0, 0, 0); if (next <= from) next.setDate(next.getDate() + 1); return next; }
   if (parts.length === 5 && parts[0] !== "*") { next.setSeconds(0, 0); next.setMinutes(Number(parts[0]) || 0); if (next <= from) next.setHours(next.getHours() + 1); }
@@ -24,13 +24,21 @@ async function executeLocalCommand(command: string) {
   if (text.startsWith("notify:") && typeof Notification !== "undefined" && Notification.permission === "granted") new Notification("AbanoupAi — مهمة مجدولة", { body: text.slice(7).trim() || "تم تنفيذ المهمة" });
   return `تم التنفيذ المحلي: ${text.slice(0, 500)}`;
 }
-export async function runDueScheduledJobs(db: Db, now = new Date()) {
-  const { data: jobs, error } = await db.from("scheduled_jobs").select("id,name,cron,command,instruction,status,enabled,next_run_at").or("status.eq.active,enabled.eq.true").lte("next_run_at", now.toISOString()).limit(25);
+type DueJob = { id: string; user_id: string; name: string; cron: string; instruction: string; enabled: boolean; next_run_at: string | null };
+export async function listDueJobs(db: Db, now = new Date()): Promise<DueJob[]> {
+  const { data: jobs, error } = await db.from("scheduled_jobs").select("id,user_id,name,cron,instruction,enabled,next_run_at").eq("enabled", true).lte("next_run_at", now.toISOString()).limit(25);
   if (error) throw new Error(error.message);
+  return (jobs ?? []) as DueJob[];
+}
+export async function markJobRun(db: Db, job: DueJob, result: string, now = new Date()) {
+  await db.from("scheduled_jobs").update({ last_run_at: now.toISOString(), next_run_at: nextRun(job.cron, now).toISOString(), last_status: result.slice(0, 500) }).eq("id", job.id);
+}
+export async function runDueScheduledJobs(db: Db, now = new Date()) {
+  const jobs = await listDueJobs(db, now);
   const results: string[] = [];
-  for (const job of (jobs ?? []) as DueJob[]) {
-    const result = await executeLocalCommand(job.command || job.instruction || ""); const next = nextRun(job.cron, now);
-    await db.from("scheduled_jobs").update({ last_run_at: now.toISOString(), next_run_at: next.toISOString(), last_result: result, last_status: result }).eq("id", job.id);
+  for (const job of jobs) {
+    const result = await executeLocalCommand(job.instruction || "");
+    await markJobRun(db, job, result, now);
     results.push(`${job.name}: ${result}`);
   }
   return results;
