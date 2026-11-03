@@ -168,11 +168,13 @@ const RAW: [string, string, string, string][] = [
   ["screen_audit", "قراءة شاملة: نص + عناصر + لقطة", "", "screen_text|read_screen|screenshot"],
 ];
 
+export type AgentSkill = { id: string; title: string; needs: string[]; spec: string };
+
 export const AGENT_SKILLS: AgentSkill[] = RAW.map(([id, title, needs, spec]) => ({
   id,
   title,
   needs: needs ? needs.split(" ") : [],
-  steps: parseSteps(spec, {}),
+  spec,
 }));
 
 export const SKILL_IDS = new Set(AGENT_SKILLS.map((s) => s.id));
@@ -180,7 +182,10 @@ export const SKILL_IDS = new Set(AGENT_SKILLS.map((s) => s.id));
 /** يوسّع معرف مهارة إلى خطوات هاتف جاهزة مع استبدال الوسائط. */
 export function expandSkill(id: string, args: Record<string, unknown> = {}): SkillStep[] {
   const skill = AGENT_SKILLS.find((s) => s.id === id);
-  if (!skill) throw new Error(`مهارة غير معروفة: ${id}. المهارات المتاحة: ${AGENT_SKILLS.slice(0, 8).map((s) => s.id).join("، ")}…`);
+  if (!skill) {
+    const sample = AGENT_SKILLS.slice(0, 8).map((s) => s.id).join("، ");
+    throw new Error(`مهارة غير معروفة: ${id}. أمثلة: ${sample}…`);
+  }
   const strArgs: Record<string, string> = {};
   for (const k of ["a", "b"] as const) {
     const v = args[k];
@@ -189,11 +194,7 @@ export function expandSkill(id: string, args: Record<string, unknown> = {}): Ski
   for (const need of skill.needs) {
     if (!strArgs[need]) throw new Error(`المهارة ${skill.id} (${skill.title}) تحتاج الوسيط ${need}`);
   }
-  return parseSteps((skill as unknown as { _spec: string })._spec ?? skillToSpec(skill), strArgs);
-}
-
-function skillToSpec(skill: AgentSkill): string {
-  return (skill as unknown as { __spec?: string }).__spec ?? "";
+  return parseSteps(skill.spec, strArgs);
 }
 
 export const SKILL_PROMPT = AGENT_SKILLS.map((s) => `${s.id} (${s.title}${s.needs.length ? ` — يحتاج ${s.needs.join(" و")}` : ""})`).join("\n");
