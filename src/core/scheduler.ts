@@ -3,7 +3,6 @@ export type ScheduledJob = {
   enabled?: boolean; status?: string; nextRunAt?: string | null; next_run_at?: string | null;
 };
 type Db = { from: (table: string) => any };
-type DueJob = { id: string; name: string; cron: string; command?: string; instruction?: string; status?: string; enabled?: boolean; next_run_at?: string | null };
 
 export function validateCron(cron: string) {
   const fields = cron.trim().split(/\s+/);
