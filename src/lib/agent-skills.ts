@@ -3,7 +3,6 @@
 // العلامتان {a} و{b} تُستبدلان بوسائط المهارة.
 
 export type SkillStep = { kind: string; payload: Record<string, unknown> };
-export type AgentSkill = { id: string; title: string; needs: string[]; steps: SkillStep[] };
 
 const NO_ARG_KINDS = new Set([
   "open_chrome", "open_settings", "open_camera", "listen", "back", "home", "recents",
@@ -37,7 +36,7 @@ function parseSteps(spec: string, args: Record<string, string>): SkillStep[] {
     const eq = s.indexOf("=");
     const kind = (eq === -1 ? s : s.slice(0, eq)).trim().toLowerCase();
     let raw = eq === -1 ? "" : s.slice(eq + 1).trim();
-    raw = raw.replace(/\{a\}/g, args.a ?? "\u0000{a}").replace(/\{b\}/g, args.b ?? "\u0000{b}");
+    raw = raw.replace(/\{a\}/g, args["a"] ?? "\u0000{a}").replace(/\{b\}/g, args["b"] ?? "\u0000{b}");
     if (raw.includes("{a}") || raw.includes("{b}")) {
       throw new Error(`المهارة تحتاج ${raw.includes("{b}") ? "الوسيط b" : "الوسيط a"} ولم يصل`);
     }
