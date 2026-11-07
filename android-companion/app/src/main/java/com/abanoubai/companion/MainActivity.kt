@@ -493,19 +493,28 @@ class MainActivity : AppCompatActivity() {
                     super.onReceivedError(view, errorCode, description, failingUrl)
                     if (failingUrl?.contains(SITE_HOST) == true) runOnUiThread { showOfflineHub() }
                 }
-                override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                    val host = Uri.parse(url).host.orEmpty()
-                    val keep = host == SITE_HOST || host.endsWith(".lovable.app") || host.endsWith(".lovable.cloud") ||
-                        host.endsWith(".lovable.dev") || host == "lovable.dev" || host == "accounts.google.com" ||
-                        host.endsWith(".google.com") || host.endsWith(".gstatic.com") || host.endsWith(".googleusercontent.com")
-                    if (keep) return false
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                    return true
-                }
+                override fun shouldOverrideUrlLoading(view: WebView, request: android.webkit.WebResourceRequest): Boolean =
+                    shouldOpenOutsideWebView(request.url)
+
+                @Suppress("DEPRECATION")
+                override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean =
+                    shouldOpenOutsideWebView(Uri.parse(url))
             }
         }
         setContentView(web)
         web.loadUrl("https://$SITE_HOST/")
+    }
+
+    private fun shouldOpenOutsideWebView(uri: Uri): Boolean {
+        when (uri.scheme?.lowercase()) {
+            "http", "https" -> return false
+            "tel", "mailto", "sms" -> {
+                val intent = Intent(Intent.ACTION_VIEW, uri)
+                if (intent.resolveActivity(packageManager) != null) startActivity(intent)
+                else Toast.makeText(this, "لا يوجد تطبيق مناسب لهذا الرابط.", Toast.LENGTH_SHORT).show()
+            }
+        }
+        return true
     }
 
     override fun onPause() {
