@@ -106,8 +106,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Native-first launch: show the app's own chat UI instead of a website wrapper.
-        showNativeChat()
+        // Open the AbanoupAI workspace in the app's own WebView on launch.
+        showDashboard()
         // Keep the dashboard usable even if background companion initialization fails.
         if (!isLowMemoryDevice()) {
             runCatching { CompanionRuntime.start(this) }
@@ -248,8 +248,8 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 18, 0, 12)
         }
         root.addView(note)
-        root.addView(button("فتح الصفحة عند توفر الإنترنت — الوضع المحلي عند عدم الاتصال") {
-            if (isNetworkAvailable()) openDashboardExternal()
+        root.addView(button("فتح AbanoupAI داخل التطبيق") {
+            if (isNetworkAvailable()) showDashboard()
             else {
                 Toast.makeText(this, "لا يوجد إنترنت؛ الوضع المحلي جاهز الآن.", Toast.LENGTH_LONG).show()
                 showOfflineHub()
@@ -436,7 +436,7 @@ class MainActivity : AppCompatActivity() {
         })
         root.addView(button("فتح تطبيق AbanoupAI") {
             if (isNetworkAvailable()) {
-                showDashboard(forceInApp = true)
+                showDashboard()
             } else {
                 Toast.makeText(this, "لا يوجد إنترنت؛ اتصل بالإنترنت لفتح مساحة العمل داخل التطبيق.", Toast.LENGTH_LONG).show()
             }
@@ -462,13 +462,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun showDashboard(forceInApp: Boolean = false) {
-        // Default to the lighter external browser on low-RAM startup, but honor
-        // an explicit user tap to open the dashboard inside Companion.
-        if (isLowMemoryDevice() && !forceInApp) {
-            openDashboardExternal()
-            return
-        }
+    private fun showDashboard() {
         if (!isNetworkAvailable()) {
             showOfflineHub()
             return
@@ -500,28 +494,28 @@ class MainActivity : AppCompatActivity() {
                     super.onReceivedError(view, errorCode, description, failingUrl)
                     if (failingUrl?.contains(SITE_HOST) == true) runOnUiThread { showOfflineHub() }
                 }
-                override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                    val host = Uri.parse(url).host.orEmpty()
-                    val keep = host == SITE_HOST || host.endsWith(".lovable.app") || host.endsWith(".lovable.cloud") ||
-                        host.endsWith(".lovable.dev") || host == "lovable.dev" || host == "accounts.google.com" ||
-                        host.endsWith(".google.com") || host.endsWith(".gstatic.com") || host.endsWith(".googleusercontent.com")
-                    if (keep) return false
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                    return true
-                }
+                override fun shouldOverrideUrlLoading(view: WebView, request: android.webkit.WebResourceRequest): Boolean =
+                    shouldOpenOutsideWebView(request.url)
+
+                @Suppress("DEPRECATION")
+                override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean =
+                    shouldOpenOutsideWebView(Uri.parse(url))
             }
         }
         setContentView(web)
         web.loadUrl("https://$SITE_HOST/")
     }
 
-    private fun openDashboardExternal() {
-        runCatching {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://$SITE_HOST/")))
-            Toast.makeText(this, "تم فتح صفحة AbanoupAi في المتصفح لتقليل استهلاك ذاكرة التطبيق.", Toast.LENGTH_LONG).show()
-        }.onFailure {
-            Toast.makeText(this, "تعذر فتح المتصفح؛ استخدم الوضع المحلي داخل التطبيق.", Toast.LENGTH_LONG).show()
+    private fun shouldOpenOutsideWebView(uri: Uri): Boolean {
+        when (uri.scheme?.lowercase()) {
+            "http", "https" -> return false
+            "tel", "mailto", "sms" -> {
+                val intent = Intent(Intent.ACTION_VIEW, uri)
+                if (intent.resolveActivity(packageManager) != null) startActivity(intent)
+                else Toast.makeText(this, "لا يوجد تطبيق مناسب لهذا الرابط.", Toast.LENGTH_SHORT).show()
+            }
         }
+        return true
     }
 
     override fun onPause() {
@@ -551,4 +545,5 @@ class MainActivity : AppCompatActivity() {
         manager.getMemoryInfo(info)
         return manager.isLowRamDevice || info.totalMem <= 2_500L * 1024L * 1024L
     }
+
 }
