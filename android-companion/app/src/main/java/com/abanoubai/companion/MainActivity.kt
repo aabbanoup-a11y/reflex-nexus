@@ -3,6 +3,7 @@ package com.abanoubai.companion
 import android.annotation.SuppressLint
 import android.Manifest
 import android.app.AppOpsManager
+import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
@@ -536,6 +537,13 @@ class MainActivity : AppCompatActivity() {
         val caps = manager.getNetworkCapabilities(network) ?: return false
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
             caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    private fun isLowMemoryDevice(): Boolean {
+        val manager = getSystemService(ACTIVITY_SERVICE) as? ActivityManager ?: return false
+        val info = ActivityManager.MemoryInfo()
+        manager.getMemoryInfo(info)
+        return manager.isLowRamDevice || info.totalMem <= 2_500L * 1024L * 1024L
     }
 
 }
