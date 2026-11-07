@@ -3,7 +3,6 @@ package com.abanoubai.companion
 import android.annotation.SuppressLint
 import android.Manifest
 import android.app.AppOpsManager
-import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
@@ -106,8 +105,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Native-first launch: show the app's own chat UI instead of a website wrapper.
-        showNativeChat()
+        // Open the AbanoupAI workspace in the app's own WebView on launch.
+        showDashboard()
         // Keep the dashboard usable even if background companion initialization fails.
         if (!isLowMemoryDevice()) {
             runCatching { CompanionRuntime.start(this) }
@@ -248,8 +247,8 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 18, 0, 12)
         }
         root.addView(note)
-        root.addView(button("فتح الصفحة عند توفر الإنترنت — الوضع المحلي عند عدم الاتصال") {
-            if (isNetworkAvailable()) openDashboardExternal()
+        root.addView(button("فتح AbanoupAI داخل التطبيق") {
+            if (isNetworkAvailable()) showDashboard()
             else {
                 Toast.makeText(this, "لا يوجد إنترنت؛ الوضع المحلي جاهز الآن.", Toast.LENGTH_LONG).show()
                 showOfflineHub()
@@ -436,7 +435,7 @@ class MainActivity : AppCompatActivity() {
         })
         root.addView(button("فتح تطبيق AbanoupAI") {
             if (isNetworkAvailable()) {
-                showDashboard(forceInApp = true)
+                showDashboard()
             } else {
                 Toast.makeText(this, "لا يوجد إنترنت؛ اتصل بالإنترنت لفتح مساحة العمل داخل التطبيق.", Toast.LENGTH_LONG).show()
             }
@@ -462,13 +461,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun showDashboard(forceInApp: Boolean = false) {
-        // Default to the lighter external browser on low-RAM startup, but honor
-        // an explicit user tap to open the dashboard inside Companion.
-        if (isLowMemoryDevice() && !forceInApp) {
-            openDashboardExternal()
-            return
-        }
+    private fun showDashboard() {
         if (!isNetworkAvailable()) {
             showOfflineHub()
             return
@@ -515,15 +508,6 @@ class MainActivity : AppCompatActivity() {
         web.loadUrl("https://$SITE_HOST/")
     }
 
-    private fun openDashboardExternal() {
-        runCatching {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://$SITE_HOST/")))
-            Toast.makeText(this, "تم فتح صفحة AbanoupAi في المتصفح لتقليل استهلاك ذاكرة التطبيق.", Toast.LENGTH_LONG).show()
-        }.onFailure {
-            Toast.makeText(this, "تعذر فتح المتصفح؛ استخدم الوضع المحلي داخل التطبيق.", Toast.LENGTH_LONG).show()
-        }
-    }
-
     override fun onPause() {
         if (::web.isInitialized) CookieManager.getInstance().flush()
         super.onPause()
@@ -545,10 +529,4 @@ class MainActivity : AppCompatActivity() {
             caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
-    private fun isLowMemoryDevice(): Boolean {
-        val manager = getSystemService(ACTIVITY_SERVICE) as? ActivityManager ?: return false
-        val info = ActivityManager.MemoryInfo()
-        manager.getMemoryInfo(info)
-        return manager.isLowRamDevice || info.totalMem <= 2_500L * 1024L * 1024L
-    }
 }
