@@ -210,6 +210,7 @@ export const networkTurn = createServerFn({ method: "POST" })
       "orders","agent_paths","agent_commands","scheduled_jobs","agent_updates","conversations","messages","memory_branches","conversation_messages",
     ]);
     const OWNER_SCOPED_TABLES = new Set(["goals","tasks"]);
+    const PROFILE_SCOPED_TABLES = new Set(["profiles"]);
     const NO_AGENT_WRITE = new Set(["user_roles","permissions","role_permissions","webauthn_credentials","webauthn_challenges","audit_events"]);
     const assertProjectOwner = () => {
       const ownerId = process.env["AGENT_OWNER_USER_ID"];
@@ -223,6 +224,7 @@ export const networkTurn = createServerFn({ method: "POST" })
     const scopedQuery = (db: any, table: string, query: any) => {
       if (USER_SCOPED_TABLES.has(table)) return query.eq("user_id", context.userId);
       if (OWNER_SCOPED_TABLES.has(table)) return query.eq("owner_id", context.userId);
+      if (PROFILE_SCOPED_TABLES.has(table)) return query.eq("id", context.userId);
       return query;
     };
     for (const m of text.matchAll(/\[\[DB_READ:\s*([a-z_]+)\s*\|?\s*(\d*)\s*\]\]/g)) {
@@ -248,6 +250,7 @@ export const networkTurn = createServerFn({ method: "POST" })
         if (!row || Array.isArray(row) || typeof row !== "object") throw new Error("بيانات الإضافة لازم تكون JSON object");
         if (USER_SCOPED_TABLES.has(table)) row.user_id = context.userId;
         if (OWNER_SCOPED_TABLES.has(table)) row.owner_id = context.userId;
+        if (PROFILE_SCOPED_TABLES.has(table)) row.id = context.userId;
         const { data, error } = await db.from(table).insert(row).select("*").limit(1);
         if (error) throw new Error(error.message);
         return { text: JSON.stringify(data ?? []).slice(0, 3000) };
