@@ -162,12 +162,12 @@ export async function cfWrite(path: string, method: string, body: string) {
     const form = new FormData();
     form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
     form.append(mainModule, new Blob([script], { type: "application/javascript+module" }), mainModule);
-    response = await fetch(url, { method: "PUT", headers: { Authorization: \`Bearer \${env("CLOUDFLARE_API_TOKEN")}\` }, body: form });
+    response = await fetch(url, { method: "PUT", headers: { Authorization: "Bearer " + env("CLOUDFLARE_API_TOKEN") }, body: form });
   } else {
     response = await fetch(url, { method: verb, headers: cfHeaders(), ...(verb === "DELETE" || !body.trim() ? {} : { body: JSON.stringify(parsed) }) });
   }
   const payload = await response.json().catch(() => ({})) as any;
-  if (!response.ok || payload.success === false) throw new Error(\`Cloudflare \${response.status}: \${JSON.stringify(payload.errors ?? payload).slice(0, 500)}\`);
+  if (!response.ok || payload.success === false) throw new Error("Cloudflare " + response.status + ": " + JSON.stringify(payload.errors ?? payload).slice(0, 500));
   return JSON.stringify(payload.result ?? payload).slice(0, 12000);
 }
 
