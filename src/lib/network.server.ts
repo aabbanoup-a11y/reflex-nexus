@@ -260,9 +260,9 @@ export async function ghMerge(repoIn: string) {
     pulls[0] ??
     (await gh(`repos/${repo}/pulls`, {
       method: "POST",
-      body: JSON.stringify({ title: "تعديلات فريق الـ30 نموذج", head: WORK_BRANCH, base: info.default_branch }),
+      body: JSON.stringify({ title: "تعديلات AbanoubAI", head: WORK_BRANCH, base: info.default_branch, draft: true }),
     }));
-  await gh(`repos/${repo}/pulls/${pr.number}/merge`, { method: "PUT", body: JSON.stringify({ merge_method: "merge" }) });
+  // Never merge automatically. A human reviews and merges the draft PR in GitHub.
   return pr.html_url as string;
 }
 
