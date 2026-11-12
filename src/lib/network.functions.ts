@@ -112,7 +112,7 @@ export const networkTurn = createServerFn({ method: "POST" })
     const transcript = history.map((h) => h.content).join("\n\n");
     const msgs = [{ role: "user" as const, content: `المحادثة المشتركة لحد دلوقتي:\n\n${transcript}\n\nدلوقتي دورك يا ${me.label}.` }];
 
-    const fallbacks = ["google/gemini-3.8-flash", "openai/chat-latest", "anthropic/claude-haiku-4-5"];
+    const fallbacks = ["cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast", "google/gemini-3.8-flash", "openai/chat-latest", "anthropic/claude-haiku-4-5"];
     const fallback = fallbacks[0]!;
     let used = isManager ? fallback : data.model;
     let text = "";
