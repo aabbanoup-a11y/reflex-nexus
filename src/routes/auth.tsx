@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Chrome, Eye, EyeOff, KeyRound, Loader2, Mail, UserRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/runtime-client";
-import { lovable } from "@/integrations/lovable/index";
 import { ensureUserProfile } from "@/lib/profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,27 +111,19 @@ function AuthPage() {
     await navigate({ to: "/memory", replace: true });
   }
 
-  async function googleAuth(provider: "google" | "lovable" = "google") {
+  async function googleAuth() {
     setNotice(null);
     setBusy(true);
-    const result = await lovable.auth.signInWithOAuth(provider, {
-      redirect_uri: `${window.location.origin}/auth`,
-      ...(provider === "google" ? { extraParams: { prompt: "select_account" } } : {}),
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth`,
+        queryParams: { prompt: "select_account" },
+      },
     });
-    if (result.redirected) return;
-    setBusy(false);
-    if (result.error) {
-      setNotice({ kind: "error", text: "تعذّر فتح Google الآن. حاول مرة أخرى." });
-      return;
-    }
-    const { data } = await supabase.auth.getUser();
-    if (data.user) {
-      try {
-        await ensureUserProfile(data.user);
-      } catch (error) {
-        console.error("profile setup after Google sign-in failed", error);
-      }
-      await navigate({ to: "/memory", replace: true });
+    if (error) {
+      setBusy(false);
+      setNotice({ kind: "error", text: "تعذّر فتح Google من Supabase. تأكد من إعداد Google OAuth في إعدادات المشروع." });
     }
   }
 
@@ -164,9 +155,6 @@ function AuthPage() {
           <>
             <Button className="mt-7 h-12 w-full gap-2" variant="outline" disabled={busy} onClick={() => void googleAuth()}>
               <Chrome className="size-5" /> المتابعة باستخدام Google
-            </Button>
-            <Button className="mt-3 h-12 w-full gap-2" variant="outline" disabled={busy} onClick={() => void googleAuth("lovable")}>
-              المتابعة بحساب Lovable
             </Button>
           </>
         )}
