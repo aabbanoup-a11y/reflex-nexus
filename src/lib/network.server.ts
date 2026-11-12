@@ -28,12 +28,12 @@ export function integrationStatus() {
 type ModelPart = { kind: "image" | "file"; url: string; mime: string; name: string };
 
 function dataUrl(url: string) {
-  const match = url.match(/^data:([^;,]+);base64,([\\s\\S]+)$/);
+  const match = url.match(/^data:([^;,]+);base64,([\s\S]+)$/);
   return match ? { mime: match[1]!, data: match[2]! } : null;
 }
 
 export async function callModel(id: string, system: string, messages: Msg[], _accessToken?: string, parts: ModelPart[] = []): Promise<string> {
-  const model = id.startsWith("local/") ? "@cf/meta/llama-3.1-8b-instruct-fast" : id.replace(/^(cf|openai|anthropic|google)\\//, "");
+  const model = id.startsWith("local/") ? "@cf/meta/llama-3.1-8b-instruct-fast" : id.replace(/^(cf|openai|anthropic|google)\//, "");
   const lastIndex = messages.length - 1;
   let text = "";
 
@@ -88,7 +88,7 @@ export async function callModel(id: string, system: string, messages: Msg[], _ac
     });
     const payload = await r.json().catch(() => ({})) as any;
     if (!r.ok) throw new Error(`Anthropic ${r.status}: ${String(payload.error?.message ?? "").slice(0, 250)}`);
-    text = (payload.content ?? []).filter((x: any) => x.type === "text").map((x: any) => x.text).join("\\n");
+    text = (payload.content ?? []).filter((x: any) => x.type === "text").map((x: any) => x.text).join("\n");
   } else if (id.startsWith("google/")) {
     const contents = messages.map((m, i) => {
       const contentParts: any[] = [{ text: m.content }];
@@ -111,7 +111,7 @@ export async function callModel(id: string, system: string, messages: Msg[], _ac
   } else {
     throw new Error("مزود النموذج غير مدعوم في الاتصال المباشر");
   }
-  text = text.replace(/<think>[\\s\\S]*?<\\/think>/g, "").trim();
+  text = text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
   if (!text) throw new Error("النموذج رجّع ردًا فارغًا");
   return text;
 }
@@ -215,7 +215,7 @@ const b64 = (s: string) => {
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(binary);
 };
-const unb64 = (s: string) => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\\n/g, "")), (c) => c.charCodeAt(0)));
+const unb64 = (s: string) => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g, "")), (c) => c.charCodeAt(0)));
 
 async function ensureBranch(repo: string) {
   try {
@@ -231,7 +231,7 @@ export async function ghRead(repoIn: string, path: string) {
   const repo = checkRepo(repoIn);
   const target = path ? `repos/${repo}/contents/${path}?ref=${WORK_BRANCH}` : `repos/${repo}/contents?ref=${WORK_BRANCH}`;
   const payload = await gh(target);
-  return Array.isArray(payload) ? payload.map((f: any) => `${f.type === "dir" ? "📁" : "📄"} ${f.path}`).join("\\n") : unb64(payload.content ?? "").slice(0, 12000);
+  return Array.isArray(payload) ? payload.map((f: any) => `${f.type === "dir" ? "📁" : "📄"} ${f.path}`).join("\n") : unb64(payload.content ?? "").slice(0, 12000);
 }
 
 export async function ghWrite(repoIn: string, path: string, content: string, by: string) {
