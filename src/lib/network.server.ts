@@ -163,7 +163,7 @@ export async function cfWrite(path: string, method: string, body: string) {
     form.append(mainModule, new Blob([script], { type: "application/javascript+module" }), mainModule);
     response = await fetch(url, { method: "PUT", headers: { Authorization: `Bearer ${env("CLOUDFLARE_API_TOKEN")}` }, body: form });
   } else {
-    response = await fetch(url, { method: verb, headers: cfHeaders(), body: JSON.stringify(parsed) });
+    response = await fetch(url, { method: verb, headers: cfHeaders(), ...(verb === "DELETE" || !body.trim() ? {} : { body: JSON.stringify(parsed) }) });
   }
   const payload = await response.json().catch(() => ({})) as any;
   if (!response.ok || payload.success === false) throw new Error(`Cloudflare ${response.status}: ${JSON.stringify(payload.errors ?? payload).slice(0, 500)}`);
@@ -254,15 +254,40 @@ export async function ghWrite(repoIn: string, path: string, content: string, by:
   return result?.commit?.html_url as string | undefined;
 }
 
+async function ghGraphQL(query: string, variables: Record<string, unknown>) {
+  const response = await fetch("https://api.github.com/graphql", {
+    method: "POST",
+    headers: ghHeaders(),
+    body: JSON.stringify({ query, variables }),
+  });
+  const payload = await response.json().catch(() => ({})) as any;
+  if (!response.ok || payload.errors?.length) throw new Error("GitHub GraphQL: " + JSON.stringify(payload.errors ?? payload).slice(0, 500));
+  return payload.data;
+}
+
 export async function ghMerge(repoIn: string) {
   const repo = checkRepo(repoIn);
+  const build = await latestBuild(repo);
+  if (build.status !== "success") throw new Error(`لن يتم الدمج قبل نجاح اختبارات البناء. الحالة الحالية: ${build.status}. ${build.link ?? ""}`);
   const info = await gh(`repos/${repo}`);
   const pulls = await gh(`repos/${repo}/pulls?head=${repo.split("/")[0]}:${WORK_BRANCH}&state=open`);
   const pr = pulls[0] ?? await gh(`repos/${repo}/pulls`, {
     method: "POST",
-    body: JSON.stringify({ title: "AbanoubAI agent changes", head: WORK_BRANCH, base: info.default_branch, draft: true }),
+    body: JSON.stringify({ title: "AbanoubAI autonomous update", head: WORK_BRANCH, base: info.default_branch, draft: false }),
   });
-  return pr.html_url as string;
+  const fullPr = await gh(`repos/${repo}/pulls/${pr.number}`);
+  if (fullPr.draft) {
+    await ghGraphQL(
+      "mutation($id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: $id }) { pullRequest { isDraft } } }",
+      { id: fullPr.node_id },
+    );
+  }
+  const merged = await gh(`repos/${repo}/pulls/${pr.number}/merge`, {
+    method: "PUT",
+    body: JSON.stringify({ merge_method: "squash" }),
+  });
+  if (!merged.merged) throw new Error("GitHub لم يؤكد الدمج: " + String(merged.message ?? "unknown"));
+  return { url: pr.html_url as string, merged: true, merge_commit_sha: merged.sha as string, build: build.link };
 }
 
 export async function latestBuild(repoIn: string) {
