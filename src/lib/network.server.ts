@@ -125,12 +125,18 @@ const cfHeaders = () => ({
   "Content-Type": "application/json",
 });
 
+function cfResourceUrl(path: string) {
+  const normalized = path.replace(/^\\/+/, "");
+  if (normalized.startsWith("zones/") || normalized === "zones") return `https://api.cloudflare.com/client/v4/${normalized}`;
+  return `https://api.cloudflare.com/client/v4/accounts/${cfAccount()}/${normalized}`;
+}
+
 export async function cfGet(path: string) {
   if (path.includes("..") || path.startsWith("http")) throw new Error("مسار Cloudflare غير صالح");
-  const normalized = path.replace(/^\/+/, "");
-  const allowed = /^(workers\/scripts|storage\/kv\/namespaces|d1\/database|pages\/projects|zones|ai\/models\/search|r2\/buckets)(\/|$)/i;
+  const normalized = path.replace(/^\\/+/, "");
+  const allowed = /^(workers\\/scripts|storage\\/kv\\/namespaces|d1\\/database|pages\\/projects|zones|ai\\/models\\/search|r2\\/buckets)(\\/|$)/i;
   if (!allowed.test(normalized)) throw new Error("المسار خارج نطاق موارد Cloudflare المسموح بها");
-  const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${cfAccount()}/${normalized}`, { headers: cfHeaders() });
+  const r = await fetch(cfResourceUrl(normalized), { headers: cfHeaders() });
   const payload = await r.json().catch(() => ({})) as any;
   if (!r.ok || payload.success === false) throw new Error(`Cloudflare ${r.status}: ${JSON.stringify(payload.errors ?? payload).slice(0, 500)}`);
   return JSON.stringify(payload.result ?? payload).slice(0, 12000);
@@ -144,7 +150,8 @@ export async function cfWrite(path: string, method: string, body: string) {
   const verb = method.toUpperCase();
   if (!["POST", "PUT", "PATCH"].includes(verb)) throw new Error("طريقة الكتابة غير مسموحة");
   const parsed = JSON.parse(body) as Record<string, unknown>;
-  const url = `https://api.cloudflare.com/client/v4/accounts/${cfAccount()}/${normalized}`;
+  if (normalized.startsWith("workers/scripts/abanoupai-local-first-scheduler")) throw new Error("عامل الجدولة محمي ومؤجل ولا يمكن تعديله من الوكيل.");
+  const url = cfResourceUrl(normalized);
   let response: Response;
   if (normalized.startsWith("workers/scripts/") && verb === "PUT") {
     const script = String(parsed.script ?? "");
