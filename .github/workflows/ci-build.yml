@@ -37,7 +37,7 @@ jobs:
         run: npm run build
       - name: Upload web build
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: reflex-nexus-web-build
           path: .output/
@@ -69,7 +69,7 @@ jobs:
           ./gradlew --no-daemon --stacktrace assembleDebug
       - name: Upload APK
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: abanoubai-companion-debug-apk
           path: android-companion/app/build/outputs/apk/debug/*.apk
