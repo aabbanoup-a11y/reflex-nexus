@@ -1,0 +1,54 @@
+name: Reflex Nexus CI Build
+
+on:
+  push:
+    branches:
+      - agent-autonomous-integrations-20261112
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reflex-nexus-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Companion policy tests
+        run: npm run test:companion
+
+      - name: Offline planner tests
+        run: npm run test:offline-planner
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Production build
+        run: npm run build
+
+      - name: Upload build output
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reflex-nexus-build
+          path: .output/
+          if-no-files-found: error
+          retention-days: 7
