@@ -1,13 +1,11 @@
-// Browser client bound to THIS project's Lovable Cloud backend (from env),
-// independent of the stale hardcoded values left in the generated client.ts.
+// Browser client bound directly to the AbanoubAI Supabase project.
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { brokeredPreviewStorage } from "./previewAuthStorage";
 
-// Baked fallbacks so the published bundle works even when the build
-// environment has no .env file. Both values are public (URL + publishable key).
-const FALLBACK_URL = "https://c--f343cb8e-77bb-41d3-b7e1-5d6f7dc4998f-prod.lovable.cloud";
-const FALLBACK_KEY = "sb_publishable_F8v4MSocHPMF0RSQpbZFvw_-DivRfUB";
+// Public Supabase URL and publishable key for this project; both are safe in browser code.
+const FALLBACK_URL = "https://wobfdslqlmvlatyrtgkd.supabase.co";
+const FALLBACK_KEY = "sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ";
 
 function make() {
   const url =
@@ -18,7 +16,7 @@ function make() {
     import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] ||
     (typeof process !== "undefined" ? process.env["SUPABASE_PUBLISHABLE_KEY"] : undefined) ||
     FALLBACK_KEY;
-  if (!url || !key) throw new Error("Lovable Cloud connection is not configured");
+  if (!url || !key) throw new Error("Supabase connection is not configured");
   return createClient<Database>(url, key, {
     global: {
       fetch: (input, init) => {
