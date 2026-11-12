@@ -15,7 +15,7 @@ export function integrationStatus() {
   return {
     github: Boolean(optionalEnv("GITHUB_TOKEN")),
     cloudflare: Boolean(optionalEnv("CLOUDFLARE_API_TOKEN") && optionalEnv("CLOUDFLARE_ACCOUNT_ID")),
-    supabaseAdmin: Boolean(optionalEnv("SUPABASE_URL") && optionalEnv("SUPABASE_SERVICE_ROLE_KEY")),
+    supabaseAdmin: Boolean(optionalEnv("SUPABASE_URL") && optionalEnv("SUPABASE_SERVICE_ROLE_KEY") && optionalEnv("AGENT_OWNER_USER_ID")),
     models: {
       cloudflare: Boolean(optionalEnv("CLOUDFLARE_API_TOKEN") && optionalEnv("CLOUDFLARE_ACCOUNT_ID")),
       openai: Boolean(optionalEnv("OPENAI_API_KEY")),
@@ -237,5 +237,4 @@ export async function latestBuild(repoIn: string) {
   };
 }
 
-export const knownModel = (id: string) => id === MANAGER_ID || NET_MODELS.some((m) => m.id === id);
 export const knownModel = (id: string) => id === MANAGER_ID || NET_MODELS.some((m) => m.id === id);
