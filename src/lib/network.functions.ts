@@ -429,7 +429,7 @@ export const networkTurn = createServerFn({ method: "POST" })
         text = `${text}\n\nملخص التنفيذ الفعلي:\n${summary}`;
       } catch { /* لا نفشل المهمة إذا تعذر نموذج التلخيص */ }
     }
-    const clean = text.replace(/\[\[GH_WRITE:[\s\S]*?\[\[\/GH_WRITE\]\]/g, "[تعديل ملف]").replace(/\[\[CF_WRITE:[\s\S]*?\[\[\/CF_WRITE\]\]/gi, "[تعديل Cloudflare]").replace(/\[\[PHONE(?:_BATCH|_WORKFLOW)\|[\s\S]*?\]\]/gi, "").replace(/\[\[PHONE:[\s\S]*?\]\]/gi, "").replace(/\[\[SKILL:[\s\S]*?\]\]/gi, "").replace(/\[\[DELEGATE:[\s\S]*?\]\]/g, "").trim();
+    const clean = text.replace(/\[\[GH_WRITE:[\s\S]*?\[\[\/GH_WRITE\]\]/g, "[تعديل ملف]").replace(/\[\[CF_WRITE:[\s\S]*?\[\[\/CF_WRITE\]\]/gi, "[تعديل Cloudflare]").replace(/\[\[DB_(?:INSERT|WRITE):[\s\S]*?\[\[\/DB_(?:INSERT|WRITE)\]\]/g, "[إضافة سجل قاعدة بيانات]").replace(/\[\[DB_UPDATE:[\s\S]*?\[\[\/DB_UPDATE\]\]/g, "[تعديل سجل قاعدة بيانات]").replace(/\[\[(?:DB_READ|BUILD|GH_READ|CF):[^\]]*\]\]/gi, "").replace(/\[\[INTEGRATIONS_STATUS\]\]/g, "").replace(/\[\[MERGE:[^\]]*\]\]/g, "[طلب مراجعة PR]").replace(/\[\[PHONE(?:_BATCH|_WORKFLOW)\|[\s\S]*?\]\]/gi, "").replace(/\[\[PHONE:[\s\S]*?\]\]/gi, "").replace(/\[\[SKILL:[\s\S]*?\]\]/gi, "").replace(/\[\[DELEGATE:[\s\S]*?\]\]/g, "").trim();
     return { model: data.model, usedModel: used, text: clean, tools };
   });
 
