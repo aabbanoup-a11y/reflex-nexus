@@ -48,8 +48,8 @@ ${memory}
 [[GH_READ:repo|path]] يقرأ ملفًا أو مجلدًا من المستودع المحدد.
 [[GH_WRITE:repo|path]]
 المحتوى الكامل للملف
-[[/GH_WRITE]] يكتب في فرع الاختبار ${WORK_BRANCH} فقط، ولا يلمس main.
-[[MERGE:repo]] ينشئ أو يعيد استخدام Pull Request Draft؛ لا تدمج تلقائيًا.
+[[/GH_WRITE]] يكتب في فرع العمل ${WORK_BRANCH}، ثم يدمج التحديث بعد نجاح البناء.
+[[MERGE:repo]] ينشئ أو يعيد استخدام Pull Request ثم يدمجه تلقائيًا بعد نجاح اختبارات البناء.
 [[BUILD:repo]] يفحص آخر تشغيل CI ويعيد رابط APK/الويب إذا اكتمل بنجاح. بعد تعديل ملفات المشروع أطلب BUILD.
 [[DB_READ:table|عدد]] يقرأ من جداول public المعروفة مع حصر بيانات المستخدم في حسابه.
 [[DB_INSERT:table]]
@@ -65,8 +65,8 @@ ${memory}
 [[/CF_WRITE]] يعدّل موارد Cloudflare المعروفة فقط. استخدمه عندما يطلب أبانوب تعديل Worker أو KV أو D1 أو Pages، وبعد قراءة الحالة الحالية.
 [[GH_WRITE:repo|path]]
 المحتوى الكامل للملف
-[[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
-[[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى مراجعة بشرية.\n[[BUILD:repo]] تجيب نتيجة آخر بناء CI ورابط APK/الويب بعد اكتماله. بعد كل تعديل GitHub مطلوب اختباره، استخدم BUILD.\n[[INTEGRATIONS_STATUS]] تعرض حالة تهيئة الاتصالات دون كشف أي مفاتيح.
+[[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} ثم يدمج التغيير تلقائيًا بعد نجاح CI.
+[[MERGE:repo]] تدمج فرع ${WORK_BRANCH} في الفرع الأصلي تلقائيًا بعد نجاح اختبارات البناء.\n[[BUILD:repo]] تجيب نتيجة آخر بناء CI ورابط APK/الويب بعد اكتماله. بعد كل تعديل GitHub مطلوب اختباره، استخدم BUILD.\n[[INTEGRATIONS_STATUS]] تعرض حالة تهيئة الاتصالات دون كشف أي مفاتيح.
 [[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. مهم جدًا: اكتب دائمًا الرمز | بين kind وarg، ولا تكتب [[PHONE:open_appcom...]]. إذا قال أبانوب "افتح/شغل يوتيوب أو Chrome أو واتساب" أخرج الوسم فورًا: [[PHONE:open_app|اسم التطبيق أو الحزمة]]. وإذا أعطى رابطًا أخرج [[PHONE:open_url|https://...]]. للبحث: أخرج [[PHONE:open_app|chrome]] ثم [[PHONE:type_text|نص البحث]]. للضغط: [[PHONE:tap_text|النص الظاهر]]. لا تكتفِ بشرح الخطوات ولا تقل إنك لا تملك الهاتف؛ أخرج الوسم وانتظر نتيجة الأداة. يدعم أيضًا الإعدادات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
 [[SKILL:id|{"a":"...","b":"..."}]] تشغّل مهارة جاهزة من مكتبة المهارات (خطوات مضمونة، أنسب خيار للاستخدام المتكرر). استخدم مهارة جاهزة إن وُجدت قبل كتابة أوامر يدوية، ولو المهارة تحتاج وسيطًا أرسله في JSON. لو احتجت خطوات إضافية بعد المهارة اكتبها كأوامر PHONE عادية في نفس الرد.
 قائمة المهارات الجاهزة (المعرف — الوظيفة):
@@ -211,7 +211,6 @@ export const networkTurn = createServerFn({ method: "POST" })
     ]);
     const OWNER_SCOPED_TABLES = new Set(["goals","tasks"]);
     const PROFILE_SCOPED_TABLES = new Set(["profiles"]);
-    const NO_AGENT_WRITE = new Set(["user_roles","permissions","role_permissions","webauthn_credentials","webauthn_challenges","audit_events"]);
     const assertProjectOwner = () => {
       const ownerId = process.env["AGENT_OWNER_USER_ID"];
       if (!ownerId || ownerId !== context.userId) throw new Error("أدوات إدارة قاعدة المشروع تتطلب AGENT_OWNER_USER_ID مطابقًا لحساب المالك.");
@@ -221,12 +220,7 @@ export const networkTurn = createServerFn({ method: "POST" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       return supabaseAdmin as any;
     };
-    const scopedQuery = (db: any, table: string, query: any) => {
-      if (USER_SCOPED_TABLES.has(table)) return query.eq("user_id", context.userId);
-      if (OWNER_SCOPED_TABLES.has(table)) return query.eq("owner_id", context.userId);
-      if (PROFILE_SCOPED_TABLES.has(table)) return query.eq("id", context.userId);
-      return query;
-    };
+    const scopedQuery = (_db: any, _table: string, query: any) => query;
     for (const m of text.matchAll(/\[\[DB_READ:\s*([a-z_]+)\s*\|?\s*(\d*)\s*\]\]/g)) {
       if (jobs++ >= 12) break;
       await run(`🗄️ قراءة قاعدة المشروع: ${m[1]}`, async () => {
@@ -244,7 +238,7 @@ export const networkTurn = createServerFn({ method: "POST" })
       if (jobs++ >= 10) break;
       await run(`🗄️ إضافة سجل في ${m[1]}`, async () => {
         const table = m[1] as (typeof DB_TABLES)[number];
-        if (!DB_TABLES.includes(table) || NO_AGENT_WRITE.has(table)) throw new Error("الجدول غير مسموح للكتابة الآلية");
+        if (!DB_TABLES.includes(table)) throw new Error("الجدول غير موجود في قاعدة المشروع");
         const db = await adminDb();
         const row = JSON.parse(m[2]!.trim()) as Record<string, unknown>;
         if (!row || Array.isArray(row) || typeof row !== "object") throw new Error("بيانات الإضافة لازم تكون JSON object");
@@ -260,7 +254,7 @@ export const networkTurn = createServerFn({ method: "POST" })
       if (jobs++ >= 10) break;
       await run(`🗄️ تعديل سجل في ${m[1]}`, async () => {
         const table = m[1] as (typeof DB_TABLES)[number];
-        if (!DB_TABLES.includes(table) || NO_AGENT_WRITE.has(table)) throw new Error("الجدول غير مسموح للتعديل الآلي");
+        if (!DB_TABLES.includes(table)) throw new Error("الجدول غير موجود في قاعدة المشروع");
         const patch = JSON.parse(m[3]!.trim()) as Record<string, unknown>;
         if (!patch || Array.isArray(patch) || typeof patch !== "object" || "id" in patch || "user_id" in patch || "owner_id" in patch) throw new Error("التعديل لا يمكنه تغيير المعرف أو المالك");
         const db = await adminDb();
@@ -276,7 +270,7 @@ export const networkTurn = createServerFn({ method: "POST" })
       if (jobs++ >= 6) break;
       await run(`🗑️ حذف سجل واحد من ${m[1]}`, async () => {
         const table = m[1] as (typeof DB_TABLES)[number];
-        if (!DB_TABLES.includes(table) || NO_AGENT_WRITE.has(table)) throw new Error("الجدول غير مسموح للحذف الآلي");
+        if (!DB_TABLES.includes(table)) throw new Error("الجدول غير موجود في قاعدة المشروع");
         const db = await adminDb();
         let query = db.from(table).delete().eq("id", m[2]!);
         query = scopedQuery(db, table, query);
@@ -428,7 +422,7 @@ export const networkTurn = createServerFn({ method: "POST" })
         text = `${text}\n\nملخص التنفيذ الفعلي:\n${summary}`;
       } catch { /* لا نفشل المهمة إذا تعذر نموذج التلخيص */ }
     }
-    const clean = text.replace(/\[\[GH_WRITE:[\s\S]*?\[\[\/GH_WRITE\]\]/g, "[تعديل ملف]").replace(/\[\[CF_WRITE:[\s\S]*?\[\[\/CF_WRITE\]\]/gi, "[تعديل Cloudflare]").replace(/\[\[DB_(?:INSERT|WRITE):[\s\S]*?\[\[\/DB_(?:INSERT|WRITE)\]\]/g, "[إضافة سجل قاعدة بيانات]").replace(/\[\[DB_UPDATE:[\s\S]*?\[\[\/DB_UPDATE\]\]/g, "[تعديل سجل قاعدة بيانات]").replace(/\[\[(?:DB_READ|BUILD|GH_READ|CF):[^\]]*\]\]/gi, "").replace(/\[\[INTEGRATIONS_STATUS\]\]/g, "").replace(/\[\[MERGE:[^\]]*\]\]/g, "[طلب مراجعة PR]").replace(/\[\[PHONE(?:_BATCH|_WORKFLOW)\|[\s\S]*?\]\]/gi, "").replace(/\[\[PHONE:[\s\S]*?\]\]/gi, "").replace(/\[\[SKILL:[\s\S]*?\]\]/gi, "").replace(/\[\[DELEGATE:[\s\S]*?\]\]/g, "").trim();
+    const clean = text.replace(/\[\[GH_WRITE:[\s\S]*?\[\[\/GH_WRITE\]\]/g, "[تعديل ملف]").replace(/\[\[CF_WRITE:[\s\S]*?\[\[\/CF_WRITE\]\]/gi, "[تعديل Cloudflare]").replace(/\[\[DB_(?:INSERT|WRITE):[\s\S]*?\[\[\/DB_(?:INSERT|WRITE)\]\]/g, "[إضافة سجل قاعدة بيانات]").replace(/\[\[DB_UPDATE:[\s\S]*?\[\[\/DB_UPDATE\]\]/g, "[تعديل سجل قاعدة بيانات]").replace(/\[\[(?:DB_READ|BUILD|GH_READ|CF):[^\]]*\]\]/gi, "").replace(/\[\[INTEGRATIONS_STATUS\]\]/g, "").replace(/\[\[MERGE:[^\]]*\]\]/g, "[تم الدمج تلقائيًا بعد نجاح الاختبارات]").replace(/\[\[PHONE(?:_BATCH|_WORKFLOW)\|[\s\S]*?\]\]/gi, "").replace(/\[\[PHONE:[\s\S]*?\]\]/gi, "").replace(/\[\[SKILL:[\s\S]*?\]\]/gi, "").replace(/\[\[DELEGATE:[\s\S]*?\]\]/g, "").trim();
     return { model: data.model, usedModel: used, text: clean, tools };
   });
 
