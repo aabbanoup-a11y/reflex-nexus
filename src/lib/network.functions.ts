@@ -272,7 +272,7 @@ export const networkTurn = createServerFn({ method: "POST" })
         return { text: `تم تعديل سجل واحد: ${JSON.stringify(data[0])}` };
       });
     }
-    for (const m of text.matchAll(/\\[\\[DB_DELETE:\\s*([a-z_]+)\\s*\\|\\s*id\\s*\\|\\s*([a-zA-Z0-9_-]+)\\s*\\]\\]/g)) {
+    for (const m of text.matchAll(/\[\[DB_DELETE:\s*([a-z_]+)\s*\|\s*id\s*\|\s*([a-zA-Z0-9_-]+)\s*\]\]/g)) {
       if (jobs++ >= 6) break;
       await run(`🗑️ حذف سجل واحد من ${m[1]}`, async () => {
         const table = m[1] as (typeof DB_TABLES)[number];
