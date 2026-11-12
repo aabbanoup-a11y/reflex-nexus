@@ -22,101 +22,6 @@ type Part = { kind: "image" | "file"; url: string; mime: string; name: string };
 
 const styleHint = "اكتب نص عادي واضح بدون رموز تنسيق زي ** أو ## أو جداول.";
 
-async function readSSE(body: ReadableStream<Uint8Array>, onEvent: (evt: any) => void) {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.startsWith("data:")) continue;
-      const payload = line.slice(5).trim();
-      if (!payload || payload === "[DONE]") continue;
-      try {
-        onEvent(JSON.parse(payload));
-      } catch {
-        /* partial frame */
-      }
-    }
-  }
-}
-
-async function callChat(key: string, model: string, system: string, messages: Msg[], parts: Part[]) {
-  const last = messages.length - 1;
-  const body = messages.map((m, i) => {
-    if (i !== last || parts.length === 0) return m;
-    return {
-      role: m.role,
-      content: [
-        { type: "text", text: m.content },
-        ...parts.map((p) =>
-          p.kind === "image"
-            ? { type: "image_url", image_url: { url: p.url } }
-            : { type: "file", file: { filename: p.name, file_data: p.url } },
-        ),
-      ],
-    };
-  });
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "fetch" },
-    body: JSON.stringify({ model, stream: true, messages: [{ role: "system", content: `${system}\n${styleHint}` }, ...body] }),
-  });
-  if (!res.ok || !res.body) throw new Error(`${res.status}:${(await res.text().catch(() => "")).slice(0, 200)}`);
-  let text = "";
-  await readSSE(res.body, (evt) => {
-    const d = evt?.choices?.[0]?.delta?.content;
-    if (typeof d === "string") text += d;
-  });
-  if (!text.trim()) throw new Error("empty");
-  return text;
-}
-
-async function callResponses(key: string, model: string, system: string, messages: Msg[], parts: Part[]) {
-  const last = messages.length - 1;
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "fetch" },
-    body: JSON.stringify({
-      model,
-      stream: true,
-      store: false,
-      reasoning: { effort: "low" },
-      input: [
-        { role: "system", content: [{ type: "input_text", text: `${system}\n${styleHint}` }] },
-        ...messages.map((m, i) => ({
-          role: m.role,
-          content:
-            m.role === "assistant"
-              ? [{ type: "output_text", text: m.content }]
-              : [
-                  { type: "input_text", text: m.content },
-                  ...(i === last
-                    ? parts.map((p) =>
-                        p.kind === "image"
-                          ? { type: "input_image", image_url: p.url }
-                          : { type: "input_file", filename: p.name, file_data: p.url },
-                      )
-                    : []),
-                ],
-        })),
-      ],
-    }),
-  });
-  if (!res.ok || !res.body) throw new Error(`${res.status}:${(await res.text().catch(() => "")).slice(0, 200)}`);
-  let text = "";
-  await readSSE(res.body, (evt) => {
-    if (evt.type === "response.output_text.delta" && typeof evt.delta === "string") text += evt.delta;
-    else if (evt.type === "response.completed" && evt.response?.output_text && !text) text = String(evt.response.output_text);
-  });
-  if (!text.trim()) throw new Error("empty");
-  return text;
-}
-
 function toBase64(buf: ArrayBuffer) {
   const bytes = new Uint8Array(buf);
   let s = "";
@@ -163,9 +68,6 @@ async function capabilityCatalogPrompt(admin: any): Promise<string> {
 export const askAssistant = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => Input.parse(input))
   .handler(async ({ data }): Promise<ChatReply> => {
-    const key = process.env["LOVABLE_API_KEY"];
-    if (!key) throw new Error("خدمة الذكاء الاصطناعي غير متاحة حالياً");
-
     const lastUser = [...data.messages].reverse().find((m) => m.role === "user")?.content ?? "";
     if (!data.skipSafety && hasCrisisSignal(lastUser)) {
       return { text: "", model: "safety", switched: false, crisis: true };
@@ -216,12 +118,13 @@ export const askAssistant = createServerFn({ method: "POST" })
     let lastError = "";
     for (const model of chain) {
       try {
-        const text =
-          model.startsWith("cf/") || model.startsWith("anthropic/")
-            ? await (await import("./network.server")).callModel(model, `${system}\n${styleHint}`, data.messages)
-            : model.startsWith("openai/")
-              ? await callResponses(key, model, system, data.messages, parts)
-              : await callChat(key, model, system, data.messages, parts);
+        const text = await (await import("./network.server")).callModel(
+          model,
+          `${system}\\n${styleHint}`,
+          data.messages,
+          undefined,
+          parts,
+        );
         return { text, model, switched: model !== data.model };
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err);

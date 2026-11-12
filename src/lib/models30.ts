@@ -81,4 +81,5 @@ export function modelForKey(key: string) {
 }
 
 export const REPOS = ["aabbanoup-a11y/reflex-nexus", "aabbanoup-a11y/abra-cadabra-repo", "aabbanoup-a11y/AbanoupAi"] as const;
-export const WORK_BRANCH = "ai-team";
+// Isolated working branch: never write to main or the legacy, diverged ai-team branch.
+export const WORK_BRANCH = "agent-autonomous-integrations-20261112";

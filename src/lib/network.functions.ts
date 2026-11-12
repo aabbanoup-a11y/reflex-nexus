@@ -45,25 +45,34 @@ ${memory}
 أدوات (اكتب الوسم في سطر لوحده، هيتنفذ وتشوف نتيجته):
 [[BROWSE:https://...]] يفتح الصفحة في المتصفح السحابي (Cloudflare) ويقرأها ويصورها.
 [[ASK:معرف-النموذج|سؤال]] تبعت رسالة لنموذج تاني وتاخد رده. المعرفات: ${NET_MODELS.map((m) => m.id).join(", ")}
-[[GH_READ:repo|path]] يقرا ملف أو مجلد (repo = reflex-nexus وهو مستودع هذا التطبيق المتزامن مع Lovable، أو abra-cadabra-repo أو AbanoupAi، path فاضي = الجذر).
-[[DB_READ:table|عدد]] يقرأ آخر صفوف من جداول حساب أبانوب في قاعدة البيانات (tasks, network_messages, companion_commands, companion_events, companion_devices, mood_checkins, daily_reports, ai_runs, profiles).
-[[DB_WRITE:table]]
-{"عمود":"قيمة"}
-[[/DB_WRITE]] يضيف صفًا في جداول أبانوب القابلة للكتابة (tasks, network_messages, mood_checkins).
-[[CF:path]] يقرأ من حساب Cloudflare (مثال: workers/scripts أو ai/models/search أو storage/kv/namespaces).
-[[CF_WRITE:PUT|workers/scripts/اسم-العامل]]
-{"script":"..."}
-[[/CF_WRITE]] يعدّل موارد Cloudflare المعروفة فقط. استخدمه عندما يطلب أبانوب تعديل Worker أو KV أو D1 أو Pages، وبعد قراءة الحالة الحالية.
+[[GH_READ:repo|path]] يقرأ ملفًا أو مجلدًا من المستودع المحدد.
 [[GH_WRITE:repo|path]]
 المحتوى الكامل للملف
-[[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
-[[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى موافقة أبانوب بزرار.
+[[/GH_WRITE]] يكتب في فرع العمل ${WORK_BRANCH}، ثم يدمج التحديث بعد نجاح البناء.
+[[MERGE:repo]] ينشئ أو يعيد استخدام Pull Request ثم يدمجه تلقائيًا بعد نجاح اختبارات البناء.
+[[BUILD:repo]] يفحص آخر تشغيل CI ويعيد رابط APK/الويب إذا اكتمل بنجاح. بعد تعديل ملفات المشروع أطلب BUILD.
+[[DB_READ:table|عدد]] يقرأ من جداول public كاملة بصلاحية مالك المشروع.
+[[DB_INSERT:table]]
+{"column":"value"}
+[[/DB_INSERT]] يضيف سجلًا في أي جدول public بعد التحقق من هوية مالك المشروع.
+[[DB_UPDATE:table|id|uuid]]
+{"column":"new value"}
+[[/DB_UPDATE]] يعدّل سجلًا محددًا في أي جدول public؛ لا تغيّر id الأساسي.
+[[INTEGRATIONS_STATUS]] يعرض حالة تهيئة الاتصالات دون إظهار المفاتيح أو الأسرار.
+[[CF:path]] يقرأ من حساب Cloudflare (مثال: workers/scripts أو ai/models/search أو storage/kv/namespaces).
+[[CF_WRITE:PUT|workers/scripts/اسم-العامل]] أو [[CF_WRITE:DELETE|workers/scripts/اسم-العامل]]
+{"script":"..."}
+[[/CF_WRITE]] ينشئ ويعدّل ويحذف موارد Cloudflare المتاحة لصلاحية API token داخل الحساب المتصل، باستثناء عامل الجدولة المؤجل. استخدمه بعد قراءة الحالة الحالية.
+[[GH_WRITE:repo|path]]
+المحتوى الكامل للملف
+[[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} ثم يدمج التغيير تلقائيًا بعد نجاح CI.
+[[MERGE:repo]] تدمج فرع ${WORK_BRANCH} في الفرع الأصلي تلقائيًا بعد نجاح اختبارات البناء.\n[[BUILD:repo]] تجيب نتيجة آخر بناء CI ورابط APK/الويب بعد اكتماله. بعد كل تعديل GitHub مطلوب اختباره، استخدم BUILD.\n[[INTEGRATIONS_STATUS]] تعرض حالة تهيئة الاتصالات دون كشف أي مفاتيح.
 [[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. مهم جدًا: اكتب دائمًا الرمز | بين kind وarg، ولا تكتب [[PHONE:open_appcom...]]. إذا قال أبانوب "افتح/شغل يوتيوب أو Chrome أو واتساب" أخرج الوسم فورًا: [[PHONE:open_app|اسم التطبيق أو الحزمة]]. وإذا أعطى رابطًا أخرج [[PHONE:open_url|https://...]]. للبحث: أخرج [[PHONE:open_app|chrome]] ثم [[PHONE:type_text|نص البحث]]. للضغط: [[PHONE:tap_text|النص الظاهر]]. لا تكتفِ بشرح الخطوات ولا تقل إنك لا تملك الهاتف؛ أخرج الوسم وانتظر نتيجة الأداة. يدعم أيضًا الإعدادات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
 [[SKILL:id|{"a":"...","b":"..."}]] تشغّل مهارة جاهزة من مكتبة المهارات (خطوات مضمونة، أنسب خيار للاستخدام المتكرر). استخدم مهارة جاهزة إن وُجدت قبل كتابة أوامر يدوية، ولو المهارة تحتاج وسيطًا أرسله في JSON. لو احتجت خطوات إضافية بعد المهارة اكتبها كأوامر PHONE عادية في نفس الرد.
 قائمة المهارات الجاهزة (المعرف — الوظيفة):
 ${SKILL_PROMPT}
-[[DB_READ:table]] يقرأ بيانات الحساب من جدول مسموح به وبحد أقصى 50 صفًا: tasks أو employees أو network_messages أو companion_events.
-[[WORKSPACE_WRITE|note أو task أو proposal|العنوان|التفاصيل]] يسجل تعديلًا مقترحًا في مساحة عمل حسابك لمراجعته. لا يوجد حذف أو تعديل شامل من النموذج.
+[[DB_DELETE:table|id|uuid]] يحذف سجلًا محددًا من أي جدول public بعد تحقق المالك.
+[[WORKSPACE_WRITE|note أو task أو proposal|العنوان|التفاصيل]] يسجل التعديل مباشرة كمنفذ بدل وضعه في قائمة مقترحات.
 المهارات التي تختار منها حسب الهدف: phone-control (ملاحظة الشاشة والضغط والكتابة)، youtube-search (فتح YouTube والبحث والتحقق)، file-reader (فهرسة وفتح الملفات)، browser-research (قراءة الصفحة وتلخيصها)، github-editor (قراءة وتعديل فرع العمل)، supabase-data (قراءة/إضافة بيانات الحساب)، cloudflare-ops (قراءة/تعديل الموارد المسموحة)، screen-learning (استخراج أنماط التطبيق من حركات المستخدم دون حفظ نصوصه)، وtask-summary (تلخيص ما تم فعليًا). لا تخترع عنصرًا غير موجود: اقرأ الشاشة قبل الضغط، ولا تستخدم tap_text إلا لنص ظهر في screen_text/read_screen أو وصف معروف، وبعد الفشل أعد القراءة واختر بديلًا. افهم الهدف والنتيجة المطلوبة، وليس مجرد تنفيذ أول أمر.
 استخدم الأدوات بس لما الطلب محتاجها.`;
 
@@ -103,7 +112,7 @@ export const networkTurn = createServerFn({ method: "POST" })
     const transcript = history.map((h) => h.content).join("\n\n");
     const msgs = [{ role: "user" as const, content: `المحادثة المشتركة لحد دلوقتي:\n\n${transcript}\n\nدلوقتي دورك يا ${me.label}.` }];
 
-    const fallbacks = ["google/gemini-3.8-flash", "openai/chat-latest", "anthropic/claude-haiku-4-5"];
+    const fallbacks = ["cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast", "google/gemini-3.8-flash", "openai/chat-latest", "anthropic/claude-haiku-4-5"];
     const fallback = fallbacks[0]!;
     let used = isManager ? fallback : data.model;
     let text = "";
@@ -186,32 +195,94 @@ export const networkTurn = createServerFn({ method: "POST" })
         text: await modelCall(peer, `نموذج "${me.label}" في الشبكة بيسألك. رد بالعربية باختصار.`, [{ role: "user", content: m[2]!.trim() || "?" }]),
       }));
     }
-    const DB_TABLES = ["tasks", "network_messages", "companion_commands", "companion_events", "companion_devices", "mood_checkins", "daily_reports", "ai_runs", "profiles"] as const;
+    const DB_TABLES = [
+      "profiles","user_roles","departments","employees","goals","tasks","approvals","risks","audit_events","app_settings",
+      "webauthn_credentials","webauthn_challenges","teams","permissions","role_permissions","services","service_proposals","notifications",
+      "providers","models","integrations","employee_training","task_dependencies","knowledge_docs","memory_entries","incidents","experiments",
+      "change_requests","tools","employee_capabilities","companion_devices","companion_commands","companion_events","companion_settings",
+      "network_messages","daily_reports","agent_workspace_actions","artifacts","agent_tools","integration_registry","orders","agent_paths",
+      "agent_commands","scheduled_jobs","agent_updates","conversations","messages","command_catalog","skill_catalog","path_catalog",
+      "memory_branches","conversation_messages",
+    ] as const;
+    const assertProjectOwner = () => {
+      const ownerId = process.env["AGENT_OWNER_USER_ID"];
+      if (!ownerId || ownerId !== context.userId) throw new Error("أدوات إدارة قاعدة المشروع تتطلب AGENT_OWNER_USER_ID مطابقًا لحساب المالك.");
+    };
+    const adminDb = async () => {
+      assertProjectOwner();
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      return supabaseAdmin as any;
+    };
+    const scopedQuery = (_db: any, _table: string, query: any) => query;
     for (const m of text.matchAll(/\[\[DB_READ:\s*([a-z_]+)\s*\|?\s*(\d*)\s*\]\]/g)) {
       if (jobs++ >= 12) break;
-      await run(`🗄️ قراءة ${m[1]}`, async () => {
-        const t = m[1] as (typeof DB_TABLES)[number];
-        if (!DB_TABLES.includes(t)) throw new Error("جدول غير مسموح");
-        const { data: rows, error } = await (context.supabase as any).from(t).select("*").order("created_at", { ascending: false }).limit(Math.min(Number(m[2]) || 10, 50));
+      await run(`🗄️ قراءة قاعدة المشروع: ${m[1]}`, async () => {
+        const table = m[1] as (typeof DB_TABLES)[number];
+        if (!DB_TABLES.includes(table)) throw new Error("الجدول غير مسموح");
+        const db = await adminDb();
+        let query = db.from(table).select("*").limit(Math.min(Number(m[2]) || 20, 100));
+        query = scopedQuery(db, table, query);
+        const { data, error } = await query;
         if (error) throw new Error(error.message);
-        return { text: JSON.stringify(rows).slice(0, 6000) };
+        return { text: JSON.stringify(data ?? []).slice(0, 10000) };
       });
     }
-    for (const m of text.matchAll(/\[\[DB_WRITE:\s*([a-z_]+)\s*\]\]\n?([\s\S]*?)\[\[\/DB_WRITE\]\]/g)) {
-      if (jobs++ >= 12) break;
-      await run(`🗄️ إضافة في ${m[1]}`, async () => {
-        if (!["tasks", "network_messages", "mood_checkins"].includes(m[1]!)) throw new Error("جدول غير مسموح بالكتابة");
-        const row = { ...JSON.parse(m[2]!.trim()), user_id: context.userId };
-        const { error } = await (context.supabase as any).from(m[1]!).insert(row);
+    for (const m of text.matchAll(/\[\[DB_(?:INSERT|WRITE):\s*([a-z_]+)\s*\]\]\s*([\s\S]*?)\[\[\/DB_(?:INSERT|WRITE)\]\]/g)) {
+      if (jobs++ >= 10) break;
+      await run(`🗄️ إضافة سجل في ${m[1]}`, async () => {
+        const table = m[1] as (typeof DB_TABLES)[number];
+        if (!DB_TABLES.includes(table)) throw new Error("الجدول غير موجود في قاعدة المشروع");
+        const db = await adminDb();
+        const row = JSON.parse(m[2]!.trim()) as Record<string, unknown>;
+        if (!row || Array.isArray(row) || typeof row !== "object") throw new Error("بيانات الإضافة لازم تكون JSON object");
+        const { data, error } = await db.from(table).insert(row).select("*").limit(1);
         if (error) throw new Error(error.message);
-        return { text: "اتضاف ✓" };
+        return { text: JSON.stringify(data ?? []).slice(0, 3000) };
+      });
+    }
+    for (const m of text.matchAll(/\[\[DB_UPDATE:\s*([a-z_]+)\s*\|\s*id\s*\|\s*([a-zA-Z0-9_-]+)\s*\]\]\s*([\s\S]*?)\[\[\/DB_UPDATE\]\]/g)) {
+      if (jobs++ >= 10) break;
+      await run(`🗄️ تعديل سجل في ${m[1]}`, async () => {
+        const table = m[1] as (typeof DB_TABLES)[number];
+        if (!DB_TABLES.includes(table)) throw new Error("الجدول غير موجود في قاعدة المشروع");
+        const patch = JSON.parse(m[3]!.trim()) as Record<string, unknown>;
+        if (!patch || Array.isArray(patch) || typeof patch !== "object" || "id" in patch ) throw new Error("التعديل لا يمكنه تغيير المعرف أو المالك");
+        const db = await adminDb();
+        let query = db.from(table).update(patch).eq("id", m[2]!);
+        query = scopedQuery(db, table, query);
+        const { data, error } = await query.select("id");
+        if (error) throw new Error(error.message);
+        if (!data?.length) throw new Error("لم يتغير أي سجل؛ راجع المعرف وملكية السجل");
+        return { text: `تم تعديل سجل واحد: ${JSON.stringify(data[0])}` };
+      });
+    }
+    for (const m of text.matchAll(/\[\[DB_DELETE:\s*([a-z_]+)\s*\|\s*id\s*\|\s*([a-zA-Z0-9_-]+)\s*\]\]/g)) {
+      if (jobs++ >= 6) break;
+      await run(`🗑️ حذف سجل واحد من ${m[1]}`, async () => {
+        const table = m[1] as (typeof DB_TABLES)[number];
+        if (!DB_TABLES.includes(table)) throw new Error("الجدول غير موجود في قاعدة المشروع");
+        const db = await adminDb();
+        let query = db.from(table).delete().eq("id", m[2]!);
+        query = scopedQuery(db, table, query);
+        const { data, error } = await query.select("id");
+        if (error) throw new Error(error.message);
+        if (!data?.length) throw new Error("لم يُحذف أي سجل؛ راجع المعرف وملكية السجل");
+        return { text: `تم حذف سجل واحد: ${JSON.stringify(data[0])}` };
+      });
+    }
+    for (const m of text.matchAll(/\[\[INTEGRATIONS_STATUS\]\]/g)) {
+      if (jobs++ >= 4) break;
+      await run("🔐 حالة الاتصالات والصلاحيات", async () => {
+        const n = await import("./network.server");
+        const status = n.integrationStatus();
+        return { text: JSON.stringify(status) };
       });
     }
     for (const m of text.matchAll(/\[\[CF:\s*([a-z0-9_/?=&.-]+)\s*\]\]/gi)) {
       if (jobs++ >= 12) break;
       await run(`☁️ Cloudflare ${m[1]}`, async () => ({ text: await n.cfGet(m[1]!) }));
     }
-    for (const m of text.matchAll(/\[\[CF_WRITE:\s*(POST|PUT|PATCH)\s*\|\s*([^\]]+)\]\]\n?([\s\S]*?)\[\[\/CF_WRITE\]\]/gi)) {
+    for (const m of text.matchAll(/\[\[CF_WRITE:\s*(POST|PUT|PATCH|DELETE)\s*\|\s*([^\]]+)\]\]\n?([\s\S]*?)\[\[\/CF_WRITE\]\]/gi)) {
       if (jobs++ >= 8) break;
       await run(`☁️ تعديل Cloudflare ${m[2]}`, async () => ({ text: await n.cfWrite(m[2]!.trim(), m[1]!, m[3]!.trim()) }));
     }
@@ -226,32 +297,21 @@ export const networkTurn = createServerFn({ method: "POST" })
         return { text: "اتحفظ في الفرع التجريبي", link };
       });
     }
-    const dbReadTables = new Set(["tasks", "employees", "network_messages", "companion_events", "agent_workspace_actions"]);
-    for (const m of text.matchAll(/\[\[DB_READ:\s*([^\]]+?)\s*\]\]/g)) {
-      if (jobs++ >= 10) break;
-      await run(`🗄️ قراءة قاعدة البيانات: ${m[1]}`, async () => {
-        const table = m[1]!.trim();
-        if (!dbReadTables.has(table)) throw new Error("الجدول غير مسموح للوكيل");
-        const columns = table === "tasks" ? "id,title,description,priority,status,created_at" : table === "employees" ? "id,code,name,department_name,role_description,primary_model,lifecycle_status,risk_level,quality_score" : table === "network_messages" ? "id,who,content,created_at" : table === "companion_events" ? "id,event_type,message,created_at" : "id,action_type,title,content,status,created_at";
-        const db = context.supabase as any;
-        const q = db.from(table).select(columns).limit(50);
-        const scoped = table === "employees" ? q : q.eq("user_id", context.userId);
-        const { data, error } = await scoped;
-        if (error) throw new Error(error.message);
-        return { text: JSON.stringify(data ?? []).slice(0, 12000) };
-      });
-    }
     for (const m of text.matchAll(/\[\[WORKSPACE_WRITE\s*\|\s*(note|task|proposal)\s*\|\s*([^|\]]+)\s*\|\s*([\s\S]*?)\]\]/g)) {
       if (jobs++ >= 10) break;
       await run("🗄️ تسجيل تعديل في مساحة عمل الحساب", async () => {
         const db = context.supabase as any;
-        const { data, error } = await db.from("agent_workspace_actions").insert({ user_id: context.userId, action_type: m[1], title: m[2]!.trim().slice(0, 200), content: m[3]!.trim().slice(0, 4000), status: "proposed" }).select("id,action_type,title,status").single();
+        const { data, error } = await db.from("agent_workspace_actions").insert({ user_id: context.userId, action_type: m[1], title: m[2]!.trim().slice(0, 200), content: m[3]!.trim().slice(0, 4000), status: "completed" }).select("id,action_type,title,status").single();
         if (error) throw new Error(error.message);
-        return { text: `تم تسجيل التعديل كمقترح ${JSON.stringify(data)} — راجعه قبل اعتماده.` };
+        return { text: `تم تسجيل التعديل وتنفيذه ${JSON.stringify(data)}.` };
       });
     }
-    for (const m of text.matchAll(/\[\[MERGE:\s*([^\]]+?)\s*\]\]/g)) {
-      tools.push({ tool: `🔀 طلب دمج ${m[1]}`, ok: true, text: `MERGE_REQUEST:${n.checkRepo(m[1]!)}` });
+    for (const m of text.matchAll(/\\[\\[MERGE:\\s*([^\\]]+?)\\s*\\]\\]/g)) {
+      if (jobs++ >= 4) break;
+      await run(`🔀 دمج تحديث ${m[1]}`, async () => {
+        const result = await n.ghMerge(m[1]!);
+        return { text: `تم الدمج بعد نجاح اختبارات البناء. Commit: ${result.merge_commit_sha}`, link: result.url };
+      });
     }
     const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "type_text", "tap_text", "tap_coordinates", "long_press", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
     const appPackages: Record<string, string> = {
@@ -341,6 +401,13 @@ export const networkTurn = createServerFn({ method: "POST" })
         return { text: `أُرسل للهاتف ولم تصل النتيجة بعد (${dev.status})` };
         });
     }
+    for (const m of text.matchAll(/\[\[BUILD:\s*([^\]]+?)\s*\]\]/g)) {
+      if (jobs++ >= 4) break;
+      await run(`🏗️ بناء واختبارات ${m[1]}`, async () => {
+        const result = await n.latestBuild(m[1]!.trim());
+        return { text: result.text, link: result.link };
+      });
+    }
     const phoneResults = tools.filter((t) => t.tool.includes("الهاتف"));
     if (phoneResults.length) {
       const resultText = phoneResults.map((t) => `${t.tool}: ${t.ok ? "نجح" : "فشل"}\n${t.text.slice(0, 5000)}`).join("\n\n");
@@ -349,7 +416,7 @@ export const networkTurn = createServerFn({ method: "POST" })
         text = `${text}\n\nملخص التنفيذ الفعلي:\n${summary}`;
       } catch { /* لا نفشل المهمة إذا تعذر نموذج التلخيص */ }
     }
-    const clean = text.replace(/\[\[GH_WRITE:[\s\S]*?\[\[\/GH_WRITE\]\]/g, "[تعديل ملف]").replace(/\[\[CF_WRITE:[\s\S]*?\[\[\/CF_WRITE\]\]/gi, "[تعديل Cloudflare]").replace(/\[\[PHONE(?:_BATCH|_WORKFLOW)\|[\s\S]*?\]\]/gi, "").replace(/\[\[PHONE:[\s\S]*?\]\]/gi, "").replace(/\[\[SKILL:[\s\S]*?\]\]/gi, "").replace(/\[\[DELEGATE:[\s\S]*?\]\]/g, "").trim();
+    const clean = text.replace(/\[\[GH_WRITE:[\s\S]*?\[\[\/GH_WRITE\]\]/g, "[تعديل ملف]").replace(/\[\[CF_WRITE:[\s\S]*?\[\[\/CF_WRITE\]\]/gi, "[تعديل Cloudflare]").replace(/\[\[DB_(?:INSERT|WRITE):[\s\S]*?\[\[\/DB_(?:INSERT|WRITE)\]\]/g, "[إضافة سجل قاعدة بيانات]").replace(/\[\[DB_UPDATE:[\s\S]*?\[\[\/DB_UPDATE\]\]/g, "[تعديل سجل قاعدة بيانات]").replace(/\[\[(?:DB_READ|BUILD|GH_READ|CF):[^\]]*\]\]/gi, "").replace(/\[\[INTEGRATIONS_STATUS\]\]/g, "").replace(/\[\[MERGE:[^\]]*\]\]/g, "[تم الدمج تلقائيًا بعد نجاح الاختبارات]").replace(/\[\[PHONE(?:_BATCH|_WORKFLOW)\|[\s\S]*?\]\]/gi, "").replace(/\[\[PHONE:[\s\S]*?\]\]/gi, "").replace(/\[\[SKILL:[\s\S]*?\]\]/gi, "").replace(/\[\[DELEGATE:[\s\S]*?\]\]/g, "").trim();
     return { model: data.model, usedModel: used, text: clean, tools };
   });
 
