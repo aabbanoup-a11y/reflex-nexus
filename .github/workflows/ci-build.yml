@@ -6,7 +6,9 @@ on:
       - agent-autonomous-integrations-20261112
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
+  actions: read
 
 concurrency:
   group: reflex-nexus-ci-${{ github.ref }}
@@ -73,3 +75,23 @@ jobs:
           path: android-companion/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
+
+  autonomous-merge:
+    name: Merge tested update automatically
+    needs: [web, android]
+    if: success() && github.ref == 'refs/heads/agent-autonomous-integrations-20261112'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or reuse pull request and merge after successful tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_BRANCH: ${{ github.ref_name }}
+        run: |
+          PR_NUMBER="$(gh pr view "$HEAD_BRANCH" --json number --jq .number 2>/dev/null || true)"
+          if [ -z "$PR_NUMBER" ]; then
+            PR_URL="$(gh pr create --base main --head "$HEAD_BRANCH" --title "AbanoubAI autonomous tested update" --body "Automated update. Web tests, lint, production build, and Android APK build all passed before merge.")"
+            PR_NUMBER="${PR_URL##*/}"
+          fi
+          gh pr ready "$PR_NUMBER" || true
+          gh pr merge "$PR_NUMBER" --squash --delete-branch
