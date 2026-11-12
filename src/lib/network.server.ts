@@ -132,10 +132,10 @@ function cfResourceUrl(path: string) {
   return "https://api.cloudflare.com/client/v4/accounts/" + cfAccount() + "/" + normalized;
 }
 export async function cfGet(path: string) {
-  if (path.includes("..") || path.startsWith("http")) throw new Error("مسار Cloudflare غير صالح");
-  const normalized = path.replace(/^\/+/, "");
-  const allowed = /^(workers\/scripts|storage\/kv\/namespaces|d1\/database|pages\/projects|zones|ai\/models\/search|r2\/buckets)(\/|$)/i;
-  if (!allowed.test(normalized)) throw new Error("المسار خارج نطاق موارد Cloudflare المسموح بها");
+  if (path.includes("..") || path.startsWith("http") || path.includes("\\\\")) throw new Error("مسار Cloudflare غير صالح");
+  const normalized = path.replace(/^\\/+/, "");
+  if (normalized.startsWith("accounts/") && !normalized.startsWith("accounts/" + cfAccount() + "/")) throw new Error("لا يمكن الوصول إلى حساب Cloudflare آخر");
+  if (normalized.startsWith("user/")) throw new Error("مسارات المستخدم العامة غير متاحة من موصل الحساب");
   const r = await fetch(cfResourceUrl(normalized), { headers: cfHeaders() });
   const payload = await r.json().catch(() => ({})) as any;
   if (!r.ok || payload.success === false) throw new Error("Cloudflare " + r.status + ": " + JSON.stringify(payload.errors ?? payload).slice(0, 500));
@@ -143,14 +143,14 @@ export async function cfGet(path: string) {
 }
 
 export async function cfWrite(path: string, method: string, body: string) {
-  if (path.includes("..") || path.startsWith("http")) throw new Error("مسار Cloudflare غير صالح");
-  const normalized = path.replace(/^\/+/, "").replace(/^accounts\/[^/]+\//, "");
-  const allowed = /^(workers\/scripts|storage\/kv\/namespaces|d1\/database|pages\/projects|r2\/buckets)(\/|$)/i;
-  if (!allowed.test(normalized)) throw new Error("مسار Cloudflare غير مسموح للكتابة");
+  if (path.includes("..") || path.startsWith("http") || path.includes("\\\\")) throw new Error("مسار Cloudflare غير صالح");
+  const normalized = path.replace(/^\\/+/, "");
+  if (normalized.startsWith("accounts/") && !normalized.startsWith("accounts/" + cfAccount() + "/")) throw new Error("لا يمكن تعديل حساب Cloudflare آخر");
+  if (normalized.startsWith("user/")) throw new Error("مسارات المستخدم العامة غير متاحة من موصل الحساب");
   const verb = method.toUpperCase();
-  if (!["POST", "PUT", "PATCH"].includes(verb)) throw new Error("طريقة الكتابة غير مسموحة");
-  const parsed = JSON.parse(body) as Record<string, unknown>;
-  if (normalized.startsWith("workers/scripts/abanoupai-local-first-scheduler")) throw new Error("عامل الجدولة محمي ومؤجل ولا يمكن تعديله من الوكيل.");
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(verb)) throw new Error("طريقة HTTP غير مدعومة");
+  const parsed = body.trim() ? JSON.parse(body) as Record<string, unknown> : {};
+  if (normalized.startsWith("workers/scripts/abanoupai-local-first-scheduler")) throw new Error("عامل الجدولة مؤجل ولا يتم تعديله ضمن هذه المهمة.");
   const url = cfResourceUrl(normalized);
   let response: Response;
   if (normalized.startsWith("workers/scripts/") && verb === "PUT") {
