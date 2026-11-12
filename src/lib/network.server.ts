@@ -222,17 +222,24 @@ export async function ghMerge(repoIn: string) {
 
 export async function latestBuild(repoIn: string) {
   const repo = checkRepo(repoIn);
-  const runs = await gh(`repos/${repo}/actions/runs?branch=${WORK_BRANCH}&per_page=10`);
-  const run = (runs.workflow_runs ?? []).find((r: any) => r.name === "Reflex Nexus CI and Android APK") ?? runs.workflow_runs?.[0];
-  if (!run) return { status: "not_found", text: "لا يوجد تشغيل بناء للفرع التجريبي بعد." };
-  if (run.status !== "completed") return { status: run.status, text: `البناء ${run.status}`, link: run.html_url };
+  const branch = await gh(`repos/${repo}/git/ref/heads/${WORK_BRANCH}`);
+  const headSha = branch.object.sha as string;
+  let run: any;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const runs = await gh(`repos/${repo}/actions/runs?branch=${WORK_BRANCH}&per_page=20`);
+    run = (runs.workflow_runs ?? []).find((r: any) => r.head_sha === headSha && r.name === "Reflex Nexus CI and Android APK");
+    if (run && run.status === "completed") break;
+    if (attempt < 7) await new Promise((resolve) => setTimeout(resolve, 2500));
+  }
+  if (!run) return { status: "queued", text: "التعديل موجود على فرع الاختبار، لكن GitHub Actions لم ينشئ تشغيل البناء بعد." };
+  if (run.status !== "completed") return { status: run.status, text: `البناء ${run.status} للنسخة ${headSha.slice(0, 8)}. افتح سجل البناء لمتابعته.`, link: run.html_url };
   const artifacts = await gh(`repos/${repo}/actions/runs/${run.id}/artifacts`);
   const apk = (artifacts.artifacts ?? []).find((a: any) => a.name === "abanoubai-companion-debug-apk" && !a.expired);
   const web = (artifacts.artifacts ?? []).find((a: any) => a.name === "reflex-nexus-web-build" && !a.expired);
   return {
     status: run.conclusion,
-    text: `نتيجة البناء: ${run.conclusion}. رقم التشغيل: ${run.run_number}.`,
-    link: apk?.archive_download_url ?? web?.archive_download_url ?? run.html_url,
+    text: `نتيجة البناء: ${run.conclusion}. رقم التشغيل: ${run.run_number}. ${apk ? "حزمة APK متاحة." : ""} ${web ? "حزمة الويب متاحة." : ""}`,
+    link: run.conclusion === "success" ? (apk?.archive_download_url ?? web?.archive_download_url ?? run.html_url) : run.html_url,
     runUrl: run.html_url,
   };
 }
