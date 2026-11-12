@@ -38,11 +38,20 @@ export async function callModel(id: string, system: string, messages: Msg[], _ac
   let text = "";
 
   if (id.startsWith("cf/") || id.startsWith("local/")) {
-    const conversation = [{ role: "system", content: system }, ...messages];
+    const conversation = messages.map((message, index) => {
+      if (index !== lastIndex || message.role !== "user" || !parts.some((part) => part.kind === "image")) return message;
+      return {
+        role: message.role,
+        content: [
+          { type: "text", text: message.content },
+          ...parts.filter((part) => part.kind === "image").map((part) => ({ type: "image_url", image_url: { url: part.url } })),
+        ],
+      };
+    });
     const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${cfAccount()}/ai/run/${model}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${env("CLOUDFLARE_API_TOKEN")}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: conversation, max_tokens: 1800 }),
+      body: JSON.stringify({ messages: [{ role: "system", content: system }, ...conversation], max_tokens: 1800 }),
     });
     const payload = await r.json().catch(() => ({})) as any;
     if (!r.ok || payload.success === false) throw new Error(`Cloudflare AI ${r.status}: ${JSON.stringify(payload.errors ?? payload).slice(0, 250)}`);
