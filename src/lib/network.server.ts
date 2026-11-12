@@ -1,6 +1,30 @@
 import { MANAGER_ID, NET_MODELS, REPOS, WORK_BRANCH } from "./models30";
 
 type Msg = { role: "user" | "assistant"; content: string };
+function env(name: string) {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`متغير الاتصال ${name} غير مضبوط في بيئة الخادم`);
+  return value;
+}
+
+function optionalEnv(name: string) {
+  return process.env[name]?.trim() || "";
+}
+
+export function integrationStatus() {
+  return {
+    github: Boolean(optionalEnv("GITHUB_TOKEN")),
+    cloudflare: Boolean(optionalEnv("CLOUDFLARE_API_TOKEN") && optionalEnv("CLOUDFLARE_ACCOUNT_ID")),
+    supabaseAdmin: Boolean(optionalEnv("SUPABASE_URL") && optionalEnv("SUPABASE_SERVICE_ROLE_KEY")),
+    models: {
+      cloudflare: Boolean(optionalEnv("CLOUDFLARE_API_TOKEN") && optionalEnv("CLOUDFLARE_ACCOUNT_ID")),
+      openai: Boolean(optionalEnv("OPENAI_API_KEY")),
+      anthropic: Boolean(optionalEnv("ANTHROPIC_API_KEY")),
+      google: Boolean(optionalEnv("GOOGLE_AI_API_KEY")),
+    },
+  };
+}
+
 export async function callModel(id: string, system: string, messages: Msg[], _accessToken?: string): Promise<string> {
   const model = id.startsWith("local/") ? "@cf/meta/llama-3.1-8b-instruct-fast" : id.replace(/^(cf|openai|anthropic|google)\//, "");
   const conversation = [{ role: "system", content: system }, ...messages];
@@ -77,7 +101,7 @@ export async function cfGet(path: string) {
 export async function cfWrite(path: string, method: string, body: string) {
   if (path.includes("..") || path.startsWith("http")) throw new Error("مسار Cloudflare غير صالح");
   const normalized = path.replace(/^\/+/, "").replace(/^accounts\/[^/]+\//, "");
-  const allowed = /^(workers\/scripts|storage\/kv\/namespaces|d1\/database|pages\/projects)(\/|$)/i;
+  const allowed = /^(workers\/scripts|storage\/kv\/namespaces|d1\/database|pages\/projects|r2\/buckets)(\/|$)/i;
   if (!allowed.test(normalized)) throw new Error("مسار Cloudflare غير مسموح للكتابة");
   const verb = method.toUpperCase();
   if (!["POST", "PUT", "PATCH"].includes(verb)) throw new Error("طريقة الكتابة غير مسموحة");
