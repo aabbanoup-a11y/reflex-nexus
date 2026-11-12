@@ -1,57 +1,6 @@
 import { MANAGER_ID, NET_MODELS, REPOS, WORK_BRANCH } from "./models30";
 
 type Msg = { role: "user" | "assistant"; content: string };
-const CF = "https://connector-gateway.lovable.dev/cloudflare/client/v4";
-const GH = "https://connector-gateway.lovable.dev/github";
-const AIG = "https://ai.gateway.lovable.dev/v1";
-
-function env(name: string) {
-  const v = process.env[name];
-  if (!v) throw new Error(`${name} مش متضاف`);
-  return v;
-}
-
-function optionalEnv(name: string) {
-  return process.env[name]?.trim() || "";
-}
-
-let accCache = "";
-async function cfAccount() {
-  if (accCache) return accCache;
-  const r = await fetch(`${CF}/accounts`, { headers: cfHeaders() });
-  if (!r.ok) throw new Error(`Cloudflare ${r.status}: ${await r.text()}`);
-  accCache = ((await r.json()) as any).result[0].id;
-  return accCache;
-}
-const cfHeaders = () => ({
-  Authorization: `Bearer ${env("LOVABLE_API_KEY")}`,
-  "X-Connection-Api-Key": env("CLOUDFLARE_API_KEY"),
-  "Content-Type": "application/json",
-});
-
-async function sse(body: ReadableStream<Uint8Array>, on: (e: any) => void) {
-  const rd = body.getReader();
-  const dec = new TextDecoder();
-  let buf = "";
-  for (;;) {
-    const { done, value } = await rd.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    const lines = buf.split("\n");
-    buf = lines.pop() ?? "";
-    for (const l of lines) {
-      if (!l.startsWith("data:")) continue;
-      const p = l.slice(5).trim();
-      if (!p || p === "[DONE]") continue;
-      try {
-        on(JSON.parse(p));
-      } catch {
-        /* partial */
-      }
-    }
-  }
-}
-
 export async function callModel(id: string, system: string, messages: Msg[], _accessToken?: string): Promise<string> {
   const model = id.startsWith("local/") ? "@cf/meta/llama-3.1-8b-instruct-fast" : id.replace(/^(cf|openai|anthropic|google)\//, "");
   const conversation = [{ role: "system", content: system }, ...messages];
@@ -100,7 +49,7 @@ export async function callModel(id: string, system: string, messages: Msg[], _ac
   } else {
     throw new Error("مزود النموذج غير مدعوم في الاتصال المباشر");
   }
-  text = text.replace(/<think>[\\s\\S]*?<\\/think>/g, "").trim();
+  text = text.replace(/<think>[\\s\\S]*?<\/think>/g, "").trim();
   if (!text) throw new Error("النموذج رجّع ردًا فارغًا");
   return text;
 }
@@ -116,8 +65,8 @@ const cfHeaders = () => ({
 
 export async function cfGet(path: string) {
   if (path.includes("..") || path.startsWith("http")) throw new Error("مسار Cloudflare غير صالح");
-  const normalized = path.replace(/^\\/+/, "");
-  const allowed = /^(workers\\/scripts|storage\\/kv\\/namespaces|d1\\/database|pages\\/projects|zones|ai\\/models\\/search|r2\\/buckets)(\\/|$)/i;
+  const normalized = path.replace(/^\/+/, "");
+  const allowed = /^(workers\/scripts|storage\/kv\/namespaces|d1\/database|pages\/projects|zones|ai\/models\/search|r2\/buckets)(\/|$)/i;
   if (!allowed.test(normalized)) throw new Error("المسار خارج نطاق موارد Cloudflare المسموح بها");
   const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${cfAccount()}/${normalized}`, { headers: cfHeaders() });
   const payload = await r.json().catch(() => ({})) as any;
@@ -127,8 +76,8 @@ export async function cfGet(path: string) {
 
 export async function cfWrite(path: string, method: string, body: string) {
   if (path.includes("..") || path.startsWith("http")) throw new Error("مسار Cloudflare غير صالح");
-  const normalized = path.replace(/^\\/+/, "").replace(/^accounts\\/[^/]+\\//, "");
-  const allowed = /^(workers\\/scripts|storage\\/kv\\/namespaces|d1\\/database|pages\\/projects)(\\/|$)/i;
+  const normalized = path.replace(/^\/+/, "").replace(/^accounts\/[^/]+\//, "");
+  const allowed = /^(workers\/scripts|storage\/kv\/namespaces|d1\/database|pages\/projects)(\/|$)/i;
   if (!allowed.test(normalized)) throw new Error("مسار Cloudflare غير مسموح للكتابة");
   const verb = method.toUpperCase();
   if (!["POST", "PUT", "PATCH"].includes(verb)) throw new Error("طريقة الكتابة غير مسموحة");
@@ -188,7 +137,7 @@ const ghHeaders = () => ({
   "Content-Type": "application/json",
 });
 async function gh(path: string, init?: RequestInit) {
-  const r = await fetch(`https://api.github.com/${path.replace(/^\\/+/, "")}`, { ...init, headers: { ...ghHeaders(), ...(init?.headers ?? {}) } });
+  const r = await fetch(`https://api.github.com/${path.replace(/^\/+/, "")}`, { ...init, headers: { ...ghHeaders(), ...(init?.headers ?? {}) } });
   const payload = await r.json().catch(() => ({})) as any;
   if (!r.ok) throw new Error(`GitHub ${r.status}: ${String(payload.message ?? "").slice(0, 300)}`);
   return payload;
