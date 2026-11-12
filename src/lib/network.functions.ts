@@ -45,11 +45,20 @@ ${memory}
 أدوات (اكتب الوسم في سطر لوحده، هيتنفذ وتشوف نتيجته):
 [[BROWSE:https://...]] يفتح الصفحة في المتصفح السحابي (Cloudflare) ويقرأها ويصورها.
 [[ASK:معرف-النموذج|سؤال]] تبعت رسالة لنموذج تاني وتاخد رده. المعرفات: ${NET_MODELS.map((m) => m.id).join(", ")}
-[[GH_READ:repo|path]] يقرا ملف أو مجلد (repo = reflex-nexus وهو مستودع هذا التطبيق المتزامن مع Lovable، أو abra-cadabra-repo أو AbanoupAi، path فاضي = الجذر).
-[[DB_READ:table|عدد]] يقرأ آخر صفوف من جداول حساب أبانوب في قاعدة البيانات (tasks, network_messages, companion_commands, companion_events, companion_devices, mood_checkins, daily_reports, ai_runs, profiles).
-[[DB_WRITE:table]]
-{"عمود":"قيمة"}
-[[/DB_WRITE]] يضيف صفًا في جداول أبانوب القابلة للكتابة (tasks, network_messages, mood_checkins).
+[[GH_READ:repo|path]] يقرأ ملفًا أو مجلدًا من المستودع المحدد.
+[[GH_WRITE:repo|path]]
+المحتوى الكامل للملف
+[[/GH_WRITE]] يكتب في فرع الاختبار ${WORK_BRANCH} فقط، ولا يلمس main.
+[[MERGE:repo]] ينشئ أو يعيد استخدام Pull Request Draft؛ لا تدمج تلقائيًا.
+[[BUILD:repo]] يفحص آخر تشغيل CI ويعيد رابط APK/الويب إذا اكتمل بنجاح. بعد تعديل ملفات المشروع أطلب BUILD.
+[[DB_READ:table|عدد]] يقرأ من جداول public المعروفة مع حصر بيانات المستخدم في حسابه.
+[[DB_INSERT:table]]
+{"column":"value"}
+[[/DB_INSERT]] يضيف سجلًا في جدول مسموح بعد التحقق من هوية مالك المشروع.
+[[DB_UPDATE:table|id|uuid]]
+{"column":"new value"}
+[[/DB_UPDATE]] يعدّل سجلًا واحدًا محددًا فقط؛ لا تغيّر id أو user_id أو owner_id.
+[[INTEGRATIONS_STATUS]] يعرض حالة تهيئة الاتصالات دون إظهار المفاتيح أو الأسرار.
 [[CF:path]] يقرأ من حساب Cloudflare (مثال: workers/scripts أو ai/models/search أو storage/kv/namespaces).
 [[CF_WRITE:PUT|workers/scripts/اسم-العامل]]
 {"script":"..."}
