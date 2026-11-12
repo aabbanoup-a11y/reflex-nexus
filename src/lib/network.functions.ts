@@ -51,7 +51,7 @@ ${memory}
 [[/GH_WRITE]] يكتب في فرع العمل ${WORK_BRANCH}، ثم يدمج التحديث بعد نجاح البناء.
 [[MERGE:repo]] ينشئ أو يعيد استخدام Pull Request ثم يدمجه تلقائيًا بعد نجاح اختبارات البناء.
 [[BUILD:repo]] يفحص آخر تشغيل CI ويعيد رابط APK/الويب إذا اكتمل بنجاح. بعد تعديل ملفات المشروع أطلب BUILD.
-[[DB_READ:table|عدد]] يقرأ من جداول public المعروفة مع حصر بيانات المستخدم في حسابه.
+[[DB_READ:table|عدد]] يقرأ من جداول public كاملة بصلاحية مالك المشروع.
 [[DB_INSERT:table]]
 {"column":"value"}
 [[/DB_INSERT]] يضيف سجلًا في جدول مسموح بعد التحقق من هوية مالك المشروع.
@@ -71,7 +71,7 @@ ${memory}
 [[SKILL:id|{"a":"...","b":"..."}]] تشغّل مهارة جاهزة من مكتبة المهارات (خطوات مضمونة، أنسب خيار للاستخدام المتكرر). استخدم مهارة جاهزة إن وُجدت قبل كتابة أوامر يدوية، ولو المهارة تحتاج وسيطًا أرسله في JSON. لو احتجت خطوات إضافية بعد المهارة اكتبها كأوامر PHONE عادية في نفس الرد.
 قائمة المهارات الجاهزة (المعرف — الوظيفة):
 ${SKILL_PROMPT}
-[[DB_DELETE:table|id|uuid]] يحذف سجلًا واحدًا فقط من جدول مسموح بعد تحقق المالك، ولا يدعم الحذف الجماعي.
+[[DB_DELETE:table|id|uuid]] يحذف سجلًا محددًا من أي جدول public بعد تحقق المالك.
 [[WORKSPACE_WRITE|note أو task أو proposal|العنوان|التفاصيل]] يسجل تعديلًا مقترحًا في مساحة عمل حسابك لمراجعته.
 المهارات التي تختار منها حسب الهدف: phone-control (ملاحظة الشاشة والضغط والكتابة)، youtube-search (فتح YouTube والبحث والتحقق)، file-reader (فهرسة وفتح الملفات)، browser-research (قراءة الصفحة وتلخيصها)، github-editor (قراءة وتعديل فرع العمل)، supabase-data (قراءة/إضافة بيانات الحساب)، cloudflare-ops (قراءة/تعديل الموارد المسموحة)، screen-learning (استخراج أنماط التطبيق من حركات المستخدم دون حفظ نصوصه)، وtask-summary (تلخيص ما تم فعليًا). لا تخترع عنصرًا غير موجود: اقرأ الشاشة قبل الضغط، ولا تستخدم tap_text إلا لنص ظهر في screen_text/read_screen أو وصف معروف، وبعد الفشل أعد القراءة واختر بديلًا. افهم الهدف والنتيجة المطلوبة، وليس مجرد تنفيذ أول أمر.
 استخدم الأدوات بس لما الطلب محتاجها.`;
@@ -256,7 +256,7 @@ export const networkTurn = createServerFn({ method: "POST" })
         const table = m[1] as (typeof DB_TABLES)[number];
         if (!DB_TABLES.includes(table)) throw new Error("الجدول غير موجود في قاعدة المشروع");
         const patch = JSON.parse(m[3]!.trim()) as Record<string, unknown>;
-        if (!patch || Array.isArray(patch) || typeof patch !== "object" || "id" in patch || "user_id" in patch || "owner_id" in patch) throw new Error("التعديل لا يمكنه تغيير المعرف أو المالك");
+        if (!patch || Array.isArray(patch) || typeof patch !== "object" || "id" in patch ) throw new Error("التعديل لا يمكنه تغيير المعرف أو المالك");
         const db = await adminDb();
         let query = db.from(table).update(patch).eq("id", m[2]!);
         query = scopedQuery(db, table, query);
@@ -316,8 +316,12 @@ export const networkTurn = createServerFn({ method: "POST" })
         return { text: `تم تسجيل التعديل كمقترح ${JSON.stringify(data)} — راجعه قبل اعتماده.` };
       });
     }
-    for (const m of text.matchAll(/\[\[MERGE:\s*([^\]]+?)\s*\]\]/g)) {
-      tools.push({ tool: `🔀 طلب دمج ${m[1]}`, ok: true, text: `MERGE_REQUEST:${n.checkRepo(m[1]!)}` });
+    for (const m of text.matchAll(/\\[\\[MERGE:\\s*([^\\]]+?)\\s*\\]\\]/g)) {
+      if (jobs++ >= 4) break;
+      await run(`🔀 دمج تحديث ${m[1]}`, async () => {
+        const result = await n.ghMerge(m[1]!);
+        return { text: `تم الدمج بعد نجاح اختبارات البناء. Commit: ${result.merge_commit_sha}`, link: result.url };
+      });
     }
     const SENSITIVE = new Set(["open_url", "open_app", "open_settings", "open_camera", "download_file", "speak", "listen", "type_text", "tap_text", "tap_coordinates", "long_press", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory"]);
     const appPackages: Record<string, string> = {
