@@ -272,6 +272,20 @@ export const networkTurn = createServerFn({ method: "POST" })
         return { text: `تم تعديل سجل واحد: ${JSON.stringify(data[0])}` };
       });
     }
+    for (const m of text.matchAll(/\\[\\[DB_DELETE:\\s*([a-z_]+)\\s*\\|\\s*id\\s*\\|\\s*([a-zA-Z0-9_-]+)\\s*\\]\\]/g)) {
+      if (jobs++ >= 6) break;
+      await run(`🗑️ حذف سجل واحد من ${m[1]}`, async () => {
+        const table = m[1] as (typeof DB_TABLES)[number];
+        if (!DB_TABLES.includes(table) || NO_AGENT_WRITE.has(table)) throw new Error("الجدول غير مسموح للحذف الآلي");
+        const db = await adminDb();
+        let query = db.from(table).delete().eq("id", m[2]!);
+        query = scopedQuery(db, table, query);
+        const { data, error } = await query.select("id");
+        if (error) throw new Error(error.message);
+        if (!data?.length) throw new Error("لم يُحذف أي سجل؛ راجع المعرف وملكية السجل");
+        return { text: `تم حذف سجل واحد: ${JSON.stringify(data[0])}` };
+      });
+    }
     for (const m of text.matchAll(/\[\[INTEGRATIONS_STATUS\]\]/g)) {
       if (jobs++ >= 4) break;
       await run("🔐 حالة الاتصالات والصلاحيات", async () => {
