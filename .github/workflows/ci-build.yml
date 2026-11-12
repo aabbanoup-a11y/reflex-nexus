@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - agent-autonomous-integrations-20261112
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: read
