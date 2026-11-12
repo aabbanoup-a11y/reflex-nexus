@@ -126,19 +126,19 @@ const cfHeaders = () => ({
 });
 
 function cfResourceUrl(path: string) {
-  const normalized = path.replace(/^\\/+/, "");
-  if (normalized.startsWith("zones/") || normalized === "zones") return `https://api.cloudflare.com/client/v4/${normalized}`;
-  return `https://api.cloudflare.com/client/v4/accounts/${cfAccount()}/${normalized}`;
+  const normalized = path.replace(/^\/+/, "");
+  if (normalized.startsWith("zones/") || normalized === "zones") return \`https://api.cloudflare.com/client/v4/\${normalized}\`;
+  return \`https://api.cloudflare.com/client/v4/accounts/\${cfAccount()}/\${normalized}\`;
 }
 
 export async function cfGet(path: string) {
   if (path.includes("..") || path.startsWith("http")) throw new Error("مسار Cloudflare غير صالح");
-  const normalized = path.replace(/^\\/+/, "");
-  const allowed = /^(workers\\/scripts|storage\\/kv\\/namespaces|d1\\/database|pages\\/projects|zones|ai\\/models\\/search|r2\\/buckets)(\\/|$)/i;
+  const normalized = path.replace(/^\/+/, "");
+  const allowed = /^(workers\/scripts|storage\/kv\/namespaces|d1\/database|pages\/projects|zones|ai\/models\/search|r2\/buckets)(\/|$)/i;
   if (!allowed.test(normalized)) throw new Error("المسار خارج نطاق موارد Cloudflare المسموح بها");
   const r = await fetch(cfResourceUrl(normalized), { headers: cfHeaders() });
   const payload = await r.json().catch(() => ({})) as any;
-  if (!r.ok || payload.success === false) throw new Error(`Cloudflare ${r.status}: ${JSON.stringify(payload.errors ?? payload).slice(0, 500)}`);
+  if (!r.ok || payload.success === false) throw new Error(\`Cloudflare \${r.status}: \${JSON.stringify(payload.errors ?? payload).slice(0, 500)}\`);
   return JSON.stringify(payload.result ?? payload).slice(0, 12000);
 }
 
