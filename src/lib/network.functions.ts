@@ -57,7 +57,7 @@ ${memory}
 [[GH_WRITE:repo|path]]
 المحتوى الكامل للملف
 [[/GH_WRITE]] يكتب في فرع ${WORK_BRANCH} بس (الأصلي مش بيتلمس).
-[[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى موافقة أبانوب بزرار.
+[[MERGE:repo]] تطلب دمج فرع ${WORK_BRANCH} في الأصلي — ده بيستنى مراجعة بشرية.\n[[BUILD:repo]] تجيب نتيجة آخر بناء CI ورابط APK/الويب بعد اكتماله. بعد كل تعديل GitHub مطلوب اختباره، استخدم BUILD.\n[[INTEGRATIONS_STATUS]] تعرض حالة تهيئة الاتصالات دون كشف أي مفاتيح.
 [[PHONE:kind|arg]] يتحكم في هاتف أبانوب المربوط. مهم جدًا: اكتب دائمًا الرمز | بين kind وarg، ولا تكتب [[PHONE:open_appcom...]]. إذا قال أبانوب "افتح/شغل يوتيوب أو Chrome أو واتساب" أخرج الوسم فورًا: [[PHONE:open_app|اسم التطبيق أو الحزمة]]. وإذا أعطى رابطًا أخرج [[PHONE:open_url|https://...]]. للبحث: أخرج [[PHONE:open_app|chrome]] ثم [[PHONE:type_text|نص البحث]]. للضغط: [[PHONE:tap_text|النص الظاهر]]. لا تكتفِ بشرح الخطوات ولا تقل إنك لا تملك الهاتف؛ أخرج الوسم وانتظر نتيجة الأداة. يدعم أيضًا الإعدادات، Home/Back/Recents، الضغط والكتابة والسحب، الكاميرا، screenshot، speak/listen، وجرد الجهاز والتطبيقات والإشعارات. الأوامر الحساسة تحتاج موافقته وصلاحية Android المناسبة.
 [[SKILL:id|{"a":"...","b":"..."}]] تشغّل مهارة جاهزة من مكتبة المهارات (خطوات مضمونة، أنسب خيار للاستخدام المتكرر). استخدم مهارة جاهزة إن وُجدت قبل كتابة أوامر يدوية، ولو المهارة تحتاج وسيطًا أرسله في JSON. لو احتجت خطوات إضافية بعد المهارة اكتبها كأوامر PHONE عادية في نفس الرد.
 قائمة المهارات الجاهزة (المعرف — الوظيفة):
@@ -186,25 +186,86 @@ export const networkTurn = createServerFn({ method: "POST" })
         text: await modelCall(peer, `نموذج "${me.label}" في الشبكة بيسألك. رد بالعربية باختصار.`, [{ role: "user", content: m[2]!.trim() || "?" }]),
       }));
     }
-    const DB_TABLES = ["tasks", "network_messages", "companion_commands", "companion_events", "companion_devices", "mood_checkins", "daily_reports", "ai_runs", "profiles"] as const;
+    const DB_TABLES = [
+      "profiles","user_roles","departments","employees","goals","tasks","approvals","risks","audit_events","app_settings",
+      "webauthn_credentials","webauthn_challenges","teams","permissions","role_permissions","services","service_proposals","notifications",
+      "providers","models","integrations","employee_training","task_dependencies","knowledge_docs","memory_entries","incidents","experiments",
+      "change_requests","tools","employee_capabilities","companion_devices","companion_commands","companion_events","companion_settings",
+      "network_messages","daily_reports","agent_workspace_actions","artifacts","agent_tools","integration_registry","orders","agent_paths",
+      "agent_commands","scheduled_jobs","agent_updates","conversations","messages","command_catalog","skill_catalog","path_catalog",
+      "memory_branches","conversation_messages",
+    ] as const;
+    const USER_SCOPED_TABLES = new Set([
+      "user_roles","webauthn_credentials","webauthn_challenges","notifications","companion_devices","companion_commands","companion_events",
+      "companion_settings","network_messages","daily_reports","agent_workspace_actions","artifacts","agent_tools","integration_registry",
+      "orders","agent_paths","agent_commands","scheduled_jobs","agent_updates","conversations","messages","memory_branches","conversation_messages",
+    ]);
+    const OWNER_SCOPED_TABLES = new Set(["goals","tasks"]);
+    const NO_AGENT_WRITE = new Set(["user_roles","permissions","role_permissions","webauthn_credentials","webauthn_challenges","audit_events"]);
+    const assertProjectOwner = () => {
+      const ownerId = process.env["AGENT_OWNER_USER_ID"];
+      if (!ownerId || ownerId !== context.userId) throw new Error("أدوات إدارة قاعدة المشروع تتطلب AGENT_OWNER_USER_ID مطابقًا لحساب المالك.");
+    };
+    const adminDb = async () => {
+      assertProjectOwner();
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      return supabaseAdmin as any;
+    };
+    const scopedQuery = (db: any, table: string, query: any) => {
+      if (USER_SCOPED_TABLES.has(table)) return query.eq("user_id", context.userId);
+      if (OWNER_SCOPED_TABLES.has(table)) return query.eq("owner_id", context.userId);
+      return query;
+    };
     for (const m of text.matchAll(/\[\[DB_READ:\s*([a-z_]+)\s*\|?\s*(\d*)\s*\]\]/g)) {
       if (jobs++ >= 12) break;
-      await run(`🗄️ قراءة ${m[1]}`, async () => {
-        const t = m[1] as (typeof DB_TABLES)[number];
-        if (!DB_TABLES.includes(t)) throw new Error("جدول غير مسموح");
-        const { data: rows, error } = await (context.supabase as any).from(t).select("*").order("created_at", { ascending: false }).limit(Math.min(Number(m[2]) || 10, 50));
+      await run(`🗄️ قراءة قاعدة المشروع: ${m[1]}`, async () => {
+        const table = m[1] as (typeof DB_TABLES)[number];
+        if (!DB_TABLES.includes(table)) throw new Error("الجدول غير مسموح");
+        const db = await adminDb();
+        let query = db.from(table).select("*").limit(Math.min(Number(m[2]) || 20, 100));
+        query = scopedQuery(db, table, query);
+        const { data, error } = await query;
         if (error) throw new Error(error.message);
-        return { text: JSON.stringify(rows).slice(0, 6000) };
+        return { text: JSON.stringify(data ?? []).slice(0, 10000) };
       });
     }
-    for (const m of text.matchAll(/\[\[DB_WRITE:\s*([a-z_]+)\s*\]\]\n?([\s\S]*?)\[\[\/DB_WRITE\]\]/g)) {
-      if (jobs++ >= 12) break;
-      await run(`🗄️ إضافة في ${m[1]}`, async () => {
-        if (!["tasks", "network_messages", "mood_checkins"].includes(m[1]!)) throw new Error("جدول غير مسموح بالكتابة");
-        const row = { ...JSON.parse(m[2]!.trim()), user_id: context.userId };
-        const { error } = await (context.supabase as any).from(m[1]!).insert(row);
+    for (const m of text.matchAll(/\[\[DB_(?:INSERT|WRITE):\s*([a-z_]+)\s*\]\]\s*([\s\S]*?)\[\[\/DB_(?:INSERT|WRITE)\]\]/g)) {
+      if (jobs++ >= 10) break;
+      await run(`🗄️ إضافة سجل في ${m[1]}`, async () => {
+        const table = m[1] as (typeof DB_TABLES)[number];
+        if (!DB_TABLES.includes(table) || NO_AGENT_WRITE.has(table)) throw new Error("الجدول غير مسموح للكتابة الآلية");
+        const db = await adminDb();
+        const row = JSON.parse(m[2]!.trim()) as Record<string, unknown>;
+        if (!row || Array.isArray(row) || typeof row !== "object") throw new Error("بيانات الإضافة لازم تكون JSON object");
+        if (USER_SCOPED_TABLES.has(table)) row.user_id = context.userId;
+        if (OWNER_SCOPED_TABLES.has(table)) row.owner_id = context.userId;
+        const { data, error } = await db.from(table).insert(row).select("*").limit(1);
         if (error) throw new Error(error.message);
-        return { text: "اتضاف ✓" };
+        return { text: JSON.stringify(data ?? []).slice(0, 3000) };
+      });
+    }
+    for (const m of text.matchAll(/\[\[DB_UPDATE:\s*([a-z_]+)\s*\|\s*id\s*\|\s*([a-zA-Z0-9_-]+)\s*\]\]\s*([\s\S]*?)\[\[\/DB_UPDATE\]\]/g)) {
+      if (jobs++ >= 10) break;
+      await run(`🗄️ تعديل سجل في ${m[1]}`, async () => {
+        const table = m[1] as (typeof DB_TABLES)[number];
+        if (!DB_TABLES.includes(table) || NO_AGENT_WRITE.has(table)) throw new Error("الجدول غير مسموح للتعديل الآلي");
+        const patch = JSON.parse(m[3]!.trim()) as Record<string, unknown>;
+        if (!patch || Array.isArray(patch) || typeof patch !== "object" || "id" in patch || "user_id" in patch || "owner_id" in patch) throw new Error("التعديل لا يمكنه تغيير المعرف أو المالك");
+        const db = await adminDb();
+        let query = db.from(table).update(patch).eq("id", m[2]!);
+        query = scopedQuery(db, table, query);
+        const { data, error } = await query.select("id");
+        if (error) throw new Error(error.message);
+        if (!data?.length) throw new Error("لم يتغير أي سجل؛ راجع المعرف وملكية السجل");
+        return { text: `تم تعديل سجل واحد: ${JSON.stringify(data[0])}` };
+      });
+    }
+    for (const m of text.matchAll(/\[\[INTEGRATIONS_STATUS\]\]/g)) {
+      if (jobs++ >= 4) break;
+      await run("🔐 حالة الاتصالات والصلاحيات", async () => {
+        const n = await import("./network.server");
+        const status = n.integrationStatus();
+        return { text: JSON.stringify(status) };
       });
     }
     for (const m of text.matchAll(/\[\[CF:\s*([a-z0-9_/?=&.-]+)\s*\]\]/gi)) {
@@ -340,6 +401,13 @@ export const networkTurn = createServerFn({ method: "POST" })
         }
         return { text: `أُرسل للهاتف ولم تصل النتيجة بعد (${dev.status})` };
         });
+    }
+    for (const m of text.matchAll(/\[\[BUILD:\s*([^\]]+?)\s*\]\]/g)) {
+      if (jobs++ >= 4) break;
+      await run(`🏗️ بناء واختبارات ${m[1]}`, async () => {
+        const result = await n.latestBuild(m[1]!.trim());
+        return { text: result.text, link: result.link };
+      });
     }
     const phoneResults = tools.filter((t) => t.tool.includes("الهاتف"));
     if (phoneResults.length) {
