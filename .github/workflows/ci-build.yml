@@ -90,10 +90,11 @@ jobs:
       - name: Publish a permanent APK download release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           APK="$(find release-assets -type f -name '*.apk' | head -n 1)"
           test -n "$APK"
-          gh release create "agent-build-${GITHUB_RUN_NUMBER}" "$APK" --title "AbanoubAI Android test build ${GITHUB_RUN_NUMBER}" --notes "Built from ${GITHUB_SHA}. Web tests, lint, web build, and Android APK build all passed."
+          gh release create "agent-build-${GITHUB_RUN_NUMBER}" "$APK" --repo "$GH_REPO" --target "$GITHUB_SHA" --title "AbanoubAI Android test build ${GITHUB_RUN_NUMBER}" --notes "Built from ${GITHUB_SHA}. Web tests, lint, web build, and Android APK build all passed."
       - name: Create or reuse pull request and merge after successful tests
         env:
           GH_TOKEN: ${{ github.token }}
