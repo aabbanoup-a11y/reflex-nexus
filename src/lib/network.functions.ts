@@ -299,21 +299,6 @@ export const networkTurn = createServerFn({ method: "POST" })
         return { text: "اتحفظ في الفرع التجريبي", link };
       });
     }
-    const dbReadTables = new Set(["tasks", "employees", "network_messages", "companion_events", "agent_workspace_actions"]);
-    for (const m of text.matchAll(/\[\[DB_READ:\s*([^\]]+?)\s*\]\]/g)) {
-      if (jobs++ >= 10) break;
-      await run(`🗄️ قراءة قاعدة البيانات: ${m[1]}`, async () => {
-        const table = m[1]!.trim();
-        if (!dbReadTables.has(table)) throw new Error("الجدول غير مسموح للوكيل");
-        const columns = table === "tasks" ? "id,title,description,priority,status,created_at" : table === "employees" ? "id,code,name,department_name,role_description,primary_model,lifecycle_status,risk_level,quality_score" : table === "network_messages" ? "id,who,content,created_at" : table === "companion_events" ? "id,event_type,message,created_at" : "id,action_type,title,content,status,created_at";
-        const db = context.supabase as any;
-        const q = db.from(table).select(columns).limit(50);
-        const scoped = table === "employees" ? q : q.eq("user_id", context.userId);
-        const { data, error } = await scoped;
-        if (error) throw new Error(error.message);
-        return { text: JSON.stringify(data ?? []).slice(0, 12000) };
-      });
-    }
     for (const m of text.matchAll(/\[\[WORKSPACE_WRITE\s*\|\s*(note|task|proposal)\s*\|\s*([^|\]]+)\s*\|\s*([\s\S]*?)\]\]/g)) {
       if (jobs++ >= 10) break;
       await run("🗄️ تسجيل تعديل في مساحة عمل الحساب", async () => {
