@@ -126,11 +126,11 @@ const cfHeaders = () => ({
 });
 
 function cfResourceUrl(path: string) {
-  const normalized = path.replace(/^\/+/, "");
+  const normalized = path.replace(/^\\/+/, "");
   if (normalized.startsWith("zones/") || normalized === "zones") return "https://api.cloudflare.com/client/v4/" + normalized;
+  if (normalized.startsWith("accounts/")) return "https://api.cloudflare.com/client/v4/" + normalized;
   return "https://api.cloudflare.com/client/v4/accounts/" + cfAccount() + "/" + normalized;
 }
-
 export async function cfGet(path: string) {
   if (path.includes("..") || path.startsWith("http")) throw new Error("مسار Cloudflare غير صالح");
   const normalized = path.replace(/^\/+/, "");
