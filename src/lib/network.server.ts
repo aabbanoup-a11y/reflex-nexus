@@ -126,26 +126,27 @@ const cfHeaders = () => ({
 });
 
 function cfResourceUrl(path: string) {
-  const normalized = path.replace(/^\\/+/, "");
+  const normalized = path.replace(/^\/+/, "");
   if (normalized.startsWith("zones/") || normalized === "zones") return "https://api.cloudflare.com/client/v4/" + normalized;
   if (normalized.startsWith("accounts/")) return "https://api.cloudflare.com/client/v4/" + normalized;
   return "https://api.cloudflare.com/client/v4/accounts/" + cfAccount() + "/" + normalized;
 }
+
 export async function cfGet(path: string) {
-  if (path.includes("..") || path.startsWith("http") || path.includes("\\\\")) throw new Error("مسار Cloudflare غير صالح");
-  const normalized = path.replace(/^\\/+/, "");
-  if (normalized.startsWith("accounts/") && !normalized.startsWith("accounts/" + cfAccount() + "/")) throw new Error("لا يمكن الوصول إلى حساب Cloudflare آخر");
+  if (path.includes("..") || path.startsWith("http") || path.includes("\\")) throw new Error("مسار Cloudflare غير صالح");
+  const normalized = path.replace(/^\/+/, "");
+  if (normalized.startsWith("accounts/") && normalized !== "accounts/" + cfAccount() && !normalized.startsWith("accounts/" + cfAccount() + "/")) throw new Error("لا يمكن الوصول إلى حساب Cloudflare آخر");
   if (normalized.startsWith("user/")) throw new Error("مسارات المستخدم العامة غير متاحة من موصل الحساب");
-  const r = await fetch(cfResourceUrl(normalized), { headers: cfHeaders() });
-  const payload = await r.json().catch(() => ({})) as any;
-  if (!r.ok || payload.success === false) throw new Error("Cloudflare " + r.status + ": " + JSON.stringify(payload.errors ?? payload).slice(0, 500));
+  const response = await fetch(cfResourceUrl(normalized), { headers: cfHeaders() });
+  const payload = await response.json().catch(() => ({})) as any;
+  if (!response.ok || payload.success === false) throw new Error("Cloudflare " + response.status + ": " + JSON.stringify(payload.errors ?? payload).slice(0, 500));
   return JSON.stringify(payload.result ?? payload).slice(0, 12000);
 }
 
 export async function cfWrite(path: string, method: string, body: string) {
-  if (path.includes("..") || path.startsWith("http") || path.includes("\\\\")) throw new Error("مسار Cloudflare غير صالح");
-  const normalized = path.replace(/^\\/+/, "");
-  if (normalized.startsWith("accounts/") && !normalized.startsWith("accounts/" + cfAccount() + "/")) throw new Error("لا يمكن تعديل حساب Cloudflare آخر");
+  if (path.includes("..") || path.startsWith("http") || path.includes("\\")) throw new Error("مسار Cloudflare غير صالح");
+  const normalized = path.replace(/^\/+/, "");
+  if (normalized.startsWith("accounts/") && normalized !== "accounts/" + cfAccount() && !normalized.startsWith("accounts/" + cfAccount() + "/")) throw new Error("لا يمكن تعديل حساب Cloudflare آخر");
   if (normalized.startsWith("user/")) throw new Error("مسارات المستخدم العامة غير متاحة من موصل الحساب");
   const verb = method.toUpperCase();
   if (!["POST", "PUT", "PATCH", "DELETE"].includes(verb)) throw new Error("طريقة HTTP غير مدعومة");
@@ -161,12 +162,12 @@ export async function cfWrite(path: string, method: string, body: string) {
     const form = new FormData();
     form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
     form.append(mainModule, new Blob([script], { type: "application/javascript+module" }), mainModule);
-    response = await fetch(url, { method: "PUT", headers: { Authorization: `Bearer ${env("CLOUDFLARE_API_TOKEN")}` }, body: form });
+    response = await fetch(url, { method: "PUT", headers: { Authorization: \`Bearer \${env("CLOUDFLARE_API_TOKEN")}\` }, body: form });
   } else {
     response = await fetch(url, { method: verb, headers: cfHeaders(), ...(verb === "DELETE" || !body.trim() ? {} : { body: JSON.stringify(parsed) }) });
   }
   const payload = await response.json().catch(() => ({})) as any;
-  if (!response.ok || payload.success === false) throw new Error(`Cloudflare ${response.status}: ${JSON.stringify(payload.errors ?? payload).slice(0, 500)}`);
+  if (!response.ok || payload.success === false) throw new Error(\`Cloudflare \${response.status}: \${JSON.stringify(payload.errors ?? payload).slice(0, 500)}\`);
   return JSON.stringify(payload.result ?? payload).slice(0, 12000);
 }
 
