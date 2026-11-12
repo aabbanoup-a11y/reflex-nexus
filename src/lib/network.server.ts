@@ -25,44 +25,73 @@ export function integrationStatus() {
   };
 }
 
-export async function callModel(id: string, system: string, messages: Msg[], _accessToken?: string): Promise<string> {
-  const model = id.startsWith("local/") ? "@cf/meta/llama-3.1-8b-instruct-fast" : id.replace(/^(cf|openai|anthropic|google)\//, "");
-  const conversation = [{ role: "system", content: system }, ...messages];
+type ModelPart = { kind: "image" | "file"; url: string; mime: string; name: string };
+
+function dataUrl(url: string) {
+  const match = url.match(/^data:([^;,]+);base64,([\\s\\S]+)$/);
+  return match ? { mime: match[1]!, data: match[2]! } : null;
+}
+
+export async function callModel(id: string, system: string, messages: Msg[], _accessToken?: string, parts: ModelPart[] = []): Promise<string> {
+  const model = id.startsWith("local/") ? "@cf/meta/llama-3.1-8b-instruct-fast" : id.replace(/^(cf|openai|anthropic|google)\\//, "");
+  const lastIndex = messages.length - 1;
   let text = "";
 
   if (id.startsWith("cf/") || id.startsWith("local/")) {
-    const account = cfAccount();
-    const token = env("CLOUDFLARE_API_TOKEN");
-    const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/${model}`, {
+    const conversation = [{ role: "system", content: system }, ...messages];
+    const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${cfAccount()}/ai/run/${model}`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${env("CLOUDFLARE_API_TOKEN")}`, "Content-Type": "application/json" },
       body: JSON.stringify({ messages: conversation, max_tokens: 1800 }),
     });
     const payload = await r.json().catch(() => ({})) as any;
     if (!r.ok || payload.success === false) throw new Error(`Cloudflare AI ${r.status}: ${JSON.stringify(payload.errors ?? payload).slice(0, 250)}`);
     text = String(payload.result?.response ?? payload.result?.choices?.[0]?.message?.content ?? "");
   } else if (id.startsWith("openai/")) {
+    const input = messages.map((m, i) => {
+      if (i !== lastIndex || m.role !== "user" || !parts.length) return m;
+      return { role: m.role, content: [{ type: "text", text: m.content }, ...parts.filter((p) => p.kind === "image").map((p) => ({ type: "image_url", image_url: { url: p.url } }))] };
+    });
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${env("OPENAI_API_KEY")}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model, messages: conversation, max_tokens: 1800 }),
+      body: JSON.stringify({ model, messages: [{ role: "system", content: system }, ...input], max_tokens: 1800 }),
     });
     const payload = await r.json().catch(() => ({})) as any;
     if (!r.ok) throw new Error(`OpenAI ${r.status}: ${String(payload.error?.message ?? "").slice(0, 250)}`);
     text = String(payload.choices?.[0]?.message?.content ?? "");
   } else if (id.startsWith("anthropic/")) {
+    const input = messages.map((m, i) => {
+      if (i !== lastIndex || m.role !== "user" || !parts.length) return m;
+      const content: any[] = [{ type: "text", text: m.content }];
+      for (const part of parts) {
+        const encoded = dataUrl(part.url);
+        if (!encoded) continue;
+        if (part.kind === "image" && encoded.mime.startsWith("image/")) content.push({ type: "image", source: { type: "base64", media_type: encoded.mime, data: encoded.data } });
+        else if (part.kind === "file" && encoded.mime === "application/pdf") content.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: encoded.data } });
+      }
+      return { role: m.role, content };
+    });
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": env("ANTHROPIC_API_KEY"), "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-      body: JSON.stringify({ model, system, messages, max_tokens: 1800 }),
+      body: JSON.stringify({ model, system, messages: input, max_tokens: 1800 }),
     });
     const payload = await r.json().catch(() => ({})) as any;
     if (!r.ok) throw new Error(`Anthropic ${r.status}: ${String(payload.error?.message ?? "").slice(0, 250)}`);
     text = (payload.content ?? []).filter((x: any) => x.type === "text").map((x: any) => x.text).join("\\n");
   } else if (id.startsWith("google/")) {
-    const key = env("GOOGLE_AI_API_KEY");
-    const contents = messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
+    const contents = messages.map((m, i) => {
+      const contentParts: any[] = [{ text: m.content }];
+      if (i === lastIndex && m.role === "user") {
+        for (const part of parts) {
+          const encoded = dataUrl(part.url);
+          if (encoded) contentParts.push({ inlineData: { mimeType: encoded.mime, data: encoded.data } });
+        }
+      }
+      return { role: m.role === "assistant" ? "model" : "user", parts: contentParts };
+    });
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(env("GOOGLE_AI_API_KEY"))}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: { maxOutputTokens: 1800 } }),
@@ -73,7 +102,7 @@ export async function callModel(id: string, system: string, messages: Msg[], _ac
   } else {
     throw new Error("مزود النموذج غير مدعوم في الاتصال المباشر");
   }
-  text = text.replace(/<think>[\\s\\S]*?<\/think>/g, "").trim();
+  text = text.replace(/<think>[\\s\\S]*?<\\/think>/g, "").trim();
   if (!text) throw new Error("النموذج رجّع ردًا فارغًا");
   return text;
 }
