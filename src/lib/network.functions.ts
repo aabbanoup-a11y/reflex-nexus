@@ -74,6 +74,13 @@ ${SKILL_PROMPT}
 [[DB_DELETE:table|id|uuid]] يحذف سجلًا محددًا من أي جدول public بعد تحقق المالك.
 [[WORKSPACE_WRITE|note أو task أو proposal|العنوان|التفاصيل]] يسجل التعديل مباشرة كمنفذ بدل وضعه في قائمة مقترحات.
 المهارات التي تختار منها حسب الهدف: phone-control (ملاحظة الشاشة والضغط والكتابة)، youtube-search (فتح YouTube والبحث والتحقق)، file-reader (فهرسة وفتح الملفات)، browser-research (قراءة الصفحة وتلخيصها)، github-editor (قراءة وتعديل فرع العمل)، supabase-data (قراءة/إضافة بيانات الحساب)، cloudflare-ops (قراءة/تعديل الموارد المسموحة)، screen-learning (استخراج أنماط التطبيق من حركات المستخدم دون حفظ نصوصه)، وtask-summary (تلخيص ما تم فعليًا). لا تخترع عنصرًا غير موجود: اقرأ الشاشة قبل الضغط، ولا تستخدم tap_text إلا لنص ظهر في screen_text/read_screen أو وصف معروف، وبعد الفشل أعد القراءة واختر بديلًا. افهم الهدف والنتيجة المطلوبة، وليس مجرد تنفيذ أول أمر.
+[[AGENT_TOOL:status|{}]] يفحص اتصال أدوات التحكم من غير عرض أي مفاتيح.
+[[AGENT_TOOL:github.read|{"repo":"aabbanoup-a11y/reflex-nexus","path":"src/lib/network.functions.ts"}]] يقرأ ملف GitHub.
+[[AGENT_TOOL:github.write|{"repo":"aabbanoup-a11y/reflex-nexus","path":"src/example.ts","content":"..."}]] ينشئ أو يعدّل ملفًا في فرع agent-work.
+[[AGENT_TOOL:github.delete|{"repo":"aabbanoup-a11y/reflex-nexus","path":"src/old.ts","confirmDestructive":true}]] يحذف ملفًا فقط عندما طلب أبانوب الحذف صراحةً.
+[[AGENT_TOOL:cloudflare.request|{"method":"GET","path":"workers/scripts"}]] أو POST/PUT/PATCH/DELETE مع body JSON لإدارة موارد الحساب المتصل. الحذف يتطلب confirmDestructive:true فقط عند طلبه صراحةً.
+[[AGENT_TOOL:supabase.read|{"table":"profiles","limit":20}]] وsupabase.insert/update/delete مع data وfilters لإدارة سجلات public. لا تستخدم delete إلا بطلب صريح، ولا ترسل أو تطلب المفاتيح في نص المحادثة.
+استخدم هذه الأدوات الجديدة عندما تحتاج تنفيذًا مباشرًا. إذا رجع NOT_CONFIGURED فالاتصال يحتاج إضافة سرّه إلى Supabase Edge Function secrets، ولا تدّعِ نجاح التنفيذ.
 استخدم الأدوات بس لما الطلب محتاجها.`;
 
 export const networkTurn = createServerFn({ method: "POST" })
@@ -276,6 +283,19 @@ export const networkTurn = createServerFn({ method: "POST" })
         const n = await import("./network.server");
         const status = n.integrationStatus();
         return { text: JSON.stringify(status) };
+      });
+    }
+    for (const m of text.matchAll(/\[\[AGENT_TOOL:\s*([a-z.]+)\s*\|([\s\S]*?)\]\]/gi)) {
+      if (jobs++ >= 12) break;
+      await run(`🧰 Agent Tool ${m[1]}`, async () => {
+        let args: Record<string, unknown>;
+        try {
+          args = JSON.parse(m[2]!.trim() || "{}") as Record<string, unknown>;
+        } catch {
+          throw new Error("وسيط الأداة ليس JSON صالحًا");
+        }
+        const n = await import("./network.server");
+        return { text: await n.agentControl(m[1]!.trim().toLowerCase(), args, context.accessToken) };
       });
     }
     for (const m of text.matchAll(/\[\[CF:\s*([a-z0-9_/?=&.-]+)\s*\]\]/gi)) {
