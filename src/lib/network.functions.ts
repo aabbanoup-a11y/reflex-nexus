@@ -320,10 +320,12 @@ export const networkTurn = createServerFn({ method: "POST" })
       whatsapp: "com.whatsapp", "واتساب": "com.whatsapp", telegram: "org.telegram.messenger", "تليجرام": "org.telegram.messenger",
       gmail: "com.google.android.gm", "جيميل": "com.google.android.gm", settings: "com.android.settings", "الإعدادات": "com.android.settings",
     };
+    const requiresPhoneApproval = (kind: string) => new Set(["open_url", "open_settings", "open_camera", "download_file", "speak", "listen", "type_text", "tap_text", "tap_coordinates", "long_press", "swipe", "screenshot", "screen_text", "device_inventory", "app_inventory", "notification_inventory", "file_inventory", "file_read", "open_file", "open_document", "notification_inventory"]).has(kind);
     const submitPhone = async (kind: string, payload: Record<string, unknown>) => {
       const { data: dev } = await context.supabase.from("companion_devices").select("id,status").eq("user_id", context.userId).eq("platform", "android").order("last_seen_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
       if (!dev) throw new Error("مفيش هاتف مربوط — افتح التطبيق وسجّل دخول");
-      const command = { device_id: dev.id, user_id: context.userId, kind, payload: payload as any, requires_approval: false, status: "approved", approved_at: new Date().toISOString() };
+      const approvalRequired = kind === "batch" || kind === "workflow" || requiresPhoneApproval(kind);
+      const command = { device_id: dev.id, user_id: context.userId, kind, payload: payload as any, requires_approval: approvalRequired, status: approvalRequired ? "queued" : "approved", ...(approvalRequired ? {} : { approved_at: new Date().toISOString() }) };
       let { data: inserted, error } = await context.supabase.from("companion_commands").insert(command).select("id").single();
       if (error && /kind_check|check constraint/i.test(error.message) && kind !== "tap_text") ({ data: inserted, error } = await context.supabase.from("companion_commands").insert({ ...command, kind: "tap_text", payload: { ...payload, agent_action: kind } }).select("id").single());
       if (error) throw new Error(error.message);
@@ -372,13 +374,11 @@ export const networkTurn = createServerFn({ method: "POST" })
         if (["open_url", "download_file"].includes(kind) && !/^https:\/\//.test(urlArg)) throw new Error("الرابط لازم يبدأ بـ https://");
         if (kind.endsWith("inventory") && arg) throw new Error("أمر الجرد لا يقبل بيانات إضافية");
         const payload = kind === "open_url" || kind === "download_file" ? { url: urlArg } : kind === "open_app" ? { package: appArg } : kind === "open_settings" ? { setting: arg } : kind === "speak" ? { text: arg.slice(0, 4000) } : kind === "tap_text" || kind === "type_text" ? { text: arg.slice(0, 500), ...(submit ? { submit: "true" } : {}) } : {};
-        // التشغيل التلقائي هو الوضع الافتراضي الذي طلبه صاحب الهاتف؛ يظل كل شيء
-        // مملوكًا للحساب ومسجلًا في السجل، مع زر الطوارئ لإيقاف التنفيذ.
-        const sensitive = false;
+        const approvalRequired = requiresPhoneApproval(kind);
         const command = {
           device_id: dev.id, user_id: context.userId, kind, payload,
-          requires_approval: false, status: "approved",
-          approved_at: new Date().toISOString(),
+          requires_approval: approvalRequired, status: approvalRequired ? "queued" : "approved",
+          ...(approvalRequired ? {} : { approved_at: new Date().toISOString() }),
         };
         let { data: inserted, error } = await context.supabase.from("companion_commands").insert(command).select("id").single();
         // Lovable Cloud deployments that still have the original allowlist accept tap_text.
