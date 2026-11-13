@@ -9,6 +9,9 @@ const android = fs.readFileSync("android-companion/app/src/main/java/com/abanoub
 
 assert.match(companion, /const requiresApproval = supervisedKinds\.has\(kind\)/);
 assert.match(companion, /requires_approval: requiresApproval/);
+assert.match(network, /const approvalRequired = requiresPhoneApproval\(kind\)/);
+assert.match(network, /requires_approval: approvalRequired, status: approvalRequired \? "queued" : "approved"/);
+assert.match(network, /kind === "batch" \|\| kind === "workflow" \|\| requiresPhoneApproval\(kind\)/);
 assert.match(companion, /status: requiresApproval \? "queued" : "approved"/);
 assert.match(network, /type_text_submit/);
 assert.match(network, /searchIntent/);
