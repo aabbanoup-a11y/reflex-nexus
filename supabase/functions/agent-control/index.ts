@@ -15,9 +15,13 @@ const AGENT_READ_TABLES = new Set([
   "knowledge_docs", "notifications", "tasks", "conversations",
   "conversation_messages", "memory_entries", "memory_branches",
 ]);
-const AGENT_WRITE_TABLES = new Set([
-  "agent_workspace_actions", "artifacts", "goals", "knowledge_docs", "tasks",
-]);
+const AGENT_WRITE_OWNER_COLUMN: Record<string, string> = {
+  agent_workspace_actions: "user_id",
+  artifacts: "user_id",
+  goals: "owner_id",
+  knowledge_docs: "created_by",
+  tasks: "owner_id",
+};
 
 async function requireOwner(req: Request) {
   const url = env("SUPABASE_URL");
@@ -166,9 +170,22 @@ async function supabaseRest(action: string, input: any, auth: { url: string }) {
     query.set(column, "eq." + value);
   }
   const method = action === "supabase.read" ? "GET" : action === "supabase.insert" ? "POST" : action === "supabase.update" ? "PATCH" : "DELETE";
-  if (method !== "GET" && !AGENT_WRITE_TABLES.has(table)) throw new Error("TABLE_WRITE_NOT_ALLOWED");
+  const ownerColumn = AGENT_WRITE_OWNER_COLUMN[table];
+  if (method !== "GET" && !ownerColumn) throw new Error("TABLE_WRITE_NOT_ALLOWED");
   if (method === "DELETE" && input.confirmDestructive !== true) throw new Error("CONFIRM_DESTRUCTIVE_REQUIRED");
-  if (["PATCH", "DELETE"].includes(method) && !Object.keys(input.filters ?? {}).length) throw new Error("FILTER_REQUIRED");
+  if (["PATCH", "DELETE"].includes(method)) {
+    if (!Object.keys(input.filters ?? {}).length) throw new Error("FILTER_REQUIRED");
+    if (input.filters?.[ownerColumn] !== auth.user.id) throw new Error("OWNER_FILTER_REQUIRED");
+  }
+  let writeData: Record<string, unknown> | undefined;
+  if (method === "POST" || method === "PATCH") {
+    if (!input.data || typeof input.data !== "object" || Array.isArray(input.data)) throw new Error("INVALID_WRITE_DATA");
+    writeData = { ...input.data };
+    if (writeData[ownerColumn] !== undefined && writeData[ownerColumn] !== auth.user.id) {
+      throw new Error("OWNER_FIELD_MISMATCH");
+    }
+    writeData[ownerColumn] = auth.user.id;
+  }
   if (method === "GET") query.set("limit", String(Math.min(Math.max(Number(input.limit) || 25, 1), 100)));
   const response = await fetch(auth.url + "/rest/v1/" + table + (query.size ? "?" + query.toString() : ""), {
     method,
@@ -180,7 +197,7 @@ async function supabaseRest(action: string, input: any, auth: { url: string }) {
       "Accept-Profile": "public",
       "Content-Profile": "public",
     },
-    ...(method === "GET" || method === "DELETE" ? {} : { body: JSON.stringify(input.data ?? {}) }),
+    ...(method === "GET" || method === "DELETE" ? {} : { body: JSON.stringify(writeData) }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error("SUPABASE_" + response.status + ": " + String(data.message ?? data.hint ?? "request failed").slice(0, 220));
