@@ -119,4 +119,4 @@ jobs:
         with:
           deno-version: v2.x
       - name: Type-check agent-control
-        run: deno check supabase/functions/agent-control/index.ts
+        run: deno check --node-modules-dir=auto supabase/functions/agent-control/index.ts
