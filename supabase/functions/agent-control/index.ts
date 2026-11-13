@@ -9,7 +9,15 @@ const cors = {
 const reply = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: cors });
 const env = (name: string) => Deno.env.get(name)?.trim() ?? "";
-const missing = (...names: string[]) => names.filter((name) => !env(name));
+const ALLOWED_GITHUB_REPO = "aabbanoup-a11y/reflex-nexus";
+const AGENT_READ_TABLES = new Set([
+  "agent_workspace_actions", "artifacts", "daily_reports", "goals",
+  "knowledge_docs", "notifications", "tasks", "conversations",
+  "conversation_messages", "memory_entries", "memory_branches",
+]);
+const AGENT_WRITE_TABLES = new Set([
+  "agent_workspace_actions", "artifacts", "goals", "knowledge_docs", "tasks",
+]);
 
 async function requireOwner(req: Request) {
   const url = env("SUPABASE_URL");
@@ -34,7 +42,9 @@ async function requireOwner(req: Request) {
 
 function safePath(path: string) {
   const p = path.replace(/^\/+/, "");
-  if (!p || p.includes("..") || p.includes("\\") || /^https?:/i.test(p)) {
+  let decoded = p;
+  try { decoded = decodeURIComponent(p); } catch { throw new Error("INVALID_PATH"); }
+  if (!p || decoded.includes("..") || decoded.includes("\\") || /^https?:/i.test(decoded)) {
     throw new Error("INVALID_PATH");
   }
   return p;
@@ -112,16 +122,20 @@ async function cloudflare(input: any) {
   const account = env("CLOUDFLARE_ACCOUNT_ID");
   if (!token || !account) throw new Error("CLOUDFLARE_NOT_CONFIGURED");
   const path = safePath(String(input.path ?? ""));
-  if (path.startsWith("user/") || path.startsWith("accounts/") && !path.startsWith("accounts/" + account + "/") && path !== "accounts/" + account) {
+  if (path.startsWith("accounts/") && !path.startsWith("accounts/" + account + "/")) {
     throw new Error("CLOUDFLARE_SCOPE_DENIED");
   }
-  if (path.startsWith("workers/scripts/abanoupai-local-first-scheduler")) throw new Error("SCHEDULER_EXCLUDED");
+  if (path.startsWith("zones/") || path.startsWith("user/")) throw new Error("CLOUDFLARE_SCOPE_DENIED");
+  const scopedPath = path.startsWith("accounts/" + account + "/")
+    ? path.slice(("accounts/" + account + "/").length)
+    : path;
+  const allowedPath = /^(workers\\/scripts(?:\\/|$)|workers\\/services(?:\\/|$)|workers\\/kv\\/namespaces(?:\\/|$)|workers\\/d1\\/databases(?:\\/|$)|ai\\/run(?:\\/|$)|browser-rendering(?:\\/|$))/.test(scopedPath);
+  if (!allowedPath) throw new Error("CLOUDFLARE_ENDPOINT_NOT_ALLOWED");
+  if (scopedPath.startsWith("workers/scripts/abanoupai-local-first-scheduler")) throw new Error("SCHEDULER_EXCLUDED");
   const method = String(input.method ?? "GET").toUpperCase();
   if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) throw new Error("INVALID_METHOD");
   if (method === "DELETE" && input.confirmDestructive !== true) throw new Error("CONFIRM_DESTRUCTIVE_REQUIRED");
-  const apiPath = path.startsWith("accounts/") || path.startsWith("zones/")
-    ? path
-    : "accounts/" + account + "/" + path;
+  const apiPath = "accounts/" + account + "/" + scopedPath;
   const response = await fetch("https://api.cloudflare.com/client/v4/" + apiPath, {
     method,
     headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
@@ -136,13 +150,16 @@ async function supabaseRest(action: string, input: any, auth: { url: string }) {
   const key = env("SUPABASE_SERVICE_ROLE_KEY");
   if (!key) throw new Error("SUPABASE_ADMIN_NOT_CONFIGURED");
   const table = String(input.table ?? "");
-  if (!/^[a-z_][a-z0-9_]*$/.test(table)) throw new Error("INVALID_TABLE");
+  if (!/^[a-z_][a-z0-9_]*$/.test(table) || !AGENT_READ_TABLES.has(table)) {
+    throw new Error("TABLE_NOT_ALLOWED");
+  }
   const query = new URLSearchParams();
   for (const [column, value] of Object.entries(input.filters ?? {})) {
     if (!/^[a-z_][a-z0-9_]*$/.test(column) || typeof value !== "string") throw new Error("INVALID_FILTER");
     query.set(column, "eq." + value);
   }
   const method = action === "supabase.read" ? "GET" : action === "supabase.insert" ? "POST" : action === "supabase.update" ? "PATCH" : "DELETE";
+  if (method !== "GET" && !AGENT_WRITE_TABLES.has(table)) throw new Error("TABLE_WRITE_NOT_ALLOWED");
   if (method === "DELETE" && input.confirmDestructive !== true) throw new Error("CONFIRM_DESTRUCTIVE_REQUIRED");
   if (["PATCH", "DELETE"].includes(method) && !Object.keys(input.filters ?? {}).length) throw new Error("FILTER_REQUIRED");
   if (method === "GET") query.set("limit", String(Math.min(Math.max(Number(input.limit) || 25, 1), 100)));
@@ -167,8 +184,11 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return reply(405, { error: "POST_REQUIRED" });
   try {
+    const raw = await req.text();
+    if (raw.length > 128_000) return reply(413, { error: "REQUEST_TOO_LARGE" });
+    const input = JSON.parse(raw);
+    if (!input || typeof input !== "object" || Array.isArray(input)) return reply(400, { error: "INVALID_REQUEST_BODY" });
     const owner = await requireOwner(req);
-    const input = await req.json();
     const action = String(input.action ?? "");
     let result: unknown;
     if (action === "status") {
