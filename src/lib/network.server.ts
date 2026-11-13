@@ -324,7 +324,7 @@ export async function agentControl(action: string, input: Record<string, unknown
     "cloudflare.request", "supabase.read", "supabase.insert", "supabase.update", "supabase.delete",
   ]);
   if (!allowed.has(action)) throw new Error("أداة غير مدعومة");
-  const response = await fetch(`${baseUrl.replace(/\\/+$/, "")}/functions/v1/agent-control`, {
+  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/functions/v1/agent-control`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
