@@ -315,4 +315,30 @@ export async function latestBuild(repoIn: string) {
   };
 }
 
+
+export async function agentControl(action: string, input: Record<string, unknown>, accessToken: string) {
+  const baseUrl = env("SUPABASE_URL");
+  const publishableKey = env("SUPABASE_PUBLISHABLE_KEY");
+  const allowed = new Set([
+    "status", "github.read", "github.write", "github.delete",
+    "cloudflare.request", "supabase.read", "supabase.insert", "supabase.update", "supabase.delete",
+  ]);
+  if (!allowed.has(action)) throw new Error("أداة غير مدعومة");
+  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/functions/v1/agent-control`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: publishableKey,
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ ...input, action }),
+  });
+  const payload = await response.json().catch(() => ({})) as any;
+  if (!response.ok || payload.ok === false) {
+    const message = String(payload.error ?? "فشل تنفيذ أداة التكامل").slice(0, 300);
+    throw new Error(`Agent Control ${response.status}: ${message}`);
+  }
+  return JSON.stringify(payload.result ?? payload).slice(0, 12000);
+}
+
 export const knownModel = (id: string) => id === MANAGER_ID || NET_MODELS.some((m) => m.id === id);
