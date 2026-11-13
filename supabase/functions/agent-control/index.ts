@@ -14,8 +14,8 @@ const missing = (...names: string[]) => names.filter((name) => !env(name));
 async function requireOwner(req: Request) {
   const url = env("SUPABASE_URL");
   const anon = env("SUPABASE_ANON_KEY") || env("SUPABASE_PUBLISHABLE_KEY");
-  const owner = env("AGENT_OWNER_USER_ID");
-  if (!url || !anon || !owner) throw new Error("SERVER_SETUP_MISSING");
+  const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !anon || !serviceKey) throw new Error("SERVER_SETUP_MISSING");
   const authorization = req.headers.get("Authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) throw new Error("UNAUTHORIZED");
   const userRes = await fetch(url + "/auth/v1/user", {
@@ -23,7 +23,12 @@ async function requireOwner(req: Request) {
   });
   if (!userRes.ok) throw new Error("UNAUTHORIZED");
   const user = await userRes.json();
-  if (user.id !== owner) throw new Error("FORBIDDEN");
+  const roleRes = await fetch(`${url}/rest/v1/user_roles?user_id=eq.${encodeURIComponent(user.id)}&role=eq.owner&select=id&limit=1`, {
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Accept-Profile": "public" },
+  });
+  if (!roleRes.ok) throw new Error("OWNER_ROLE_CHECK_FAILED");
+  const roles = await roleRes.json();
+  if (!Array.isArray(roles) || roles.length === 0) throw new Error("FORBIDDEN");
   return { user, url, authorization };
 }
 
