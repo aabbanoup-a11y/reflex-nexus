@@ -54,7 +54,7 @@ async function github(action: string, input: any) {
   const token = env("GITHUB_TOKEN");
   if (!token) throw new Error("GITHUB_NOT_CONFIGURED");
   const repo = String(input.repo ?? "");
-  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) throw new Error("INVALID_REPOSITORY");
+  if (repo !== ALLOWED_GITHUB_REPO) throw new Error("REPOSITORY_NOT_ALLOWED");
   const headers = {
     Authorization: `Bearer ${token}`,
     Accept: "application/vnd.github+json",
@@ -129,7 +129,11 @@ async function cloudflare(input: any) {
   const scopedPath = path.startsWith("accounts/" + account + "/")
     ? path.slice(("accounts/" + account + "/").length)
     : path;
-  const allowedPath = /^(workers\\/scripts(?:\\/|$)|workers\\/services(?:\\/|$)|workers\\/kv\\/namespaces(?:\\/|$)|workers\\/d1\\/databases(?:\\/|$)|ai\\/run(?:\\/|$)|browser-rendering(?:\\/|$))/.test(scopedPath);
+  const allowedPrefixes = [
+    "workers/scripts", "workers/services", "workers/kv/namespaces",
+    "workers/d1/databases", "ai/run", "browser-rendering",
+  ];
+  const allowedPath = allowedPrefixes.some((prefix) => scopedPath === prefix || scopedPath.startsWith(prefix + "/"));
   if (!allowedPath) throw new Error("CLOUDFLARE_ENDPOINT_NOT_ALLOWED");
   if (scopedPath.startsWith("workers/scripts/abanoupai-local-first-scheduler")) throw new Error("SCHEDULER_EXCLUDED");
   const method = String(input.method ?? "GET").toUpperCase();
@@ -149,6 +153,9 @@ async function cloudflare(input: any) {
 async function supabaseRest(action: string, input: any, auth: { url: string }) {
   const key = env("SUPABASE_SERVICE_ROLE_KEY");
   if (!key) throw new Error("SUPABASE_ADMIN_NOT_CONFIGURED");
+  if (!["supabase.read", "supabase.insert", "supabase.update", "supabase.delete"].includes(action)) {
+    throw new Error("UNSUPPORTED_SUPABASE_ACTION");
+  }
   const table = String(input.table ?? "");
   if (!/^[a-z_][a-z0-9_]*$/.test(table) || !AGENT_READ_TABLES.has(table)) {
     throw new Error("TABLE_NOT_ALLOWED");
