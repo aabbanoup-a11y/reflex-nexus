@@ -154,7 +154,7 @@ async function cloudflare(input: any) {
   return data.result ?? data;
 }
 
-async function supabaseRest(action: string, input: any, auth: { url: string }) {
+async function supabaseRest(action: string, input: any, auth: { url: string; user: { id: string } }) {
   const key = env("SUPABASE_SERVICE_ROLE_KEY");
   if (!key) throw new Error("SUPABASE_ADMIN_NOT_CONFIGURED");
   if (!["supabase.read", "supabase.insert", "supabase.update", "supabase.delete"].includes(action)) {
@@ -177,10 +177,10 @@ async function supabaseRest(action: string, input: any, auth: { url: string }) {
     if (!Object.keys(input.filters ?? {}).length) throw new Error("FILTER_REQUIRED");
     if (input.filters?.[ownerColumn] !== auth.user.id) throw new Error("OWNER_FILTER_REQUIRED");
   }
-  let writeData: Record<string, unknown> | undefined;
+  const writeData: Record<string, unknown> = {};
   if (method === "POST" || method === "PATCH") {
     if (!input.data || typeof input.data !== "object" || Array.isArray(input.data)) throw new Error("INVALID_WRITE_DATA");
-    writeData = { ...input.data };
+    Object.assign(writeData, input.data as Record<string, unknown>);
     if (writeData[ownerColumn] !== undefined && writeData[ownerColumn] !== auth.user.id) {
       throw new Error("OWNER_FIELD_MISMATCH");
     }
