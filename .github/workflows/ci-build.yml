@@ -108,3 +108,15 @@ jobs:
           fi
           gh pr ready "$PR_NUMBER" || true
           gh pr merge "$PR_NUMBER" --squash --delete-branch
+
+  edge-functions:
+    name: Supabase Edge Function type check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check agent-control
+        run: deno check supabase/functions/agent-control/index.ts
