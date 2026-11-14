@@ -65,6 +65,13 @@ The system should evolve toward these logical layers. They are boundaries, not a
 - Negotiate and record protocol/SDK versions; do not assume every MCP client supports the latest extensions or that an A2A peer supports every modality. Test auth, cancellation, task status, retries, and partial failure before production use.
 - Do not migrate the existing runtime to a new protocol revision solely because it is newer. First build a compatibility spike and compare latency, reliability, auth complexity, operational cost, and recovery against the current implementation.
 
+### Computer-use agent signals (researched 2026-11-15)
+- OpenAI's Agents API computer-use flow runs a browser in an OpenAI-hosted environment. The integrating application handles new-origin access approvals and sign-in, follows session events, supports recovery of the same session after connection loss, and must explicitly cancel turns and clean up sessions.
+- Anthropic's Computer Use tool exposes screenshot, mouse, and keyboard operations through a client-controlled environment; its browser-use tool is a better fit when the task stays within webpages because it can use page structure and target controls rather than relying only on screen coordinates.
+- Product implication: prefer documented APIs and typed tools first, semantic/browser automation second, and screenshot-based computer interaction only when the other paths are unavailable. Every computer-use session needs explicit origin/session scope, sign-in approval, cancellation, activity history, bounded runtime, and post-action verification.
+- These are desktop/browser capabilities, not evidence of unrestricted Android device control. Do not translate them into Accessibility-based permission bypasses or promises to operate arbitrary phone apps.
+
+
 ### E. Android companion
 - Native Android client, separate from the web application.
 - On-device capability adapter and cloud agent bridge.
@@ -102,6 +109,8 @@ Android AppFunctions expose typed app capabilities to the Android intelligence s
 - AndroidX AppFunctions release notes (1.0.0-rc01, updated 2026-11-04): https://developer.android.com/jetpack/androidx/releases/appfunctions
 - MCP 2026-07-28 specification release: https://blog.modelcontextprotocol.io/posts/2026-07-28/
 - A2A protocol specification (v0.3.0): https://a2a-protocol.org/v0.3.0/specification/
+- OpenAI Agents API computer use: https://developers.openai.com/api/docs/guides/agents-api/tools/computer-use
+- Anthropic computer-use tool: https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool
 - Android intelligence system: https://developer.android.com/ai/intelligence-system
 - Android background work: https://developer.android.com/develop/background-work/background-tasks/persistent
 - Android alarms: https://developer.android.com/develop/background-work/services/alarms
