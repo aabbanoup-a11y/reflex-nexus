@@ -58,6 +58,13 @@ The system should evolve toward these logical layers. They are boundaries, not a
 - A2A as a candidate for cross-agent task delegation.
 - Adopt standards only where interoperability benefit exceeds implementation and operational cost.
 
+### Protocol signals to design around (researched 2026-11-15)
+- The stable MCP specification dated 2026-07-28 introduced a stateless protocol core, multi-round-trip requests, header-based routing, cacheable list results, authorization hardening, and a formal extensions framework. This is a strong signal that remote tool infrastructure is moving toward simpler horizontal scaling and more explicit capability evolution.
+- The A2A specification page currently identifies version 0.3.0. It focuses on capability discovery, modality negotiation, collaborative task management, and interoperability between independently implemented agents.
+- Keep AbanoubAI's internal capability contract independent of either wire protocol. Add protocol adapters only at boundaries: AppFunctions for supported on-device app capabilities, MCP for remote tools, and A2A only when cross-agent collaboration is a demonstrated requirement.
+- Negotiate and record protocol/SDK versions; do not assume every MCP client supports the latest extensions or that an A2A peer supports every modality. Test auth, cancellation, task status, retries, and partial failure before production use.
+- Do not migrate the existing runtime to a new protocol revision solely because it is newer. First build a compatibility spike and compare latency, reliability, auth complexity, operational cost, and recovery against the current implementation.
+
 ### E. Android companion
 - Native Android client, separate from the web application.
 - On-device capability adapter and cloud agent bridge.
@@ -76,12 +83,13 @@ The system should evolve toward these logical layers. They are boundaries, not a
 **Decision:** Use a hybrid architecture: native app-owned capabilities + remote MCP tools, and evaluate Android AppFunctions as an optional first-class integration for compatible devices.
 
 ### Why
-Android AppFunctions expose typed app capabilities to the Android intelligence system. Official Android documentation describes them as local OS-level functions and distinguishes them from remote MCP, which requires network round-trips. The feature is experimental/preview and access to the complete agent pipeline is limited; it must not be represented as a generally available capability for every third-party assistant.
+Android AppFunctions expose typed app capabilities to the Android intelligence system. Official Android documentation still labels the end-to-end feature experimental/preview: developers can implement and test AppFunctions on Android 16+, but access to the complete system-agent pipeline remains limited to selected apps/testers. Importantly, the AndroidX release page now lists `androidx.appfunctions:appfunctions:1.0.0-rc01` (updated 2026-11-04). A Jetpack library release candidate is a meaningful implementation-readiness signal, but it does **not** mean the end-to-end Android agent integration is generally available. Keep the integration optional and capability-detected; do not advertise it as working with every assistant or device.
 
 ### Implementation direction
 - Build the companion with Kotlin, Jetpack Compose, and Material 3.
 - Define narrow, typed app functions for tasks the companion itself owns: create/update an AbanoubAI task, prepare a daily plan, read a permitted schedule, acknowledge a notification, or sync an approved routine.
-- On Android 16+ compatible environments, prototype AppFunctions behind feature detection and capability checks.
+- On Android 16+ compatible environments, prototype AppFunctions behind feature detection and capability checks. Evaluate the AndroidX `1.0.0-rc01` artifact in an isolated branch; pin the library/compiler versions and do not upgrade the app's global toolchain solely for this experiment.
+- Verify that functions are registered on a real compatible device using the official AppFunctions inspection command: `adb shell cmd app_function list-app-functions --package <your.package.name>`. Record the OS build, package version, caller/agent availability, and observed result.
 - On older or unsupported environments, use ordinary Android intents, notifications, calendar/task APIs where available, app shortcuts, and the app's own UI.
 - Use a remote MCP server for cross-platform/cloud tools; do not confuse it with local AppFunctions.
 - Use WorkManager for persistent deferrable background work. Use AlarmManager exact alarms only for genuinely time-critical user-facing alarms/reminders with the required special access.
@@ -91,6 +99,9 @@ Android AppFunctions expose typed app capabilities to the Android intelligence s
 
 ### Sources
 - Android AppFunctions: https://developer.android.com/ai/appfunctions
+- AndroidX AppFunctions release notes (1.0.0-rc01, updated 2026-11-04): https://developer.android.com/jetpack/androidx/releases/appfunctions
+- MCP 2026-07-28 specification release: https://blog.modelcontextprotocol.io/posts/2026-07-28/
+- A2A protocol specification (v0.3.0): https://a2a-protocol.org/v0.3.0/specification/
 - Android intelligence system: https://developer.android.com/ai/intelligence-system
 - Android background work: https://developer.android.com/develop/background-work/background-tasks/persistent
 - Android alarms: https://developer.android.com/develop/background-work/services/alarms
