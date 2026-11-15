@@ -48,6 +48,18 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface fun getDeviceId(): String = prefs.getString("device_id", "") ?: ""
 
         @JavascriptInterface fun pairSession(deviceId: String, accessToken: String, refreshToken: String) {
+            if (!SupabaseSessionPolicy.matchesProject(accessToken, BuildConfig.SUPABASE_URL)) {
+                CompanionRuntime.stop(this@MainActivity)
+                prefs.edit().remove("access_token").remove("refresh_token").apply()
+                runOnUiThread {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "تعذر ربط الهاتف: جلسة تسجيل الدخول صادرة من مشروع Supabase مختلف عن مشروع التطبيق. وحّد إعدادات Supabase في الويب وAndroid ثم سجّل الدخول واربط الجهاز من جديد.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                return
+            }
             val changed = prefs.getString("access_token", null) != accessToken || prefs.getString("device_id", null) != deviceId
             prefs.edit().putString("device_id", deviceId).putString("access_token", accessToken)
                 .putString("refresh_token", refreshToken).putBoolean("enabled", true).apply()
