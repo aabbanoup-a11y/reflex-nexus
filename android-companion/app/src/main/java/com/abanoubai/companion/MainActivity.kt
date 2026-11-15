@@ -50,6 +50,7 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface fun pairSession(deviceId: String, accessToken: String, refreshToken: String) {
             if (!SupabaseSessionPolicy.matchesProject(accessToken, BuildConfig.SUPABASE_URL)) {
                 CompanionRuntime.stop(this@MainActivity)
+                stopService(Intent(this@MainActivity, CompanionForegroundService::class.java))
                 prefs.edit().remove("access_token").remove("refresh_token").apply()
                 runOnUiThread {
                     Toast.makeText(
