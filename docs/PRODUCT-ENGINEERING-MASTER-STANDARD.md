@@ -60,7 +60,7 @@ The system should evolve toward these logical layers. They are boundaries, not a
 
 ### Protocol signals to design around (researched 2026-11-15)
 - The stable MCP specification dated 2026-07-28 introduced a stateless protocol core, multi-round-trip requests, header-based routing, cacheable list results, authorization hardening, and a formal extensions framework. This is a strong signal that remote tool infrastructure is moving toward simpler horizontal scaling and more explicit capability evolution.
-- The A2A specification page currently identifies version 0.3.0. It focuses on capability discovery, modality negotiation, collaborative task management, and interoperability between independently implemented agents.
+- A2A is now a stable v1.0 protocol; the official repository released v1.0.1 on 2026-05-28. The protocol focuses on agent discovery, modality negotiation, task lifecycle, and collaboration between independent agents. SDKs have their own release versions (for example, Python v1.2.0 on 2026-09-29 and JavaScript v1.1.0 on 2026-08-26), so record protocol and SDK versions separately.
 - Keep AbanoubAI's internal capability contract independent of either wire protocol. Add protocol adapters only at boundaries: AppFunctions for supported on-device app capabilities, MCP for remote tools, and A2A only when cross-agent collaboration is a demonstrated requirement.
 - Negotiate and record protocol/SDK versions; do not assume every MCP client supports the latest extensions or that an A2A peer supports every modality. Test auth, cancellation, task status, retries, and partial failure before production use.
 - Do not migrate the existing runtime to a new protocol revision solely because it is newer. First build a compatibility spike and compare latency, reliability, auth complexity, operational cost, and recovery against the current implementation.
@@ -70,6 +70,36 @@ The system should evolve toward these logical layers. They are boundaries, not a
 - Anthropic's Computer Use tool exposes screenshot, mouse, and keyboard operations through a client-controlled environment; its browser-use tool is a better fit when the task stays within webpages because it can use page structure and target controls rather than relying only on screen coordinates.
 - Product implication: prefer documented APIs and typed tools first, semantic/browser automation second, and screenshot-based computer interaction only when the other paths are unavailable. Every computer-use session needs explicit origin/session scope, sign-in approval, cancellation, activity history, bounded runtime, and post-action verification.
 - These are desktop/browser capabilities, not evidence of unrestricted Android device control. Do not translate them into Accessibility-based permission bypasses or promises to operate arbitrary phone apps.
+
+### Dated market intelligence and opportunity ledger (2026-11-15)
+
+#### Confirmed product and protocol signals
+- **OpenAI Agents API — public beta (announced 2026-09-10); computer use added 2026-09-29.** The managed harness emphasizes long-running sessions, subagents, and a hosted browser. The application still owns origin approval and sign-in flows. This is strong evidence that reliable agent execution is becoming a productized runtime, not just a prompt plus tools. Availability and operating cost must be checked before adoption.
+- **Anthropic Claude Managed Agents — self-hosted option announced 2026-11-12.** The full managed-agent service, agent/session state, and history can run on customer infrastructure; access currently requires contacting Anthropic. Claude Fable 5.2 launched 2026-11-09 with a 1M context window and 128k maximum output, at published rates of $8/MTok input and $40/MTok output. This is a useful signal for infrastructure control and long-horizon reasoning, not evidence that AbanoubAI should hard-code a provider or model.
+- **LightAgent — v1.0.0 released 2026-11-15 (Apache-2.0).** Its repository describes reconnectable execution, a shared Job/Subagent lifecycle, transactional recovery, and optional signed Providers. Its v0.11.0 line added persistent dynamic DAG execution, verification-gated artifacts, restart-safe leases/fencing, and a narrowing-only SecurityContext. These are project-maintainer claims; the framework has not been benchmarked against AbanoubAI's TypeScript/Supabase workload.
+- **Smartopol Agent — private beta, self-hosted and closed-source.** Its product site describes hierarchical memory consolidation and cross-channel recall, and says a standalone MCP memory layer became public on 2026-10-01. Treat the architecture as a research signal only; claims are not independently verified and the agent itself is not open source.
+- **Android AppFunctions — AndroidX 1.0.0-rc01 released 2026-11-04.** The library has reached release-candidate maturity, but that does not establish broad availability of the complete system-agent integration on every Android 16 device.
+- **MCP — stable specification 2026-07-28.** The release adds a stateless protocol core, formal extensions, Tasks as an extension, MCP Apps, authorization hardening, and improved trace propagation. It includes compatibility changes from 2025-11-25; negotiate and test versions rather than assuming every client implements the newest revision.
+- **A2A — stable protocol v1.0.1.** The v1.0 line provides version negotiation and multi-transport agent collaboration; use it only at a genuine agent-to-agent boundary. MCP remains the better fit for an agent's tools and data sources.
+
+#### Comparative lesson and adoption decisions
+- Managed cloud agents (OpenAI) reduce runtime operations but increase hosted-environment and provider dependency. Anthropic's self-hosted option increases infrastructure control but is currently gated behind account-team access. AbanoubAI should keep its own task/job contract portable and treat both as optional providers, not the system of record.
+- LightAgent demonstrates useful patterns for durable job recovery and verifier-gated artifacts. **Decision: adapt the patterns, not the Python framework**, until a reproducible Arabic/English benchmark shows a material advantage over the existing TypeScript/Supabase stack.
+- Smartopol reinforces the importance of consolidation and cross-session recall. **Decision: prototype memory provenance, correction, expiry, and consolidation in AbanoubAI's own memory model; do not adopt a closed-source dependency or copy its product design.**
+- AppFunctions remains an optional Android adapter. Do not enable it by default or advertise it until a compatible Android 16+ device and caller are confirmed.
+- The differentiating opportunity is an Arabic-first personal system that combines durable execution, user-inspectable memory, safe Android capabilities, and proof of completion. No competitor comparison in this snapshot is a claim of benchmark superiority.
+
+#### Ranked product-intelligence backlog
+1. **Resolve Android/web Supabase project alignment (critical impact, low effort, high confidence).** Acceptance: the web-issued JWT `iss` equals the Android companion's configured `SUPABASE_URL/auth/v1`; authenticated reads and writes succeed; a mismatched issuer is rejected before network polling.
+2. **Durable task/session recovery (high impact, medium-high effort, medium confidence).** Acceptance: interrupt a multi-step task during network loss/process restart, resume from a checkpoint without duplicate side effects, and verify the final state from tool output.
+3. **Inspectable memory consolidation (high impact, medium effort, medium confidence).** Acceptance: every retained memory has source/provenance, confidence, freshness/expiry, correction and deletion behavior; recall tests improve without cross-user leakage.
+4. **Android AppFunctions compatibility spike (medium impact, medium effort, low confidence until device OS is known).** Acceptance: register one narrow app-owned function on a compatible Android 16+ device, inspect it with the official tooling, and demonstrate safe fallback on older devices.
+
+#### Forecast ledger
+- **30–90 days, medium confidence:** agent products will continue differentiating on durable sessions, reconnectability, and observable task state. Prepare with provider-neutral job contracts, checkpoints, idempotency, cancellation, and verifier-owned completion.
+- **90–180 days, medium confidence:** self-hosted and customer-controlled agent execution will become a more visible option, while hosted runtimes remain easier to operate. Keep deployment and model-provider boundaries replaceable.
+- **90–180 days, medium confidence:** AppFunctions library maturity may outpace broad availability of system-agent callers. Keep the integration capability-detected and optional.
+- Disconfirming evidence: vendor APIs remain closed or region-gated, Android caller availability remains narrow, or durable runtime features fail to improve real task success and recovery. Reassess against releases and device tests; these are hypotheses, not launch predictions.
 
 
 ### E. Android companion
@@ -108,7 +138,14 @@ Android AppFunctions expose typed app capabilities to the Android intelligence s
 - Android AppFunctions: https://developer.android.com/ai/appfunctions
 - AndroidX AppFunctions release notes (1.0.0-rc01, updated 2026-11-04): https://developer.android.com/jetpack/androidx/releases/appfunctions
 - MCP 2026-07-28 specification release: https://blog.modelcontextprotocol.io/posts/2026-07-28/
-- A2A protocol specification (v0.3.0): https://a2a-protocol.org/v0.3.0/specification/
+- A2A v1.0.1 protocol release: https://github.com/a2aproject/A2A/releases
+- A2A Python SDK releases: https://github.com/a2aproject/a2a-python/releases
+- A2A JavaScript SDK releases: https://github.com/a2aproject/a2a-js/releases
+- OpenAI Agents API announcement (2026-09-10): https://openai.com/index/introducing-the-agents-api/
+- OpenAI API changelog (computer use, 2026-09-29): https://developers.openai.com/api/docs/changelog
+- Anthropic Claude Platform release notes (2026-11-12 / 2026-11-09): https://platform.claude.com/docs/en/release-notes/overview
+- LightAgent project and license: https://github.com/wanxingai/LightAgent
+- Smartopol Agent product information: https://www.smartopol.ai/
 - OpenAI Agents API computer use: https://developers.openai.com/api/docs/guides/agents-api/tools/computer-use
 - Anthropic computer-use tool: https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool
 - Android intelligence system: https://developer.android.com/ai/intelligence-system
@@ -259,8 +296,9 @@ As of the 2026-11-15 review:
 - Main branch tip: `6f708f603157306911f27fe9c4a7fd2949ca32ab`.
 - Supabase migration history includes `20261113142649_lock_role_helpers_to_current_user` and `20261113143847_lock_webauthn_challenges_table`; the live migration list reports both.
 - Live Edge Function metadata reported `agent-control` v5 and `reflex-nexus-chat` v3, both ACTIVE with JWT verification enabled.
-- Security advisor snapshot reported 14 authenticated-executable SECURITY DEFINER functions, one expected INFO for `webauthn_challenges` (RLS enabled, no client policies), and leaked-password protection disabled. Each function requires individual review; do not bulk-revoke.
-- Performance advisor snapshot reported 44 unindexed foreign-key findings, 19 unused-index notices, multiple permissive RLS policy warnings, and RLS policy auth-function re-evaluation warnings. Inspect query plans and actual workload before changing indexes or policies.
+- Security advisor snapshot reported 14 authenticated-executable SECURITY DEFINER functions, one expected INFO for `webauthn_challenges` (RLS enabled, no client policies), and leaked-password protection disabled. A live read-only review confirmed `has_role`, `can_write`, and `can_review` require `_user_id = auth.uid()`; multiple RLS policies call these helpers, so blanket EXECUTE revocation would break policy evaluation. Do not bulk-revoke; add targeted regression coverage.
+- Performance advisor snapshot reported 44 unindexed foreign-key findings, 103 RLS auth-function re-evaluation findings, 19 unused-index notices, and 13 multiple-permissive-policy findings. Inspect query plans and actual workload before changing indexes or policies.
+- Read-only edge logs for 2026-11-14 23:09–23:26 UTC showed 62 `401 / PGRST301` requests to companion tables. Their JWT issuer host differed from the configured target project while the tokens were still within their recorded expiry. This is a cross-project auth configuration mismatch, not evidence of token expiry. PR #29 adds a fail-fast issuer guard; it is not merged or deployed.
 - PR #18 remains a candidate to verify for cloud chat authentication and attachment ownership; its actual merge/readiness state and real HTTP test evidence must be checked before merge.
 - `emergency_kill_switch=true`, `enable_ai_routing=false`, and `enable_external_actions=false` remain protected settings. Do not change them just to pass tests.
 - Secret validity, model-provider connectivity, full cloud-agent execution, signed Android release, and physical-device behavior are not established by these metadata checks.
