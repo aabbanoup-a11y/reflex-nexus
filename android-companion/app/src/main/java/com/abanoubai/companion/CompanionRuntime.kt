@@ -41,9 +41,8 @@ object CompanionRuntime {
         }
         if (!SupabaseSessionPolicy.matchesProject(accessToken, url)) {
             android.util.Log.e("AbanoubAICompanion", "Cloud connection paused: session issuer does not match the configured Supabase project")
-            prefs.edit().remove("access_token").remove("refresh_token").putBoolean("enabled", false).apply()
-            socket?.cancel()
-            socket = null
+            stop(context)
+            prefs.edit().remove("access_token").remove("refresh_token").apply()
             context.stopService(Intent(context, CompanionForegroundService::class.java))
             return
         }
