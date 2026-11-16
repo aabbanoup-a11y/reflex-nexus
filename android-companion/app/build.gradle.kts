@@ -10,6 +10,17 @@ val supabaseUrl = providers.gradleProperty("SUPABASE_URL")
 val supabasePublishableKey = providers.gradleProperty("SUPABASE_PUBLISHABLE_KEY")
     .getOrElse("sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ")
 
+// A debug keystore is intentionally never used for a release build.
+// Supply these values through a secure local/CI environment when a real
+// upload key has been created. Values are never written to the repository.
+val releaseSigningInputs = mapOf(
+    "ABANOUBAI_RELEASE_STORE_FILE" to providers.environmentVariable("ABANOUBAI_RELEASE_STORE_FILE").orNull,
+    "ABANOUBAI_RELEASE_STORE_PASSWORD" to providers.environmentVariable("ABANOUBAI_RELEASE_STORE_PASSWORD").orNull,
+    "ABANOUBAI_RELEASE_KEY_ALIAS" to providers.environmentVariable("ABANOUBAI_RELEASE_KEY_ALIAS").orNull,
+    "ABANOUBAI_RELEASE_KEY_PASSWORD" to providers.environmentVariable("ABANOUBAI_RELEASE_KEY_PASSWORD").orNull
+)
+val hasReleaseSigning = releaseSigningInputs.values.all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.abanoubai.companion"
     compileSdk = 35
@@ -25,11 +36,13 @@ android {
         ndk { abiFilters += listOf("arm64-v8a") }
     }
     signingConfigs {
-        create("release") {
-            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(requireNotNull(releaseSigningInputs["ABANOUBAI_RELEASE_STORE_FILE"]))
+                storePassword = requireNotNull(releaseSigningInputs["ABANOUBAI_RELEASE_STORE_PASSWORD"])
+                keyAlias = requireNotNull(releaseSigningInputs["ABANOUBAI_RELEASE_KEY_ALIAS"])
+                keyPassword = requireNotNull(releaseSigningInputs["ABANOUBAI_RELEASE_KEY_PASSWORD"])
+            }
         }
     }
     buildTypes {
@@ -40,13 +53,36 @@ android {
         }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             resValue("string", "app_label", "AbanoubAI Companion")
         }
     }
     buildFeatures {
         buildConfig = true
         compose = true
+    }
+}
+
+val verifyReleaseSigning = tasks.register("verifyReleaseSigning") {
+    group = "verification"
+    description = "Ensures a release build uses a separately provisioned private upload key."
+    doLast {
+        val missing = releaseSigningInputs.filterValues { it.isNullOrBlank() }.keys
+        check(missing.isEmpty()) {
+            "Release signing is blocked. Configure the required values in a secure local/CI environment: ${missing.joinToString()}. Do not commit keystores or passwords."
+        }
+        val storeFilePath = requireNotNull(releaseSigningInputs["ABANOUBAI_RELEASE_STORE_FILE"])
+        check(file(storeFilePath).isFile) {
+            "Release signing is blocked because the configured keystore file is not available in this build environment."
+        }
+    }
+}
+
+tasks.configureEach {
+    if (name == "assembleRelease" || name == "bundleRelease") {
+        dependsOn(verifyReleaseSigning)
     }
 }
 
