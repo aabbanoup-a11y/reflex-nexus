@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -29,6 +30,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.PermanentDrawerSheet
+import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -107,79 +110,111 @@ private fun NativeWorkspaceContent(darkMode: Boolean, onToggleTheme: () -> Unit)
     val scope = rememberCoroutineScope()
     val groups = destinations.groupBy { it.group }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.width(304.dp),
-                drawerContainerColor = MaterialTheme.colorScheme.surface,
-                drawerContentColor = MaterialTheme.colorScheme.onSurface
-            ) {
-                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(46.dp).background(ExecutiveDark, RoundedCornerShape(14.dp)),
-                            contentAlignment = Alignment.Center) {
-                            Text("A", color = ExecutiveGoldLight, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Keep the user's requested drawer navigation on phones; use a persistent
+        // drawer on expanded windows instead of switching to bottom navigation.
+        val expanded = maxWidth >= 840.dp
+
+        val drawerBody: @Composable (Boolean) -> Unit = { permanent ->
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(46.dp).background(ExecutiveDark, RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center) {
+                        Text("A", color = ExecutiveGoldLight, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text("AbanoubAI", fontWeight = FontWeight.Bold, fontSize = 19.sp)
+                        Text("مساحة الذكاء والتنفيذ", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .62f), fontSize = 11.sp)
+                    }
+                }
+                Spacer(Modifier.height(20.dp))
+                groups.forEach { (group, items) ->
+                    Text(group, color = ExecutiveGold, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 14.dp, bottom = 8.dp))
+                    items.forEach { item ->
+                        NavigationDrawerItem(
+                            label = { Text(item.title, fontWeight = if (selected == item.title) FontWeight.SemiBold else FontWeight.Normal) },
+                            selected = selected == item.title,
+                            onClick = {
+                                selected = item.title
+                                if (!permanent) scope.launch { drawerState.close() }
+                            },
+                            icon = { Text(item.mark, fontSize = 18.sp, color = if (selected == item.title) ExecutiveGold else MaterialTheme.colorScheme.onSurface) },
+                            modifier = Modifier.padding(vertical = 2.dp),
+                            shape = RoundedCornerShape(13.dp)
+                        )
+                    }
+                }
+                Spacer(Modifier.height(18.dp))
+                Divider(color = MaterialTheme.colorScheme.outline)
+                Text("واجهة أصلية قيد التطوير — الوظائف لا تُعرض كمكتملة قبل ربطها واختبارها",
+                    fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f),
+                    modifier = Modifier.padding(top = 14.dp))
+            }
+        }
+
+        val workspaceBody: @Composable (Boolean) -> Unit = { showMenuButton ->
+            Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
+                Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (showMenuButton) {
+                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                    Text("☰", color = MaterialTheme.colorScheme.onSurface, fontSize = 23.sp)
+                                }
+                            }
+                            Spacer(Modifier.width(if (showMenuButton) 8.dp else 4.dp))
+                            Column {
+                                Text("AbanoubAI", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                                Text("PERSONAL INTELLIGENCE OS", color = ExecutiveGold, fontSize = 9.sp, letterSpacing = 1.sp)
+                            }
                         }
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text("AbanoubAI", fontWeight = FontWeight.Bold, fontSize = 19.sp)
-                            Text("مساحة الذكاء والتنفيذ", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .62f), fontSize = 11.sp)
+                        IconButton(onClick = onToggleTheme) {
+                            Text(if (darkMode) "☼" else "◐", color = ExecutiveGold, fontSize = 22.sp)
                         }
                     }
-                    Spacer(Modifier.height(20.dp))
-                    groups.forEach { (group, items) ->
-                        Text(group, color = ExecutiveGold, fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 14.dp, bottom = 8.dp))
-                        items.forEach { item ->
-                            NavigationDrawerItem(
-                                label = { Text(item.title, fontWeight = if (selected == item.title) FontWeight.SemiBold else FontWeight.Normal) },
-                                selected = selected == item.title,
-                                onClick = {
-                                    selected = item.title
-                                    scope.launch { drawerState.close() }
-                                },
-                                icon = { Text(item.mark, fontSize = 18.sp, color = if (selected == item.title) ExecutiveGold else MaterialTheme.colorScheme.onSurface) },
-                                modifier = Modifier.padding(vertical = 2.dp),
-                                shape = RoundedCornerShape(13.dp)
-                            )
-                        }
+                    if (selected == "الرئيسية") {
+                        HomeWorkspaceContent { selected = it }
+                    } else {
+                        DestinationPlaceholder(selected)
                     }
-                    Spacer(Modifier.height(18.dp))
-                    Divider(color = MaterialTheme.colorScheme.outline)
-                    Text("واجهة أصلية قيد التطوير — الوظائف لا تُعرض كمكتملة قبل ربطها واختبارها",
-                        fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = .55f),
-                        modifier = Modifier.padding(top = 14.dp))
                 }
             }
         }
-    ) {
-        Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
-            Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Text("☰", color = MaterialTheme.colorScheme.onSurface, fontSize = 23.sp)
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text("AbanoubAI", fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                            Text("PERSONAL INTELLIGENCE OS", color = ExecutiveGold, fontSize = 9.sp, letterSpacing = 1.sp)
-                        }
-                    }
-                    IconButton(onClick = onToggleTheme) {
-                        Text(if (darkMode) "☼" else "◐", color = ExecutiveGold, fontSize = 22.sp)
+
+        if (expanded) {
+            PermanentNavigationDrawer(
+                drawerContent = {
+                    PermanentDrawerSheet(
+                        modifier = Modifier.width(304.dp),
+                        drawerContainerColor = MaterialTheme.colorScheme.surface,
+                        drawerContentColor = MaterialTheme.colorScheme.onSurface
+                    ) {
+                        drawerBody(true)
                     }
                 }
-                if (selected == "الرئيسية") {
-                    HomeWorkspaceContent { selected = it }
-                } else {
-                    DestinationPlaceholder(selected)
+            ) {
+                workspaceBody(false)
+            }
+        } else {
+            ModalNavigationDrawer(
+                drawerState = drawerState,
+                drawerContent = {
+                    ModalDrawerSheet(
+                        modifier = Modifier.width(304.dp),
+                        drawerContainerColor = MaterialTheme.colorScheme.surface,
+                        drawerContentColor = MaterialTheme.colorScheme.onSurface
+                    ) {
+                        drawerBody(false)
+                    }
                 }
+            ) {
+                workspaceBody(true)
             }
         }
     }
