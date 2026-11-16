@@ -143,3 +143,35 @@
 ## 12. قاعدة التحديث اليومي
 
 كل دورة تقرأ main وPRs وCI وسجل migrations/functions/advisors مجددًا، وتقارن بالـbaseline السابق، وتراجع مصدرًا تقنيًا أوليًا حديثًا، وتنفذ تحسينًا واحدًا قابلًا للتحقق. تُحدّث هذه الخطة والـbacklog وscorecard، وتفصل بوضوح بين discovered/proposed/implemented/tested/merged/deployed/device-validated. لا ادعاء بإنجاز لم يثبت.
+
+
+## 13. تحديث تنفيذي موثق — 16 نوفمبر 2026، 20:19 بتوقيت القاهرة
+
+### ما تم تنفيذه واختباره
+- على PR #32، أضيف تنقل متكيف في Android Compose: Drawer مؤقت على النوافذ الصغيرة وDrawer دائم على النوافذ الواسعة (حد العرض الحالي 840dp). لم تتم إضافة Bottom Navigation.
+- Commit التنفيذ: `b79c32df83894191b76d4039f62e8b3849eb24d6`.
+- Android build: workflow run `43920886734` نجح.
+- CI المتكامل: run `43920897061` نجح، وشمل Web lint/build، Android debug APK، Supabase Edge Function type check، واختبارات companion policy وoffline planner.
+- Artifact: `abanoubai-companion-debug-apk`, ID `14253712427`, الحجم 14,316,536 bytes. هذا Debug APK من commit أعلاه، وليس Signed Release ولا إثباتًا لاختبار الهاتف.
+- PR #32 لا يزال Draft. لا دمج ولا نشر إنتاجي.
+
+### الحالة التي لم تتغير / لم تثبت
+- main ما زال عند `53cc3293404bd4c9fa8e7352ec6bfc596809185f` وقت الفحص.
+- PR #31 (Web shell) و#32 (Android shell) منفصلان ومفتوحان Draft؛ يجب مراجعة تداخل التغييرات قبل الدمج.
+- PR #19 (خطة الترحيل) ما زال Draft وغير قابل للدمج بسبب تباعد/تعارض الفرع مع main.
+- لم يثبت بعد مشروع Supabase Auth الذي يصدر جلسة Web فعليًا، ولا ربط Android Auth، ولا مزامنة فعلية end-to-end بين العميلين، ولا اختبار جهاز فعلي أو توقيع APK.
+- لا توجد تغييرات Supabase schema/migrations/functions/settings في هذا التحديث.
+
+### ترتيب ما تبقى
+1. P0: إثبات Auth issuer الحقيقي للويب قبل ربط Android.
+2. P0: مراجعة/reconcile PR #31 و#32 و#29 و#19 دون فقد أو تكرار.
+3. P0: إكمال Home والوجهات الحقيقية في Web وAndroid وفق route parity؛ placeholders ليست إنجازًا.
+4. P0: vertical slice مشترك حقيقي عبر backend واحد مع ownership/RLS واختبارات cross-user.
+5. P0: reconnect/offline/session expiry/idempotency وRTL/LTR/accessibility.
+6. P0: release candidate مربوط بـcommit، ثم signed build بعد إعداد آمن، ثم اختبار المستخدم على الهاتف.
+7. P1/P2: activity center، memory manager، الإشعارات، الأداء، الوكلاء المتقدمون، model routing والتكاملات الإضافية.
+
+### مقارنة baseline
+- تحسن قابل للإثبات: تنقل Android المتكيف أصبح موجودًا في PR #32 واجتاز Android build وCI المتكامل.
+- لا يوجد بعد دليل على تحسن المزامنة أو نجاح Auth أو تكافؤ الوظائف أو تجربة الهاتف؛ تظل Not measured / Not validated.
+- لا تغيير في main أو قاعدة بيانات Supabase في هذه الدورة.
