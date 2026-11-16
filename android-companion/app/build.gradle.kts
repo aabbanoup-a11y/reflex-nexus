@@ -5,6 +5,11 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val supabaseUrl = providers.gradleProperty("SUPABASE_URL")
+    .getOrElse("https://wobfdslqlmvlatyrtgkd.supabase.co")
+val supabasePublishableKey = providers.gradleProperty("SUPABASE_PUBLISHABLE_KEY")
+    .getOrElse("sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ")
+
 android {
     namespace = "com.abanoubai.companion"
     compileSdk = 35
@@ -15,8 +20,8 @@ android {
         targetSdk = 35
         versionCode = 23
         versionName = "0.9.0"
-        buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL")?.toString()?.takeIf { it.isNotBlank() } ?: "https://wobfdslqlmvlatyrtgkd.supabase.co"}\"")
-        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY")?.toString()?.takeIf { it.isNotBlank() } ?: "sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ"}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabasePublishableKey\"")
         ndk { abiFilters += listOf("arm64-v8a") }
     }
     signingConfigs {
