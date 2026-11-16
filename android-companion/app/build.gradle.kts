@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -14,14 +15,12 @@ android {
         targetSdk = 35
         versionCode = 23
         versionName = "0.9.0"
-        buildConfigField("String", "SUPABASE_URL", "\"${project.findProperty("SUPABASE_URL")?.toString()?.takeIf { it.isNotBlank() } ?: "https://wobfdslqlmvlatyrtgkd.supabase.co"}\"")
-        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${project.findProperty("SUPABASE_PUBLISHABLE_KEY")?.toString()?.takeIf { it.isNotBlank() } ?: "sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ"}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"\${project.findProperty("SUPABASE_URL")?.toString()?.takeIf { it.isNotBlank() } ?: "https://wobfdslqlmvlatyrtgkd.supabase.co"}\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"\${project.findProperty("SUPABASE_PUBLISHABLE_KEY")?.toString()?.takeIf { it.isNotBlank() } ?: "sb_publishable_mvMX_Ih1Dri5MOmYTq02Gw_2a_iFiwZ"}\"")
         ndk { abiFilters += listOf("arm64-v8a") }
     }
     signingConfigs {
         create("release") {
-            // Reuse the local debug keystore so this release can update the APK already built
-            // in this project without requiring a user-supplied signing secret.
             storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
@@ -30,8 +29,6 @@ android {
     }
     buildTypes {
         debug {
-            // Keep the diagnostic build installable beside the existing app so
-            // testing a crash fix does not erase the user's stored pairing data.
             applicationIdSuffix = ".test"
             versionNameSuffix = "-test"
             resValue("string", "app_label", "AbanoubAI Companion (اختبار)")
@@ -42,7 +39,10 @@ android {
             resValue("string", "app_label", "AbanoubAI Companion")
         }
     }
-    buildFeatures { buildConfig = true }
+    buildFeatures {
+        buildConfig = true
+        compose = true
+    }
 }
 
 kotlin { jvmToolchain(17) }
@@ -50,8 +50,19 @@ kotlin { jvmToolchain(17) }
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.activity:activity-ktx:1.10.0")
+    implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+
+    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
