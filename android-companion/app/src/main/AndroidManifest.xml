@@ -14,7 +14,13 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-    <application android:theme="@style/Theme.AbounoubAI" android:label="@string/app_label" android:allowBackup="false" android:supportsRtl="true">
+    <application
+        android:theme="@style/Theme.AbounoubAI"
+        android:label="@string/app_label"
+        android:icon="@drawable/ic_abanoubai_launcher"
+        android:roundIcon="@drawable/ic_abanoubai_launcher"
+        android:allowBackup="false"
+        android:supportsRtl="true">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

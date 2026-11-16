@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Network } from "./network";
+import { HomeDashboard } from "@/components/HomeDashboard";
 
 export const Route = createFileRoute("/")({
-  component: Network,
+  component: HomeDashboard,
   head: () => ({
     meta: [
-      { title: "AbanoupAi — الشات الذكي" },
-      { name: "description", content: "شات AbanoupAi لتنفيذ طلباتك على الهاتف والويب والخدمات المرتبطة." },
-      { property: "og:title", content: "AbanoupAi — الشات الذكي" },
-      { property: "og:description", content: "اطلب أي مهمة من AbanoupAi ودعه يفهمها وينفذها." },
+      { title: "AbanoubAI — مساحة العمل الشخصية" },
+      { name: "description", content: "مركز واحد لفهم أهدافك وتخطيطها وتنفيذها ومراجعة النتائج." },
+      { property: "og:title", content: "AbanoubAI — مساحة العمل الشخصية" },
+      { property: "og:description", content: "Personal Intelligence & Execution OS" },
     ],
   }),
 });
