@@ -12,7 +12,8 @@
     "test:offline-planner": "node scripts/offline-planner-check.mjs",
     "self-diagnostic": "node scripts/self-diagnostic.mjs",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:agent-status": "node --test cloudflare-worker/agent-status.test.mjs"
   },
   "overrides": {
     "rolldown": "1.2.1"
