@@ -93,3 +93,50 @@ MCP وسيلة اتصال، وليس محرك تشغيل دائمًا. لا نع
 ## بوابة القرار
 
 لا يُعتبر هذا التصميم مكتملًا قبل مراجعة مصدر المصادقة الفعلي، الجداول والسياسات الحالية، والقيود الفعلية لخطة ChatGPT. لا يتم نشر endpoint عام ولا تفعيل أدوات كتابة في هذه المرحلة.
+
+
+## نتيجة تدقيق البنية واختيار محرك التشغيل — 2026-11-17
+
+### ما ثبت من البنية الحالية
+
+- \`cloudflare-worker/index.ts\` لا ينفذ مهامًا دائمة؛ هو بوابة محادثة \`/ai/chat\` ويعيد \`scheduled_jobs: false\`.
+- جرد حساب Cloudflare المتصل أظهر Worker واحدًا باسم \`abanoupai-local-first-scheduler\`، دون أي Cloudflare Workflow أو Queue منشور وقت الفحص.
+- جدول \`public.scheduled_jobs\` الموجود هو **تعريفات جدولة** (اسم، تعليمات، cron، المنطقة الزمنية، موعد التشغيل وآخر حالة)، وليس سجل تشغيل متينًا أو queue: لا توجد فيه lease أو heartbeat أو checkpoint أو idempotency key أو سجل أحداث مستقل.
+- سياسة الجدول الحالية \`scheduled_jobs_owner\` تطبق \`auth.uid() = user_id\` على القراءة والكتابة للمستخدم المصادق.
+- إضافة \`pgmq\` متاحة في كتالوج امتدادات Supabase، لكن \`installed_version\` غير مثبتة في المشروع عند الفحص؛ ولا توجد Queue منشأة يمكن إعادة استخدامها.
+- مفاتيح الأمان الإنتاجية لم تتغير: \`emergency_kill_switch=true\`، و\`enable_ai_routing=false\`، و\`enable_external_actions=false\`.
+
+### مقارنة الخيارات
+
+| الخيار | ما يقدمه | ما لا يحله وحده | القرار |
+|---|---|---|---|
+| Cloudflare Workflows | تنفيذ متعدد الخطوات مع حفظ الحالة، إعادة المحاولة، الانتظار للأحداث، وإدارة الإيقاف والاستئناف والإنهاء | لا يغني عن قاعدة بيانات المنتج أو RLS أو سجل المستخدم طويل الأمد | **الاختيار المبدئي لمحرك التنفيذ** بعد إثبات المصادقة والتكلفة |
+| Supabase Queues / pgmq | Queue داخل Postgres، رسائل durable، visibility timeout، أرشفة، وواجهة مراقبة | Queue تسليم رسائل وليست وحدها محرك orchestration متعدد الخطوات أو سجل UI كامل | **مؤجل** حتى يظهر احتياج فعلي لفصل ingress عن workers |
+| \`scheduled_jobs\` الحالي + Worker | تعريف مواعيد المستخدم وبوابة Cloudflare الحالية | لا يوجد تنفيذ دائم، checkpoints، retries، leases أو resume مثبت | يُعاد استخدامه لتعريفات الجدولة فقط، ولا يوصف بأنه runtime |
+
+**التصميم المبدئي:** Cloudflare Workflows ينفذ دورة المهمة، وSupabase يبقى مصدر الحقيقة لسجل المستخدم، الملكية، الأحداث والنتائج. لا ننشئ نظام Queue ثانيًا الآن. نضيف pgmq لاحقًا فقط إذا أثبتت القياسات الحاجة إلى buffering أو فصل producer/consumer.
+
+**مقايضة التكلفة والحدود:** توثيق Cloudflare يذكر إتاحة Workflows على Free وPaid، لكن فوترة الخطوات والتخزين بدأت في 10 أغسطس 2026. في Free: 3,000 خطوة يوميًا، حتى 1,024 خطوة لكل Workflow و100 تنفيذ متزامن، واحتفاظ افتراضي بالحالة 3 أيام. في Paid: 500,000 خطوة شهريًا ضمن الحد المضمن ثم رسوم إضافية، مع حدود أعلى واحتفاظ قابل للضبط. يجب التحقق من خطة الحساب والاستخدام المتوقع قبل النشر؛ لا نفترض أن التشغيل مجاني بلا حدود.
+
+### أول شريحة تنفيذية
+
+PR #34 يضيف \`GET /agent/status\` للقراءة فقط. يتحقق من جلسة Supabase ثم يقرأ تعريفات الجدولة بنفس جلسة المستخدم ومفتاح النشر العام، ليبقى RLS هو حد الملكية. النتيجة محدودة بـ25 صفًا ومنقحة، ولا تتضمن التعليمات أو الأوامر أو النتائج التفصيلية. الاستجابة تصرح بوضوح أن \`durable_execution=false\` وأن runtime غير مهيأ. PR لم يُدمج أو يُنشر، ولا يمثل تشغيلًا مستمرًا.
+
+### المصادر التقنية الأولية
+
+- Cloudflare Workflows: https://developers.cloudflare.com/workflows/ (محدّث 18 سبتمبر 2026)
+- Cloudflare Workflows limits: https://developers.cloudflare.com/workflows/reference/limits/ (محدّث 10 نوفمبر 2026)
+- Cloudflare Workflows pricing: https://developers.cloudflare.com/workflows/reference/pricing/ (محدّث 21 سبتمبر 2026)
+- Supabase Queues: https://supabase.com/docs/guides/queues (محدّث 19 أكتوبر 2026)
+- Supabase PGMQ: https://supabase.com/docs/guides/queues/pgmq (محدّث 29 يونيو 2026)
+
+### شروط الانتقال إلى التنفيذ الدائم
+
+1. تثبيت مصدر Auth واحد والتحقق من جلسة المستخدم على الخادم، لا الاكتفاء بفحص \`iss\` محليًا.
+2. تحديد خطة Cloudflare والحدود/التكلفة المتوقعة قبل إنشاء Workflow resource.
+3. تصميم جدول run/event/checkpoint بعقود typed وقيود idempotency واحتفاظ محدود، مع RLS للقراءة الخاصة بالمستخدم.
+4. تنفيذ harmless deterministic workflow أولًا، دون model calls أو external actions.
+5. اختبار إعادة التشغيل، انتهاء lease، retry limits، الإلغاء، التكرار، وcross-user isolation.
+6. عدم نشر endpoint عام أو تفعيل الكتابة/توجيه النماذج قبل اجتياز اختبارات الأمان والموافقة المنفصلة.
+
+**الحالة:** اختيار معماري موثق ومبدئي؛ لا يوجد Workflow منشور أو عامل دائم أو مهمة اختبار تم تنفيذها على Cloudflare حتى الآن.
