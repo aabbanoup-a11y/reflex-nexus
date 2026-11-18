@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { externalWritesAllowed, isExternalWriteAction, loadFeatureFlags, scopeReadFilters } from "../_shared/feature-policy.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -164,18 +165,21 @@ async function supabaseRest(action: string, input: any, auth: { url: string; use
   if (!/^[a-z_][a-z0-9_]*$/.test(table) || !AGENT_READ_TABLES.has(table)) {
     throw new Error("TABLE_NOT_ALLOWED");
   }
+  const method = action === "supabase.read" ? "GET" : action === "supabase.insert" ? "POST" : action === "supabase.update" ? "PATCH" : "DELETE";
+  const filters = method === "GET"
+    ? scopeReadFilters(table, input.filters ?? {}, auth.user.id)
+    : input.filters ?? {};
   const query = new URLSearchParams();
-  for (const [column, value] of Object.entries(input.filters ?? {})) {
+  for (const [column, value] of Object.entries(filters)) {
     if (!/^[a-z_][a-z0-9_]*$/.test(column) || typeof value !== "string") throw new Error("INVALID_FILTER");
     query.set(column, "eq." + value);
   }
-  const method = action === "supabase.read" ? "GET" : action === "supabase.insert" ? "POST" : action === "supabase.update" ? "PATCH" : "DELETE";
   const ownerColumn = AGENT_WRITE_OWNER_COLUMN[table];
   if (method !== "GET" && !ownerColumn) throw new Error("TABLE_WRITE_NOT_ALLOWED");
   if (method === "DELETE" && input.confirmDestructive !== true) throw new Error("CONFIRM_DESTRUCTIVE_REQUIRED");
   if (["PATCH", "DELETE"].includes(method)) {
-    if (!Object.keys(input.filters ?? {}).length) throw new Error("FILTER_REQUIRED");
-    if (input.filters?.[ownerColumn] !== auth.user.id) throw new Error("OWNER_FILTER_REQUIRED");
+    if (!Object.keys(filters).length) throw new Error("FILTER_REQUIRED");
+    if (filters[ownerColumn] !== auth.user.id) throw new Error("OWNER_FILTER_REQUIRED");
   }
   const writeData: Record<string, unknown> = {};
   if (method === "POST" || method === "PATCH") {
@@ -214,6 +218,13 @@ Deno.serve(async (req: Request) => {
     if (!input || typeof input !== "object" || Array.isArray(input)) return reply(400, { error: "INVALID_REQUEST_BODY" });
     const owner = await requireOwner(req);
     const action = String(input.action ?? "");
+    if (isExternalWriteAction(action, input)) {
+      const flags = await loadFeatureFlags({
+        supabaseUrl: owner.url,
+        serviceRoleKey: env("SUPABASE_SERVICE_ROLE_KEY"),
+      });
+      if (!externalWritesAllowed(flags)) throw new Error("EXTERNAL_ACTIONS_DISABLED");
+    }
     let result: unknown;
     if (action === "status") {
       result = {
@@ -229,7 +240,7 @@ Deno.serve(async (req: Request) => {
     return reply(200, { ok: true, action, result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";
-    const status = message === "UNAUTHORIZED" ? 401 : message === "FORBIDDEN" ? 403 : message === "SERVER_SETUP_MISSING" ? 503 : message.endsWith("_NOT_CONFIGURED") ? 503 : message === "CONFIRM_DESTRUCTIVE_REQUIRED" ? 409 : 400;
+    const status = message === "UNAUTHORIZED" ? 401 : message === "FORBIDDEN" || message === "EXTERNAL_ACTIONS_DISABLED" ? 403 : message === "SERVER_SETUP_MISSING" || message === "FEATURE_POLICY_UNAVAILABLE" || message.endsWith("_NOT_CONFIGURED") ? 503 : message === "CONFIRM_DESTRUCTIVE_REQUIRED" ? 409 : 400;
     return reply(status, { ok: false, error: message });
   }
 });
