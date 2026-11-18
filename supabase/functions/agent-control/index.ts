@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { externalWritesAllowed, isExternalWriteAction, loadFeatureFlags, scopeReadFilters, serviceRoleHeaders } from "../_shared/feature-policy.ts";
+import { externalWritesAllowed, isExternalWriteAction, loadFeatureFlags, resolveServiceRoleKey, scopeReadFilters, serviceRoleHeaders } from "../_shared/feature-policy.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +27,7 @@ const AGENT_WRITE_OWNER_COLUMN: Record<string, string> = {
 async function requireOwner(req: Request) {
   const url = env("SUPABASE_URL");
   const anon = env("SUPABASE_ANON_KEY") || env("SUPABASE_PUBLISHABLE_KEY");
-  const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  const serviceKey = resolveServiceRoleKey(env);
   if (!url || !anon || !serviceKey) throw new Error("SERVER_SETUP_MISSING");
   const authorization = req.headers.get("Authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) throw new Error("UNAUTHORIZED");
@@ -156,7 +156,7 @@ async function cloudflare(input: any) {
 }
 
 async function supabaseRest(action: string, input: any, auth: { url: string; user: { id: string } }) {
-  const key = env("SUPABASE_SERVICE_ROLE_KEY");
+  const key = resolveServiceRoleKey(env);
   if (!key) throw new Error("SUPABASE_ADMIN_NOT_CONFIGURED");
   if (!["supabase.read", "supabase.insert", "supabase.update", "supabase.delete"].includes(action)) {
     throw new Error("UNSUPPORTED_SUPABASE_ACTION");
@@ -220,7 +220,7 @@ Deno.serve(async (req: Request) => {
     if (isExternalWriteAction(action, input)) {
       const flags = await loadFeatureFlags({
         supabaseUrl: owner.url,
-        serviceRoleKey: env("SUPABASE_SERVICE_ROLE_KEY"),
+        serviceRoleKey: resolveServiceRoleKey(env),
       });
       if (!externalWritesAllowed(flags)) throw new Error("EXTERNAL_ACTIONS_DISABLED");
     }
@@ -229,7 +229,7 @@ Deno.serve(async (req: Request) => {
       result = {
         github: Boolean(env("GITHUB_TOKEN")),
         cloudflare: Boolean(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")),
-        supabaseAdmin: Boolean(env("SUPABASE_SERVICE_ROLE_KEY")),
+        supabaseAdmin: Boolean(resolveServiceRoleKey(env)),
         ownerAuthenticated: true,
       };
     } else if (action.startsWith("github.")) result = await github(action, input);
