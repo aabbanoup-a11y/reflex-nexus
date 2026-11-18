@@ -22,11 +22,11 @@ type Conversation = { id: string; title: string | null; created_at: string };
 
 type NavItem = { label: string; icon: typeof Image; to: string };
 const navItems: NavItem[] = [
-  { label: "Images", icon: Image, to: "/images" },
-  { label: "Library", icon: BookOpen, to: "/library" },
-  { label: "Projects", icon: Folder, to: "/projects" },
-  { label: "Remote", icon: Laptop, to: "/remote" },
-  { label: "Plugins", icon: Plug, to: "/plugins" },
+  { label: "الصور", icon: Image, to: "/images" },
+  { label: "المكتبة", icon: BookOpen, to: "/library" },
+  { label: "المشاريع", icon: Folder, to: "/projects" },
+  { label: "التحكم عن بُعد", icon: Laptop, to: "/remote" },
+  { label: "الإضافات", icon: Plug, to: "/plugins" },
 ];
 
 export function ChatSidebar() {
@@ -106,8 +106,8 @@ export function ChatSidebar() {
       >
         <div className="flex items-center justify-between px-2 pb-4">
           <Link to="/chat" onClick={() => setOpen(false)} className="flex items-center gap-3 text-[15px] font-semibold tracking-tight">
-            <span className="grid size-8 place-items-center rounded-full bg-gradient-to-br from-[#19c37d] via-[#3b82f6] to-[#8b5cf6] text-sm font-bold">C</span>
-            ChatGPT
+            <span className="grid size-8 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-400 text-sm font-bold">a</span>
+            AbanoupAI
           </Link>
           <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-[#9b9b9b] hover:bg-white/10 hover:text-white lg:hidden" aria-label="إغلاق">
             <X className="size-5" />
@@ -119,7 +119,7 @@ export function ChatSidebar() {
 
         <nav className="space-y-1">
           <button type="button" className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#d9d9d9] hover:bg-[#2a2a2a]" onClick={() => toast.info("اكتب كلمة البحث في شريط المحادثات") }>
-            <Search className="size-[18px]" /> <span>Search</span>
+            <Search className="size-[18px]" /> <span>بحث</span>
           </button>
           {navItems.map(({ label, icon: Icon, to }) => (
             <Link key={to} to={to} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#d9d9d9] hover:bg-[#2a2a2a]">
@@ -129,7 +129,7 @@ export function ChatSidebar() {
         </nav>
 
         <div className="my-4 border-t border-[#3b3b3b]" />
-        <div className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-[#8e8e8e]">Chats</div>
+        <div className="mb-2 px-3 text-[11px] font-semibold text-[#8e8e8e]">المحادثات</div>
         <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1">
           {conversations.length === 0 ? <p className="px-3 py-2 text-xs text-[#777]">مفيش محادثات لسه</p> : conversations.map((conversation) => (
             <Link key={conversation.id} to="/chat/$id" params={{ id: conversation.id }} onClick={() => setOpen(false)} className="block truncate rounded-lg px-3 py-2 text-[13px] text-[#a8a8a8] hover:bg-[#2a2a2a] hover:text-white">
@@ -140,10 +140,10 @@ export function ChatSidebar() {
 
         <div className="mt-4 space-y-2 border-t border-[#3b3b3b] pt-3">
           <div className="flex items-center justify-between px-1">
-            <button type="button" onClick={() => toast.info("زر الصوت جاهز للمحادثة الصوتية")} className="grid size-8 place-items-center rounded-full bg-[#2563eb] text-white hover:bg-[#3b82f6]" aria-label="صوت"><Volume2 className="size-4" /></button>
-            <button type="button" onClick={() => toast.info("الإعدادات هتتوفر قريبًا")} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-[#b8b8b8] hover:bg-[#2a2a2a] hover:text-white"><Settings className="size-4" /> Settings</button>
+            <button type="button" onClick={() => toast.info("زر الصوت جاهز للمحادثة الصوتية")} className="grid size-8 place-items-center rounded-full bg-violet-600 text-white hover:bg-violet-500" aria-label="صوت"><Volume2 className="size-4" /></button>
+            <button type="button" onClick={() => toast.info("الإعدادات قيد التجهيز")} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-[#b8b8b8] hover:bg-[#2a2a2a] hover:text-white"><Settings className="size-4" /> الإعدادات</button>
           </div>
-          <button type="button" onClick={() => void createConversation()} className="flex w-full items-center justify-between rounded-lg bg-[#3b82f6] px-3 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-950/20 hover:bg-[#2563eb]"><span className="flex items-center gap-2"><MessageSquare className="size-4" /> Chat</span><Pencil className="size-4" /></button>
+          <button type="button" onClick={() => void createConversation()} className="flex w-full items-center justify-between rounded-lg bg-violet-600 px-3 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/20 hover:bg-violet-500"><span className="flex items-center gap-2"><MessageSquare className="size-4" /> محادثة جديدة</span><Pencil className="size-4" /></button>
         </div>
       </aside>
     </>
