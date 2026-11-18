@@ -48,6 +48,7 @@ android {
 kotlin { jvmToolchain(17) }
 
 dependencies {
+    implementation("androidx.drawerlayout:drawerlayout:1.2.0")
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.activity:activity-ktx:1.10.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
