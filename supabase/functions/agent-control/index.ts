@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { externalWritesAllowed, isExternalWriteAction, loadFeatureFlags, scopeReadFilters } from "../_shared/feature-policy.ts";
+import { externalWritesAllowed, isExternalWriteAction, loadFeatureFlags, scopeReadFilters, serviceRoleHeaders } from "../_shared/feature-policy.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -37,7 +37,7 @@ async function requireOwner(req: Request) {
   if (!userRes.ok) throw new Error("UNAUTHORIZED");
   const user = await userRes.json();
   const roleRes = await fetch(`${url}/rest/v1/user_roles?user_id=eq.${encodeURIComponent(user.id)}&role=eq.owner&select=id&limit=1`, {
-    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Accept-Profile": "public" },
+    headers: { ...serviceRoleHeaders(serviceKey), "Accept-Profile": "public" },
   });
   if (!roleRes.ok) throw new Error("OWNER_ROLE_CHECK_FAILED");
   const roles = await roleRes.json();
@@ -194,8 +194,7 @@ async function supabaseRest(action: string, input: any, auth: { url: string; use
   const response = await fetch(auth.url + "/rest/v1/" + table + (query.size ? "?" + query.toString() : ""), {
     method,
     headers: {
-      apikey: key,
-      Authorization: "Bearer " + key,
+      ...serviceRoleHeaders(key),
       "Content-Type": "application/json",
       Prefer: "return=representation",
       "Accept-Profile": "public",
