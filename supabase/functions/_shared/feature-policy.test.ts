@@ -128,14 +128,12 @@ Deno.test("read scope rejects cross-user filters and unknown tables", () => {
 });
 
 Deno.test("feature flags are loaded only over HTTPS and never returned to callers", async () => {
-  let capturedUrl: URL | null = null;
-  let capturedHeaders: Headers | null = null;
+  const captured: Array<{ url: URL; headers: Headers }> = [];
   const flags = await loadFeatureFlags({
     supabaseUrl: "https://example.supabase.co",
     serviceRoleKey: "server-only-test-secret",
     fetchImpl: async (input, init) => {
-      capturedUrl = new URL(String(input));
-      capturedHeaders = new Headers(init?.headers);
+      captured.push({ url: new URL(String(input)), headers: new Headers(init?.headers) });
       return new Response(JSON.stringify(enabledRows), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -143,13 +141,13 @@ Deno.test("feature flags are loaded only over HTTPS and never returned to caller
     },
   });
 
-  assertEqual(capturedUrl?.pathname, "/rest/v1/app_settings");
+  assertEqual(captured[0]?.url.pathname, "/rest/v1/app_settings");
   assertEqual(
-    capturedUrl?.searchParams.get("key"),
+    captured[0]?.url.searchParams.get("key"),
     "in.(emergency_kill_switch,enable_ai_routing,enable_external_actions)",
   );
-  assertEqual(capturedHeaders?.get("Authorization"), "Bearer server-only-test-secret");
-  assertEqual(capturedHeaders?.get("Cache-Control"), "no-store");
+  assertEqual(captured[0]?.headers.get("Authorization"), "Bearer server-only-test-secret");
+  assertEqual(captured[0]?.headers.get("Cache-Control"), "no-store");
   assertEqual(aiRoutingAllowed(flags), true);
   assertEqual(JSON.stringify(flags).includes("server-only-test-secret"), false);
 });
