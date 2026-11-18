@@ -175,3 +175,70 @@
 - تحسن قابل للإثبات: تنقل Android المتكيف أصبح موجودًا في PR #32 واجتاز Android build وCI المتكامل.
 - لا يوجد بعد دليل على تحسن المزامنة أو نجاح Auth أو تكافؤ الوظائف أو تجربة الهاتف؛ تظل Not measured / Not validated.
 - لا تغيير في main أو قاعدة بيانات Supabase في هذه الدورة.
+
+
+## 14. تحديث تنفيذي موثق — 18 نوفمبر 2026
+
+### مقارنة الحالة السابقة وإعادة التحقق
+- Main لم يتغير عن baseline السابق: `53cc3293404bd4c9fa8e7352ec6bfc596809185f`. لا يوجد merge جديد إلى main.
+- PR #19 ما زال Draft، وفرعه متباعد عن main: 25 commits ahead و46 behind عند الفحص. لا يُدمج قبل reconciliation ومراجعة التعارضات. هذا الفرع يحتوي ملفي خطة متشابهين بالاسم؛ المسار المعتمد لهذه الخطة يظل هذا الملف، ولا تُنشأ خطة ثالثة.
+- PR #31 Web shell و#32 Native Compose shell و#29 issuer guard و#33 MCP design و#34 read-only agent status ما زالت تغييرات منفصلة غير مدمجة. PR #32 ما زال يحتوي شاشات وجهات غير مكتملة؛ لا تكافؤ وظيفي مثبت.
+- PR #34: CI الخاص به أعيد التحقق منه سابقًا، لكن endpoint لا يثبت وجود durable runtime؛ حالة التشغيل في المشروع لا تزال غير مهيأة.
+
+### تغيير أمني فعلي في GitHub — غير منشور
+- أُنشئ PR #35: https://github.com/aabbanoup-a11y/reflex-nexus/pull/35، Draft، branch `fix/server-side-feature-gates-20261118`، head `53c8bf130a12d5bfc06bb0a3b286acbac69a5a99`.
+- التغيير يضيف feature-policy fail-closed: لا AI routing إلا إذا كان emergency kill switch مغلقًا و`enable_ai_routing=true`؛ ولا external writes إلا إذا كان المفتاح مغلقًا و`enable_external_actions=true`.
+- يضيف owner scoping إلزاميًا لكل service-role read في قائمة agent-control، ويرفض owner filters المخالفة أو الجداول التي لا تملك mapping. كما يعيد مصدر `reflex-nexus-chat` إلى Git ويضيف له gate قبل أي provider call، ويثبت `verify_jwt=true` صراحة في config.
+- CI run `44375728148` نجح: Web lint/build، Android Debug APK، Edge Function type-check، و8 اختبارات policy (8 passed / 0 failed). PR ما زال Draft، ولم يُدمج أو يُنشر إلى Supabase.
+- تحذيرات CI غير حاجبة: peer dependency mismatch في WASM runtime، package deprecated، وGitHub Actions التي تستهدف Node 20 يجري إجبارها على Node 24. تُسجل كـmaintenance items.
+
+### اكتشاف أمني يستلزم إبقاء PR Draft حتى المراجعة والنشر الآمن
+- المصدر المنشور حاليًا: `agent-control` v5 و`reflex-nexus-chat` v3، وكلاهما `verify_jwt=true`.
+- `agent-control` المنشور يحتوي مسارات GitHub write/delete وCloudflare non-GET وSupabase insert/update/delete، لكنه لا يفحص kill switch أو external-actions flag. كما أن service-role read لم يكن يفرض owner filter في الخادم.
+- `reflex-nexus-chat` المنشور يرسل محتوى المستخدم إلى ثلاثة نماذج بالتوازي، وقد يرسل طلب synthesis رابعًا، من دون فحص `enable_ai_routing` أو kill switch. ملف المصدر لم يكن موجودًا في المستودع قبل PR #35.
+- قيم Supabase وقت الفحص: `emergency_kill_switch=true`، `enable_ai_routing=false`، `enable_external_actions=false`. هذه القيم وحدها لا تحمي مسارات Edge Function المنشورة قبل نشر guard؛ لذلك لا تستدعِ write/model paths حتى يُراجع PR #35 ويُنشر بأمان.
+- جدول `command_catalog` يحتوي 546 صفًا وكلها `requires_approval=false` (26 destructive، 171 sensitive، 349 safe حسب تصنيفات الجدول). سياسة الجدول الحالية تمنح authenticated SELECT فقط ولا تمنحهم write grants. لم نعدّل الصفوف جماعيًا؛ يلزم فحص جميع المستهلكين وسياسة الموافقة قبل أي تفعيل.
+- سجل migrations المطبق يحتوي `20261112180104_disable_command_catalog_approval_gates` بينما يوجد في المستودع ملف باسم `20261112190000_autonomous_command_execution.sql`. لم يُعد تشغيل أي DDL؛ يجب reconciliation للاسم/المحتوى مع التاريخ المطبق قبل أي migration push.
+
+### Supabase وCloudflare والمراقبة
+- لم تتغير migrations أو الجداول أو سياسات RLS أو إعدادات Supabase في هذه الدورة.
+- Security advisor: 14 SECURITY DEFINER functions قابلة للتنفيذ من authenticated (WARN)، حماية كلمات المرور المسربة غير مفعلة (WARN)، وRLS-enabled/no-policy واحدة على `webauthn_challenges` (INFO؛ وصول server-only متوقع). لا تُجرَ تعديلات grants جماعية.
+- Performance advisor: 103 auth RLS initplan (WARN)، 13 multiple permissive policies (WARN)، 44 unindexed foreign keys (INFO)، 19 unused indexes (INFO). لا نحذف/نضيف فهارس دون workload وEXPLAIN.
+- Health advisor: صفر lints.
+- Cloudflare inventory: Worker واحد `abanoupai-local-first-scheduler`، صفر Workflows، صفر Queues؛ لا يوجد durable agent runtime مثبت.
+- Observability window: `2026-11-17T18:48:00Z` إلى `2026-11-18T18:48:00Z`. سجلات Supabase المجمعة: 648 pgbouncer و124 postgres events. من حقول SQLSTATE الظاهرة: 6 سجلات LOG/00000 وسجل واحد LOG/08006؛ لا دليل أنه request failure. لا توجد HTTP status/latency fields قابلة للاستخدام في هذا النطاق، لذلك request error rate وp50/p95 غير مقاسة.
+
+### Auth issuer والويب
+- فحص المصدر وحده لا يحسم جهة إصدار Web Auth بسبب environment overrides.
+- مشروع Lovable الوحيد الظاهر في مساحة العمل اسمه `Omni Control Hub` وآخر commit لديه يطابق main؛ هذا لا يكشف قيمة Supabase URL الفعلية في بيئة النشر.
+- `https://reflex-nexus.lovable.app` أعاد HTTP 502 أثناء الفحص، وpreview URL أعاد 401 ويحوّل إلى تسجيل دخول Lovable؛ لم يظهر bundle عام يمكن منه إثبات المشروع.
+- لذلك لم يُربط Android Auth. المطلوب من المستخدم لاحقًا هو **Project URL/host أو project ref فقط** من إعدادات Supabase/Lovable، وليس أي API key أو secret. بعد ذلك نقارنه بالـissuer الفعلي قبل كتابة تكامل Android.
+
+### البناء والإصدار
+- Artifact جديد: `abanoubai-companion-debug-apk`، ID `14460258435`، من run `44375728148` وcommit `53c8bf130a12d5bfc06bb0a3b286acbac69a5a99`، غير منتهي عند الفحص وتنتهي صلاحيته في 2 ديسمبر 2026. رابط التشغيل: https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/44375728148 . هذا Debug APK فقط، لا Signed Release ولا اختبار هاتف.
+- لم يحدث deploy إلى Lovable أو Supabase أو Cloudflare. لم يُختبر APK على جهاز المستخدم.
+
+### ترتيب العمل التالي
+1. P0: مراجعة PR #35 بدقة ثم نشر guard فقط بعد موافقة ومراجعة أمان؛ لا تشغيل فعلي لمسارات الكتابة أو النماذج قبل ذلك.
+2. P0: إثبات Web Auth issuer من Project URL/ref غير السري؛ لا Android Auth قبل المطابقة.
+3. P0: reconcile PR #19/#31/#32/#29 مع main وتجنب تضارب MainActivity والـWeb shell.
+4. P0: إكمال native routes وWeb route parity ثم shared-data vertical slice مع owner/RLS tests وreconnect/idempotency.
+5. P0: signed release pipeline وAPK candidate، ثم تثبيت واختبار فعلي على هاتف المستخدم.
+6. P1/P2: durable Workflow prototype، MCP read-only، Monitor/Context API experiments، ثم top-10 capability study فقط بعد اجتياز Phase 1.
+
+### Scorecard بتاريخ 18 نوفمبر
+
+| البعد | الحالة المقاسة | التغير عن 17 نوفمبر |
+|---|---|---|
+| Product capability | لا parity كاملة؛ Home/route completeness غير مقاسة end-to-end | لا تغيير مثبت في المنتج المنشور |
+| Task success / tool correctness | غير مقاس؛ 8 policy unit tests ناجحة في PR فقط | تحسن في test coverage، لا في الإنتاج |
+| Android integration | Native shell موجود في PR #32؛ Auth وshared data غير مثبتين | لا تغيير |
+| UX / accessibility | لا benchmark جديد؛ RTL/LTR وdevice screenshots غير معتمدة | لا تغيير |
+| Latency / cost | غير مقاس | لا تغيير |
+| Reliability / recovery | لا durable Workflows/Queues؛ reconnect/resume غير مثبت | لا تغيير |
+| Privacy / security | PR #35 يضيف gates وowner filters في الكود؛ لم يُنشر | تحسن في proposed/tested code فقط؛ production gap باقٍ |
+| Model quality | غير مقاس؛ لا routing مفعل حسب الإعدادات | لا تغيير |
+| Test coverage | 8 policy tests جديدة ناجحة؛ Web/Android/Edge CI ناجح في run #44375728148 | تحسن في تغطية policy فقط |
+| Release readiness | Draft PRs، Debug APK فقط، Auth issuer غير مثبت، لا device validation | لا تغيير جوهري في P0 readiness |
+
+لا تعني هذه النتائج اكتمال Phase 1. Phase 2 (دراسة أفضل عشرة منتجات) لم يبدأ؛ وPhase 3 (منح قدرات/صلاحيات AI) يظل متوقفًا حتى موافقة صريحة.
