@@ -145,6 +145,29 @@ export function serviceRoleHeaders(
   return headers;
 }
 
+/** Prefer current named publishable keys, then legacy single-key variables. */
+export function resolvePublishableKey(
+  readEnv: (name: string) => string | undefined,
+): string {
+  const publishableJson = readEnv("SUPABASE_PUBLISHABLE_KEYS");
+  if (publishableJson) {
+    try {
+      const parsed = JSON.parse(publishableJson);
+      const defaultKey = parsed?.default;
+      if (typeof defaultKey === "string" && defaultKey.trim()) {
+        return defaultKey.trim();
+      }
+    } catch {
+      // Fall back to legacy variables; missing configuration fails closed.
+    }
+  }
+  return (
+    readEnv("SUPABASE_PUBLISHABLE_KEY")?.trim() ||
+    readEnv("SUPABASE_ANON_KEY")?.trim() ||
+    ""
+  );
+}
+
 export async function loadFeatureFlags(options: {
   supabaseUrl: string;
   serviceRoleKey: string;
