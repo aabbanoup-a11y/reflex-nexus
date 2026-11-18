@@ -106,6 +106,28 @@ export function scopeReadFilters(
 }
 
 /** Supabase's newer sb_secret_ keys are API keys, not JWT bearer tokens. */
+/**
+ * Prefer Supabase's current SUPABASE_SECRET_KEYS dictionary, then fall back
+ * to the legacy SERVICE_ROLE_KEY runtime variable. Never log or return the key.
+ */
+export function resolveServiceRoleKey(
+  readEnv: (name: string) => string | undefined,
+): string {
+  const secretKeysJson = readEnv("SUPABASE_SECRET_KEYS");
+  if (secretKeysJson) {
+    try {
+      const parsed = JSON.parse(secretKeysJson);
+      const defaultKey = parsed?.default;
+      if (typeof defaultKey === "string" && defaultKey.trim()) {
+        return defaultKey.trim();
+      }
+    } catch {
+      // Fall back to the legacy variable; missing configuration still fails closed.
+    }
+  }
+  return readEnv("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
+}
+
 export function serviceRoleHeaders(
   serviceRoleKey: string,
   extra: Record<string, string> = {},
