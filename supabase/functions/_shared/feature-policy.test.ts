@@ -7,6 +7,7 @@ import {
   scopeReadFilters,
   serviceRoleHeaders,
   resolveServiceRoleKey,
+  resolvePublishableKey,
 } from "./feature-policy.ts";
 
 function assert(condition: unknown, message = "Assertion failed"): asserts condition {
@@ -186,6 +187,24 @@ Deno.test("service key resolution prefers the new runtime secret dictionary", ()
     name === "SUPABASE_SECRET_KEYS" ? "not-json" : undefined
   );
   assertEqual(malformed, "");
+});
+
+Deno.test("publishable key resolution prefers the current runtime dictionary", () => {
+  const current = resolvePublishableKey((name) =>
+    name === "SUPABASE_PUBLISHABLE_KEYS"
+      ? JSON.stringify({ default: "sb_publishable_new" })
+      : name === "SUPABASE_PUBLISHABLE_KEY"
+      ? "legacy-publishable-key"
+      : name === "SUPABASE_ANON_KEY"
+      ? "legacy-anon-key"
+      : undefined
+  );
+  assertEqual(current, "sb_publishable_new");
+
+  const fallback = resolvePublishableKey((name) =>
+    name === "SUPABASE_ANON_KEY" ? "legacy-anon-key" : undefined
+  );
+  assertEqual(fallback, "legacy-anon-key");
 });
 
 Deno.test("service-role headers support both legacy JWT and opaque secret keys", () => {
