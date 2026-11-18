@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { externalWritesAllowed, isExternalWriteAction, loadFeatureFlags, resolveServiceRoleKey, scopeReadFilters, serviceRoleHeaders } from "../_shared/feature-policy.ts";
+import { externalWritesAllowed, isExternalWriteAction, loadFeatureFlags, resolvePublishableKey, resolveServiceRoleKey, scopeReadFilters, serviceRoleHeaders } from "../_shared/feature-policy.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
