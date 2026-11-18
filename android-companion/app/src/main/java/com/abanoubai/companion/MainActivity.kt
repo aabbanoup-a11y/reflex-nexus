@@ -106,8 +106,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Open the AbanoupAI workspace in the app's own WebView on launch.
-        showDashboard()
+        // Launch the independent native Android workspace; do not open the web application.
+        showNativeChat()
         // Keep the dashboard usable even if background companion initialization fails.
         if (!isLowMemoryDevice()) {
             runCatching { CompanionRuntime.start(this) }
@@ -248,13 +248,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 18, 0, 12)
         }
         root.addView(note)
-        root.addView(button("فتح AbanoupAI داخل التطبيق") {
-            if (isNetworkAvailable()) showDashboard()
-            else {
-                Toast.makeText(this, "لا يوجد إنترنت؛ الوضع المحلي جاهز الآن.", Toast.LENGTH_LONG).show()
-                showOfflineHub()
-            }
-        })
+        root.addView(button("العودة إلى مساحة AbanoupAI") { showNativeChat() })
         root.addView(button("فتح إعدادات التطبيق مباشرة") {
             openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
         })
@@ -283,9 +277,9 @@ class MainActivity : AppCompatActivity() {
     private fun showNativeChat() {
         showingDashboard = false
         showingOfflineHub = true
-        val bg = 0xff101418.toInt()
-        val panel = 0xff20272e.toInt()
-        val accent = 0xff9be7a1.toInt()
+        val bg = 0xff11101b.toInt()
+        val panel = 0xff201b31.toInt()
+        val accent = 0xff63e6f2.toInt()
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(18, 18, 18, 12)
@@ -299,7 +293,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 8, 0, 2)
         })
         root.addView(TextView(this).apply {
-            text = "مساعدك — واجهة أندرويد مستقلة"
+            text = "مساحة العمل الأصلية — Android"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(0xffb7c4cc.toInt())
@@ -321,7 +315,7 @@ class MainActivity : AppCompatActivity() {
                 textSize = 16f
                 setTextColor(if (who == "أنت") -1 else accent)
                 setPadding(12, 10, 12, 10)
-                setBackgroundColor(if (who == "أنت") 0xff303a43.toInt() else 0xff18231d.toInt())
+                setBackgroundColor(if (who == "أنت") 0xff302a43.toInt() else 0xff182d3a.toInt())
             }
             transcript.addView(bubble, LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                 setMargins(0, 0, 0, 12)
@@ -434,13 +428,7 @@ class MainActivity : AppCompatActivity() {
                 }.onFailure { reply.text = it.message ?: "تعذر تشغيل الميكروفون" }
             }
         })
-        root.addView(button("فتح تطبيق AbanoupAI") {
-            if (isNetworkAvailable()) {
-                showDashboard()
-            } else {
-                Toast.makeText(this, "لا يوجد إنترنت؛ اتصل بالإنترنت لفتح مساحة العمل داخل التطبيق.", Toast.LENGTH_LONG).show()
-            }
-        })
+        root.addView(button("العودة إلى مساحة AbanoupAI") { showNativeChat() })
         setContentView(ScrollView(this).apply { addView(root) })
     }
 
