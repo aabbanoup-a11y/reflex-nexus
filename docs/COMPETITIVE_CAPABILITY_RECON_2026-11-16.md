@@ -68,3 +68,44 @@
 5. إجراء حساس: جهز مسودة فقط، ولا ترسل أو تنشر دون موافقة صريحة.
 
 **الحالة:** بحث مكتبي أولي موثق؛ لا توجد ميزة منافس تم تبنيها أو تنفيذها أو اختبارها في التطبيق نتيجة هذا المستند.
+
+
+## 2026-11-18 — daily market scan and forecast ledger
+
+### Confirmed changes from primary sources
+
+| Product | Public evidence (date) | Capability and maturity | Constraints / confidence | AbanoubAI decision |
+|---|---|---|---|---|
+| Perplexity Computer Multiagent | [Introducing Computer's Multiagent effort level — 17 Nov 2026](https://www.perplexity.ai/en-GB/hub/blog/introducing-computer-multiagent) | New web effort level: a lead agent coordinates up to 16 supporting agents, lets them share findings and review one another, and returns one consolidated result. | Officially available to Perplexity Max subscribers on the web; not evidence of Android availability or independently measured quality. | **Defer** until durable jobs, budgets, checkpoints, cancellation and verification exist. Reuse the pattern of visible delegation and cross-checking, not the 16-agent count. |
+| Perplexity Orchestrator API | [Orchestrator: one API for reliable inference — 17 Nov 2026](https://www.perplexity.ai/en-GB/hub/blog/orchestrator-one-api-for-reliable-inference) | One API exposes open-weight and proprietary models, unified billing, same-model provider failover and task routes; automatic model routing is marked preview. | Provider claims about higher success rates are vendor measurements, not an independent benchmark. Uses prepaid API credits and adds provider/billing dependency. | **Prototype later** behind the provider-neutral adapter; compare against direct provider calls on the same Arabic/English task set before integration. |
+| Perplexity Context API | [Context API extracts full context from any web page — 17 Nov 2026](https://www.perplexity.ai/en-GB/hub/blog/context-api-extracts-full-context-from-any-web-page) | Reads up to 10 URLs and returns clean Markdown/HTML, links, query-relevant snippets, metadata, freshness and per-URL status. | Provider states USD 1 per 1,000 URLs fetched; validate regional availability, terms, retention and actual quality before use. Vendor evaluation is not independent. | **Experiment later** for source-grounded research; keep retrieval provider replaceable and preserve source URL/fetch time/status. |
+| Perplexity Monitor API | [Introducing Perplexity's Monitor API — 16 Nov 2026](https://www.perplexity.ai/en-GB/hub/blog/introducing-perplexitys-monitor-api) | Scheduled topic/page monitoring, change diffs, deduplication, confidence scores and signed webhooks. | Provider states USD 1 per 1,000 successful runs or page URLs fetched. It adds a third-party scheduled service and webhook attack surface. | **Defer** until AbanoubAI has a durable event/job runtime, signature verification, replay protection and spend caps. |
+
+The same scan checked current official OpenAI, Anthropic, Google, Microsoft and Manus product pages. No additional new feature in the 17–18 Nov window was confirmed strongly enough to record as a product change. Previously documented capabilities remain claims/docs, not tested workflows. The Perplexity material above is a vendor announcement; it is not proof that its benchmarks generalize to AbanoubAI.
+
+### Comparative insight
+
+The strongest pattern is not “more agents”. It is the combination of (a) a lead planner, (b) typed parallel work, (c) shared evidence, (d) explicit cross-checking, (e) provider failover, and (f) persistent monitoring with deduplicated events. AbanoubAI should build the trust boundary and job lifecycle first. A smaller number of specialists with measurable task contracts is preferable to an unbounded agent swarm.
+
+### Opportunity backlog update
+
+| Rank | Opportunity | Impact / confidence | Effort / risk | Decision and acceptance criterion |
+|---|---|---|---|---|
+| 1 | Enforce server-side AI/action flags and owner-scoped service-role reads | Very high impact; high confidence from deployed source inspection | Medium effort; high security sensitivity | Implement in Draft PR #35. Pass tests proving kill switch + capability flag are both required, all service-role reads inject the authenticated owner, and cross-user filters are rejected. Do not deploy until review. |
+| 2 | Prove the actual Web Supabase Auth issuer | Very high impact; high confidence that source alone is insufficient | Low effort if project ref is supplied; blocked on non-secret configuration evidence | Compare the Web project's actual Supabase URL/issuer with Android configuration; do not wire Android Auth before exact match. |
+| 3 | Complete native route parity and one shared authenticated data workflow | Very high impact; high confidence | High effort; depends on Auth and PR reconciliation | Same user-owned record can be created/read/updated in both clients; prove isolation, reconnect and conflict handling. |
+| 4 | Monitor API prototype for public release/change tracking | Medium-high potential; medium confidence | Medium effort; requires durable jobs, webhook signing and budget controls | Track 10 public official changelog pages; verify signatures, deduplicate events and measure false positives before any action is triggered. |
+| 5 | Orchestrator adapter benchmark | Medium potential; medium confidence | Medium effort; adds provider and billing dependency | Compare direct providers vs one aggregator on the same Arabic/English golden set; record quality, p50/p95, cost per successful task, failure and privacy handling. |
+
+### Forecast ledger (hypotheses, not roadmap facts)
+
+| Horizon | Hypothesis | Signals | Confidence | Disconfirming evidence / trigger to revise | Preparation now |
+|---|---|---|---|---|---|
+| 30 days | More model platforms will expose unified inference, routing or same-model failover APIs. | Perplexity Orchestrator announcement and current model/provider churn. | Medium | Few additional stable APIs, or aggregators add cost/latency without measurable reliability gain. | Keep adapters provider-neutral; build a reproducible routing benchmark, but leave routing disabled. |
+| 90 days | Web monitoring will increasingly arrive as managed APIs with signed webhooks and built-in deduplication. | Perplexity Monitor API and recurring changelog-monitoring needs. | Medium | Pricing, rate limits or webhook reliability make self-hosted polling cheaper and simpler. | Prepare an event envelope with source, fetched-at, signature, dedupe key and review state. |
+| 180 days | Complex assistants will make multi-model collaboration and shared artifacts more visible to users. | Multiagent workspaces and orchestration APIs. | Medium | Users prefer single-agent workflows because coordination overhead exceeds quality gains. | Build inspectable task contracts and evidence exchange before adding parallel agents. |
+| 1–2 years | Model access may become more interchangeable, making privacy, permissions, task verification and recovery stronger differentiators than model count. | Unified API formats, open-weight growth and provider failover products. | Medium-low | Provider-specific capabilities, lock-in or inference cost remain dominant. | Preserve portable memory, scoped tools, evaluation and auditable execution; avoid hard dependency on one router. |
+
+### Phase gate
+
+This is recurring market intelligence only. The top-10 capability study (Phase 2) has **not** started because Phase 1 P0 acceptance is still incomplete. No competitor API, agent skill, external account or write permission has been connected or activated.
