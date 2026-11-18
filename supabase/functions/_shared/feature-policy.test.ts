@@ -6,6 +6,7 @@ import {
   parseFeatureFlags,
   scopeReadFilters,
   serviceRoleHeaders,
+  resolveServiceRoleKey,
 } from "./feature-policy.ts";
 
 function assert(condition: unknown, message = "Assertion failed"): asserts condition {
@@ -164,6 +165,27 @@ Deno.test("feature flags are loaded only over HTTPS and never returned to caller
   assertEqual(captured[0]?.headers.get("Cache-Control"), "no-store");
   assertEqual(aiRoutingAllowed(flags), true);
   assertEqual(JSON.stringify(flags).includes("server-only-test-secret"), false);
+});
+
+Deno.test("service key resolution prefers the new runtime secret dictionary", () => {
+  const current = resolveServiceRoleKey((name) =>
+    name === "SUPABASE_SECRET_KEYS"
+      ? JSON.stringify({ default: "sb_secret_new" })
+      : name === "SUPABASE_SERVICE_ROLE_KEY"
+      ? "legacy-service-role-jwt"
+      : undefined
+  );
+  assertEqual(current, "sb_secret_new");
+
+  const legacy = resolveServiceRoleKey((name) =>
+    name === "SUPABASE_SERVICE_ROLE_KEY" ? "legacy-service-role-jwt" : undefined
+  );
+  assertEqual(legacy, "legacy-service-role-jwt");
+
+  const malformed = resolveServiceRoleKey((name) =>
+    name === "SUPABASE_SECRET_KEYS" ? "not-json" : undefined
+  );
+  assertEqual(malformed, "");
 });
 
 Deno.test("service-role headers support both legacy JWT and opaque secret keys", () => {
