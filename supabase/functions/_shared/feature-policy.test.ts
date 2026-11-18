@@ -29,6 +29,20 @@ function assertThrows(action: () => unknown, expectedMessage: string) {
   throw new Error(`Expected ${expectedMessage}`);
 }
 
+async function assertRejects(
+  action: () => Promise<unknown>,
+  expectedMessage: string,
+) {
+  try {
+    await action();
+  } catch (error) {
+    assert(error instanceof Error);
+    assertEqual(error.message, expectedMessage);
+    return;
+  }
+  throw new Error(`Expected rejected promise: ${expectedMessage}`);
+}
+
 const enabledRows = [
   { key: "emergency_kill_switch", value: "false" },
   { key: "enable_ai_routing", value: "true" },
@@ -107,7 +121,7 @@ Deno.test("all service-role read tables are scoped to the authenticated owner", 
   ];
 
   for (const [table, ownerColumn] of cases) {
-    const filters = scopeReadFilters(table, { status: "eq.open" }, "user-123");
+    const filters = scopeReadFilters(table, { status: "open" }, "user-123");
     assertEqual(filters[ownerColumn], "user-123", `${table} owner filter`);
   }
 });
@@ -163,7 +177,7 @@ Deno.test("service-role headers support both legacy JWT and opaque secret keys",
 });
 
 Deno.test("feature policy fails closed for insecure URLs and upstream errors", async () => {
-  assertThrows(
+  await assertRejects(
     () => loadFeatureFlags({
       supabaseUrl: "http://example.supabase.co",
       serviceRoleKey: "server-only-test-secret",
@@ -171,15 +185,12 @@ Deno.test("feature policy fails closed for insecure URLs and upstream errors", a
     "FEATURE_POLICY_UNAVAILABLE",
   );
 
-  let rejected = false;
-  try {
-    await loadFeatureFlags({
+  await assertRejects(
+    () => loadFeatureFlags({
       supabaseUrl: "https://example.supabase.co",
       serviceRoleKey: "server-only-test-secret",
       fetchImpl: async () => new Response("unavailable", { status: 503 }),
-    });
-  } catch (error) {
-    rejected = error instanceof Error && error.message === "FEATURE_POLICY_UNAVAILABLE";
-  }
-  assert(rejected, "upstream errors must fail closed");
+    }),
+    "FEATURE_POLICY_UNAVAILABLE",
+  );
 });
