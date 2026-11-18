@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { aiRoutingAllowed, loadFeatureFlags } from "../_shared/feature-policy.ts";
+import { aiRoutingAllowed, loadFeatureFlags, resolveServiceRoleKey } from "../_shared/feature-policy.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -17,7 +17,7 @@ Deno.serve(async (req: Request) => {
   const url = Deno.env.get("SUPABASE_URL") ?? "";
   const key = Deno.env.get("SUPABASE_ANON_KEY") ||
     Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const serviceRoleKey = resolveServiceRoleKey((name) => Deno.env.get(name));
   const ai = Deno.env.get("LOVABLE_API_KEY") ?? "";
   const auth = req.headers.get("Authorization") || "";
 
