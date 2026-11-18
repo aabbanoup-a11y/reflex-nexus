@@ -105,6 +105,24 @@ export function scopeReadFilters(
   return { ...filters, [ownerColumn]: userId };
 }
 
+/** Supabase's newer sb_secret_ keys are API keys, not JWT bearer tokens. */
+export function serviceRoleHeaders(
+  serviceRoleKey: string,
+  extra: Record<string, string> = {},
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    apikey: serviceRoleKey,
+    ...extra,
+  };
+  if (
+    !serviceRoleKey.startsWith("sb_secret_") &&
+    !serviceRoleKey.startsWith("sb_publishable_")
+  ) {
+    headers.Authorization = `Bearer ${serviceRoleKey}`;
+  }
+  return headers;
+}
+
 export async function loadFeatureFlags(options: {
   supabaseUrl: string;
   serviceRoleKey: string;
@@ -141,12 +159,10 @@ export async function loadFeatureFlags(options: {
   try {
     response = await fetchImpl(settingsUrl, {
       method: "GET",
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
+      headers: serviceRoleHeaders(serviceRoleKey, {
         Accept: "application/json",
         "Cache-Control": "no-store",
-      },
+      }),
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
