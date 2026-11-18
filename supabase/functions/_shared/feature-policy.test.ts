@@ -5,6 +5,7 @@ import {
   loadFeatureFlags,
   parseFeatureFlags,
   scopeReadFilters,
+  serviceRoleHeaders,
 } from "./feature-policy.ts";
 
 function assert(condition: unknown, message = "Assertion failed"): asserts condition {
@@ -151,6 +152,16 @@ Deno.test("feature flags are loaded only over HTTPS and never returned to caller
   assertEqual(capturedHeaders?.get("Cache-Control"), "no-store");
   assertEqual(aiRoutingAllowed(flags), true);
   assertEqual(JSON.stringify(flags).includes("server-only-test-secret"), false);
+});
+
+Deno.test("service-role headers support both legacy JWT and opaque secret keys", () => {
+  const legacy = serviceRoleHeaders("legacy-service-role-jwt");
+  assertEqual(legacy.apikey, "legacy-service-role-jwt");
+  assertEqual(legacy.Authorization, "Bearer legacy-service-role-jwt");
+
+  const opaque = serviceRoleHeaders("sb_secret_server_only");
+  assertEqual(opaque.apikey, "sb_secret_server_only");
+  assertEqual(opaque.Authorization, undefined);
 });
 
 Deno.test("feature policy fails closed for insecure URLs and upstream errors", async () => {
