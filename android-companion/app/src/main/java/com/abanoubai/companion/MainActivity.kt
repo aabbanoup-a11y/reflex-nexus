@@ -30,6 +30,7 @@ import android.widget.Toast
 import org.json.JSONObject
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.core.content.ContextCompat
 
 /**
@@ -106,8 +107,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Open the AbanoupAI workspace in the app's own WebView on launch.
-        showDashboard()
+        // Launch the independent native Android workspace; do not open the web application.
+        showNativeChat()
         // Keep the dashboard usable even if background companion initialization fails.
         if (!isLowMemoryDevice()) {
             runCatching { CompanionRuntime.start(this) }
@@ -248,13 +249,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 18, 0, 12)
         }
         root.addView(note)
-        root.addView(button("فتح AbanoupAI داخل التطبيق") {
-            if (isNetworkAvailable()) showDashboard()
-            else {
-                Toast.makeText(this, "لا يوجد إنترنت؛ الوضع المحلي جاهز الآن.", Toast.LENGTH_LONG).show()
-                showOfflineHub()
-            }
-        })
+        root.addView(button("العودة إلى مساحة AbanoupAI") { showNativeChat() })
         root.addView(button("فتح إعدادات التطبيق مباشرة") {
             openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
         })
@@ -283,23 +278,30 @@ class MainActivity : AppCompatActivity() {
     private fun showNativeChat() {
         showingDashboard = false
         showingOfflineHub = true
-        val bg = 0xff101418.toInt()
-        val panel = 0xff20272e.toInt()
-        val accent = 0xff9be7a1.toInt()
+        val bg = 0xff11101b.toInt()
+        val panel = 0xff201b31.toInt()
+        val accent = 0xff63e6f2.toInt()
+        val drawerRef = arrayOfNulls<DrawerLayout>(1)
+        val menuRef = arrayOfNulls<LinearLayout>(1)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(18, 18, 18, 12)
             setBackgroundColor(bg)
         }
         root.addView(TextView(this).apply {
-            text = "AbanoupAI"
+            text = "a   AbanoupAI"
             textSize = 27f
             gravity = Gravity.CENTER
-            setTextColor(-1)
+            setTextColor(0xffbca8ff.toInt())
             setPadding(0, 8, 0, 2)
         })
+        root.addView(button("☰   القائمة") {
+            val host = drawerRef[0]
+            val menu = menuRef[0]
+            if (host != null && menu != null) host.openDrawer(menu)
+        })
         root.addView(TextView(this).apply {
-            text = "مساعدك — واجهة أندرويد مستقلة"
+            text = "مساحة العمل الأصلية — Android"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(0xffb7c4cc.toInt())
@@ -321,7 +323,7 @@ class MainActivity : AppCompatActivity() {
                 textSize = 16f
                 setTextColor(if (who == "أنت") -1 else accent)
                 setPadding(12, 10, 12, 10)
-                setBackgroundColor(if (who == "أنت") 0xff303a43.toInt() else 0xff18231d.toInt())
+                setBackgroundColor(if (who == "أنت") 0xff302a43.toInt() else 0xff182d3a.toInt())
             }
             transcript.addView(bubble, LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                 setMargins(0, 0, 0, 12)
@@ -362,7 +364,38 @@ class MainActivity : AppCompatActivity() {
         root.addView(send)
         root.addView(button("استماع لأمر صوتي") { listenLocalAgent() })
         root.addView(button("إعدادات وصلاحيات الهاتف") { showSetupHub() })
-        setContentView(root)
+
+        val drawer = DrawerLayout(this)
+        drawerRef[0] = drawer
+        drawer.addView(root, DrawerLayout.LayoutParams(-1, -1))
+        val menu = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(18, 24, 18, 24)
+            setBackgroundColor(0xff1d1930.toInt())
+        }
+        menuRef[0] = menu
+        menu.addView(TextView(this).apply {
+            text = "a   AbanoupAI"
+            textSize = 23f
+            setTextColor(0xffbca8ff.toInt())
+            setPadding(8, 8, 8, 20)
+        })
+        fun drawerItem(label: String, action: () -> Unit) {
+            menu.addView(button(label) {
+                drawer.closeDrawer(menu)
+                action()
+            })
+        }
+        drawerItem("المحادثة الرئيسية") { showNativeChat() }
+        drawerItem("النماذج المحلية") { showOfflineHub() }
+        drawerItem("الهاتف والصلاحيات") { showSetupHub() }
+        drawerItem("إعدادات التطبيق") {
+            openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+        }
+        val drawerWidth = (280 * resources.displayMetrics.density).toInt()
+        val drawerParams = DrawerLayout.LayoutParams(drawerWidth, -1, Gravity.END)
+        drawer.addView(menu, drawerParams)
+        setContentView(drawer)
     }
 
     private fun showOfflineHub() {
@@ -434,13 +467,7 @@ class MainActivity : AppCompatActivity() {
                 }.onFailure { reply.text = it.message ?: "تعذر تشغيل الميكروفون" }
             }
         })
-        root.addView(button("فتح تطبيق AbanoupAI") {
-            if (isNetworkAvailable()) {
-                showDashboard()
-            } else {
-                Toast.makeText(this, "لا يوجد إنترنت؛ اتصل بالإنترنت لفتح مساحة العمل داخل التطبيق.", Toast.LENGTH_LONG).show()
-            }
-        })
+        root.addView(button("العودة إلى مساحة AbanoupAI") { showNativeChat() })
         setContentView(ScrollView(this).apply { addView(root) })
     }
 
