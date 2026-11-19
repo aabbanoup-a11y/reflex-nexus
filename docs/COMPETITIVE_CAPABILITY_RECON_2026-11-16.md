@@ -109,3 +109,43 @@ The strongest pattern is not “more agents”. It is the combination of (a) a l
 ### Phase gate
 
 This is recurring market intelligence only. The top-10 capability study (Phase 2) has **not** started because Phase 1 P0 acceptance is still incomplete. No competitor API, agent skill, external account or write permission has been connected or activated.
+
+
+---
+
+## Market watch — 2026-11-19 (ongoing Phase-1 radar, not the ten-product study)
+
+### Confirmed changes
+
+| Product / platform | Evidence and maturity | Strongest observed capability | Limitation / caveat | AbanoubAI decision |
+|---|---|---|---|---|
+| ChatGPT | Official release notes, 18–19 Nov 2026; rollout | Live Dictation now streams transcription across Android/web and has no 10-minute recording cap. Health Connect integration is rolling out to Android. | Health rollout is gradual and US-only; GPT-6.2 Astra/Sol remain Work/Codex desktop preview. No independent Arabic transcription benchmark was run. | Prototype an Arabic-first voice composer with editable transcript and explicit send; benchmark before provider selection. Defer Health integration. |
+| Gemini 4 Neon | Google announcement, 18 Nov 2026; API and paid product rollout | Google presents it as a long-context model for multi-step work, with 1M context and published API pricing. | Performance rankings and task-completion claims are vendor-reported; no AbanoubAI golden-task comparison exists. | Add to provider benchmark candidates; no default-router change. |
+| Microsoft 365 Copilot Skills | Microsoft Learn, Nov 2026; GA in Copilot Chat | Reusable task instructions with optional resources/scripts; manifest 1.9 supports Agent Skills directories. | Enterprise package governance and tenant availability still matter; portability does not imply identical runtime behavior. | Design a provider-neutral skill manifest with pinned versions and permission declarations; do not install or activate skills yet. |
+| Android AppFunctions | Android Developers, current documentation; Experimental Preview | Apps can expose typed on-device functions as MCP-like capabilities to authorized agents. | Android 16+, experimental API, EXECUTE_APP_FUNCTIONS permission and Connected Apps preview requirements. | Keep an optional adapter seam in native architecture; defer implementation until API maturity/device eligibility are proven. |
+
+### Comparative insight
+
+The market is converging on three connected layers: (1) richer multimodal/voice capture, (2) reusable skills or tool manifests, and (3) explicit operating-system/app capability surfaces. These are not interchangeable: MCP standardizes tool communication, skill manifests describe reusable behavior, and Android AppFunctions expose narrowly declared app capabilities. AbanoubAI should keep these layers separate.
+
+### Opportunity backlog update
+
+1. **Arabic voice capture with proof before submission** — Impact: high; evidence: medium; effort: medium; risk: low-to-medium. Acceptance: Arabic/Egyptian Arabic + English mixed speech benchmark, editable transcript, no auto-send, and measurable word-error/task-completion improvement over current text entry. Kill if transcription quality or latency is worse than typed input for target tasks.
+2. **Portable, default-deny skill manifest** — Impact: high; evidence: medium; effort: medium; risk: high. Acceptance: each skill pins version/dependencies, declares data/tool scopes, has expiry and budget, passes static scan and sandbox tests, and cannot widen a parent agent's permissions. Keep disabled pending explicit Phase-3 approval.
+3. **Android AppFunctions adapter experiment** — Impact: medium-high; evidence: high for API existence, low for ecosystem maturity; effort: medium; risk: medium. Acceptance: one harmless user-owned task capability on a confirmed Android 16+ test device, discovered only by an authorized caller, with user-visible invocation and audit. Defer on older devices or if preview stability is insufficient.
+
+### Forecast ledger
+
+- **30 days — voice becomes a standard assistant input surface.** Signals: OpenAI's global Live Dictation rollout and mobile integrations. Confidence: medium. Alternative: feature adoption may remain limited by privacy, language accuracy and device UX. Trigger: at least two major assistants ship comparable streaming transcription to Android. Preparation: editable transcript component and Arabic evaluation set.
+- **90 days — skill manifests and tool permissions become more standardized.** Signals: Copilot Chat Skills GA, Agent Skills support in manifest 1.9, OWASP Agentic Skills Top 10 governance guidance. Confidence: medium. Alternative: vendors may keep incompatible private formats. Trigger: two additional major ecosystems publish stable, interoperable manifests. Preparation: provider-neutral manifest and policy engine, without activation.
+- **180 days — Android app-function exposure grows but remains OS/permission gated.** Signals: AppFunctions preview and MCP alignment. Confidence: low-to-medium. Alternative: API may remain preview or be restricted to selected assistants. Trigger: stable AndroidX release and broader device/assistant availability. Preparation: typed native adapter boundary only.
+- **1–2 years — personal agents combine cloud orchestration with local app capabilities.** Confidence: low-to-medium; this is an architectural hypothesis, not a roadmap claim. Downside case: Android or vendors restrict third-party invocation. Robust choice: keep local actions user-triggered, narrow, replaceable, and independent of cloud model availability.
+
+### Scenario plan
+
+- **Base:** cloud models remain the main reasoning layer; portable contracts and server-side verification provide most value.
+- **Upside:** local models and Android AppFunctions become practical; add opt-in local adapters behind the same typed capability interface.
+- **Downside:** OS restrictions or provider cost/availability limit automation; retain manual handoff, offline planning, and user-controlled reminders.
+- **Robust across all cases:** shared user-owned data, explicit scopes, observable execution, cancellation/recovery, and a replaceable provider router.
+
+This watch entry is a recurring market scan only. It does **not** start Phase 2's ten-product capability study, does not claim feature parity, and does not authorize Phase 3 permissions.
