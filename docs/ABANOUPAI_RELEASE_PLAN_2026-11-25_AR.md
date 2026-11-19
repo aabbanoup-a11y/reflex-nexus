@@ -242,3 +242,80 @@
 | Release readiness | Draft PRs، Debug APK فقط، Auth issuer غير مثبت، لا device validation | لا تغيير جوهري في P0 readiness |
 
 لا تعني هذه النتائج اكتمال Phase 1. Phase 2 (دراسة أفضل عشرة منتجات) لم يبدأ؛ وPhase 3 (منح قدرات/صلاحيات AI) يظل متوقفًا حتى موافقة صريحة.
+
+
+---
+
+## سجل الدورة — 19 نوفمبر 2026
+
+### مقارنة اليوم بالسابق
+
+- **main السابق:** `53cc3293404bd4c9fa8e7352ec6bfc596809185f`.
+- **main الحالي:** `7dc6eb0acd9185c0d055716aa190a6287eb7b453`؛ commit واحد يحدّث مدخل TanStack Start server إلى `createServerEntry` الموثق. CI على main نجح في Web وAndroid Debug build، run [44480760844](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/44480760844).
+- **التحسن المثبت اليوم:** إصلاح استخدام مفتاح Supabase publishable الحديث في `agent-control` ضمن PR #35؛ أصبح `requireOwner` يستخدم `resolvePublishableKey(env)` بدل الاعتماد على متغيرات legacy فقط. هذا يمنع فشل المصادقة عند وجود `SUPABASE_PUBLISHABLE_KEYS` كقاموس JSON فقط.
+- **ما لم يتغير:** لم يُنشر أي تعديل على Supabase أو Cloudflare؛ لا يوجد shared-data vertical slice؛ Auth issuer الفعلي للويب غير مثبت؛ لا يوجد Release موقّع أو device validation.
+- **لا توجد زيادة مثبتة في نجاح مهام المستخدم أو جودة النماذج أو latency؛ هذه الأبعاد لم تُقَس.**
+
+### PRs والـCI
+
+- **PR #35** — [server-side AI/action gates](https://github.com/aabbanoup-a11y/reflex-nexus/pull/35)، Draft، branch `fix/server-side-feature-gates-20261118`، head `afd4ec32d2c4a5d1c121fcb733af430224e147a0`. CI run [44593011557](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/44593011557) نجح في Web checks/build وSupabase Edge Function type-check/policy tests وAndroid Debug APK. لم يُدمج ولم يُنشر. التعديل يظل تغييرًا أمنيًا حساسًا يحتاج مراجعة مستقلة وإصدارًا معتمدًا.
+- **PR #37** — [native Android workspace shell](https://github.com/aabbanoup-a11y/reflex-nexus/pull/37)، Draft، head `f2f2e1ff5041f3f66b2a583205e239364e1718d2`، CI [44421325645](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/44421325645) نجح. لا يُعتمد: ألوان violet/cyan وlowercase a تخالف قرار الهوية B والأسود/الذهبي وحرف A؛ التنفيذ يستخدم Views/DrawerLayout وليس Jetpack Compose؛ تسجيل الدخول والمزامنة السحابية غير منفذين. لا تدمجه كبديل عن PR #32.
+- **PR #32** ما زال مسار Compose المعتمد للمراجعة، Draft، head `a75adfd4d53fa1a65ce345fbbd82ab085e71427f`. آخر CI معروف نجح في run [43929028889](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/43929028889)، وله Debug APK artifact ID `14257288486`، لكن لا Auth أو shared data ولا اختبار جهاز.
+- **PR #31** Web shell، و#29 issuer guard، و#19 خطة الإصدار، و#18 chat/attachments، و#28 معيار الهندسة، و#33 MCP/durable-agent architecture، و#34 read-only status ما زالت Draft. لم يُدمج أي منها في هذه الدورة.
+- لا يوجد APK في هذه الدورة يصلح كـRC: artifact الخاص بـPR #35 هو Debug build لفرع أمني قديم عن واجهة Compose، وartifact main لا يحتوي تغييرات PR #32.
+
+### Supabase / Cloudflare / Security
+
+- Functions المنشورة: `agent-control v5` و`reflex-nexus-chat v3`، وكلتاهما `verify_jwt=true`. المصدر المنشور ما زال يفتقد gates الموجودة في PR #35؛ لذلك **PR #35 غير deployed**.
+- الإعدادات بقيت كما هي: `emergency_kill_switch=true`، `enable_ai_routing=false`، `enable_external_actions=false`. لم أغيّرها.
+- راجعت owner columns الفعلية وRLS لقراءة PR #35: `user_id` لجداول المستخدم، و`owner_id` للمهام والأهداف، و`created_by` للذاكرة/المستندات. الاختبارات في PR تغطي owner scoping ورفض cross-user filters؛ لم تُنفذ بعد اختبارات IDOR حية بين حسابين.
+- Security advisors: 14 SECURITY DEFINER functions متاحة لدور authenticated (WARN)، تحذير leaked-password protection واحد، وINFO واحد لجدول `webauthn_challenges` بلا client policies (متوقع لخدمة server-only). Performance advisors: 103 auth RLS initplan، و44 unindexed foreign keys، و19 unused indexes (INFO)، و13 multiple-permissive-policy. Health advisor بلا lints. لم أجرِ mass edits.
+- `command_catalog` ما زال يحتوي 546 صفًا بـ`requires_approval=false`. Migration مطبق باسم `disable_command_catalog_approval_gates` لا يوجد له ملف مصدر مطابق في المستودع، بينما `20261112190000_autonomous_command_execution.sql` غير موجود في history ويحوّل كل الصفوف إلى false. **لم أطبّق أي migration ولم أغيّر الصفوف**؛ يلزم تدقيق المستهلكين ومصدر migration قبل أي خطوة.
+- تاريخ Supabase يحتوي 44 migration مقابل 24 ملفًا فقط في `supabase/migrations`، مع عدة أسماء/نسخ مصدر غير متطابقة. لا تعِد تشغيل DDL؛ يلزم reconciliation موثق.
+- Cloudflare: Worker واحد `abanoupai-local-first-scheduler`، و0 Workflows، و0 Queues. يوجد Cron trigger `0 3 * * *`، لكن المصدر المنشور لا يحتوي `scheduled()` handler؛ كما لا توجد Workflow/Queue bindings. لذلك لا يوجد durable agent runtime مثبت.
+- لا يوجد secret value في التقرير؛ راجعت أسماء bindings فقط.
+
+### Observability — آخر 24 ساعة
+
+النافذة: `2026-11-18T18:54:00Z` إلى `2026-11-19T18:54:00Z`. استعلامات تجميع فقط دون JWT أو محتوى أو معرفات مستخدمين:
+
+- 80 log events إجمالًا: 72 pgbouncer، 7 postgres، 1 edge.
+- سجل Postgres واحد SQLSTATE `08006` بمستوى LOG؛ لا يثبت وحده فشل طلب.
+- سجل Edge واحد على `/rest/v1/` بحالة 401؛ origin_time=88 في هذا السجل الواحد فقط. لا يصلح ذلك لحساب error rate أو p50/p95 ممثلين. بقية status/latency dimensions غير متاحة من هذا النطاق.
+
+### استخبارات السوق والفرص
+
+- [OpenAI release notes](https://help.openai.com/en/articles/6825453-chatgpt-release-notes) — 18 نوفمبر: Live Dictation عالميًا على Android والويب، وإزالة حد التسجيل 10 دقائق؛ 19 نوفمبر: توسعة Health/Health Connect إلى Android مع rollout تدريجي ومتاح للولايات المتحدة فقط. فرصة مستقبلية: voice capture عربي مع إظهار النص قبل الإرسال؛ لا يوجد اختبار جودة عربي مستقل حتى الآن.
+- [Google Gemini 4 Neon](https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-neon/) — إعلان 18 نوفمبر؛ Google تعلن 1M context وسعر API $3/M input و$15/M output. أرقام الترتيب والـbenchmarks vendor claims وليست دليلًا على تفوقه في مهامنا؛ القرار: benchmark لاحقًا ولا اعتماد الآن.
+- [Microsoft 365 Copilot extensibility](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/whats-new) — نوفمبر 2026: Skills في Copilot Chat أصبحت GA، وManifest 1.9 يدعم `agent_skills`. الدرس: قابلية إعادة الاستخدام والحوكمة مهمة؛ لا نفعّل skills قبل manifest/permission review وsandbox.
+- [Android AppFunctions](https://developer.android.com/ai/appfunctions) — ما زالت Experimental Preview، وتتطلب Android 16+ و`EXECUTE_APP_FUNCTIONS`، وتحتاج الانضمام إلى developer preview لتكامل Gemini. القرار: تجهيز واجهة capability adapter مستقبلًا، وتأجيل الاعتماد.
+- [Supabase Edge Function security](https://supabase.com/docs/guides/functions/auth) و[API-key migration](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys) — الوثائق تؤكد أن secret keys تتجاوز RLS ويجب أن تبقى server-only، وأن Edge Functions تستقبل `SUPABASE_PUBLISHABLE_KEYS` و`SUPABASE_SECRET_KEYS` كقاموس JSON؛ وهذا يدعم إصلاح resolver في PR #35.
+- [OWASP Agentic Skills Top 10](https://owasp.github.io/www-project-agentic-skills-top-10/) — يؤكد ضرورة مراجعة permissions، التوقيع/تثبيت الإصدارات، sandboxing، وسجل تدقيق للمهارات. لا توجد skills جديدة مفعّلة في AbanoubAI.
+
+### Scorecard — 19 نوفمبر
+
+| البعد | القياس الحالي | مقارنة 18 نوفمبر |
+|---|---|---|
+| Product capability | لا يوجد shared vertical slice أو route parity مثبت | دون تغيير |
+| Task success | غير مقاس | غير مقاس |
+| Tool correctness | 237-line policy test suite/Edge typecheck ناجح في PR #35؛ live tool success غير مقاس | تحسن test evidence فقط |
+| Android integration | Compose shell في PR #32؛ Auth/data sync غير مثبتين | دون تغيير |
+| UX/accessibility | RTL/LTR، contrast، TalkBack وsmall-device audit غير مقاسة | دون تغيير |
+| Latency | 24h logs غير كافية لـp50/p95 | غير مقاس |
+| Reliability/recovery | لا Workflows/Queues؛ resume/retry/idempotency end-to-end غير مثبت | دون تغيير |
+| Privacy/security | gates وowner filters في PR #35 ناجحة CI لكن غير deployed؛ flags ما زالت مقفلة | تحسن branch-only |
+| Model quality/cost | لا benchmark موحد | غير مقاس |
+| Test coverage | Web + Edge + Android CI أخضر لـPR #35 head | تحسن في التحقق من الفرع |
+| Release readiness | لا Signed Release، Auth issuer غير مثبت، لا device validation | دون تغيير |
+
+### ترتيب العمل التالي
+
+1. **P0:** مراجعة مستقلة لـPR #35 ثم موافقة إصدار منفصلة قبل deploy؛ لا تستخدم أي write/model path قبل تفعيل guard في البيئة المنشورة.
+2. **P0:** إثبات Web Auth issuer من Project URL/host أو project ref غير سري؛ لا Android Auth قبل المقارنة.
+3. **P0:** إعادة تنسيق PR #31/#32/#29 مع main، والتمسك بـCompose والهوية المعتمدة؛ رفض PR #37 بصيغته الحالية.
+4. **P0:** إكمال Native routes وWeb route parity ثم shared authenticated data workflow مع RLS/IDOR/reconnect/idempotency tests.
+5. **P0:** reconciliation لتاريخ migrations ومراجعة 546 approval flags ومصدر migration غير المتطابق.
+6. **P0:** signed Release pipeline وRC بعد اكتمال P0، ثم device validation من المستخدم.
+7. **P1/P2:** durable Workflow prototype، read-only MCP، browser/Chrome bridge محدود، ثم دراسة أفضل عشرة منتجات بعد اجتياز Phase 1 فقط.
+
+Phase 1 لم يجتز بوابة القبول. Phase 2 (دراسة أفضل عشرة منتجات) لم يبدأ. Phase 3 (منح AI capabilities/permissions) يظل متوقفًا حتى موافقة صريحة.
