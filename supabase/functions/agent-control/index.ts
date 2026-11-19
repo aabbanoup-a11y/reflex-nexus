@@ -26,7 +26,7 @@ const AGENT_WRITE_OWNER_COLUMN: Record<string, string> = {
 
 async function requireOwner(req: Request) {
   const url = env("SUPABASE_URL");
-  const anon = env("SUPABASE_ANON_KEY") || env("SUPABASE_PUBLISHABLE_KEY");
+  const anon = resolvePublishableKey(env);
   const serviceKey = resolveServiceRoleKey(env);
   if (!url || !anon || !serviceKey) throw new Error("SERVER_SETUP_MISSING");
   const authorization = req.headers.get("Authorization") ?? "";
