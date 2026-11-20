@@ -121,5 +121,11 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - name: Type-check agent-control
-        run: deno check --node-modules-dir=auto supabase/functions/agent-control/index.ts
+      - name: Type-check authenticated agent and chat functions
+        run: |
+          deno check --node-modules-dir=auto supabase/functions/agent-control/index.ts
+          deno check --node-modules-dir=auto supabase/functions/reflex-nexus-chat/index.ts
+      - name: Test agent permission boundaries and model routing
+        run: |
+          deno test supabase/functions/_shared/agent-permissions.test.ts
+          deno test supabase/functions/_shared/model-routing.test.ts
