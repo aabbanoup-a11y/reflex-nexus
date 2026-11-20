@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { externalWritesAllowed, isExternalWriteAction, loadFeatureFlags, resolvePublishableKey, resolveServiceRoleKey, scopeReadFilters, serviceRoleHeaders } from "../_shared/feature-policy.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -25,8 +26,8 @@ const AGENT_WRITE_OWNER_COLUMN: Record<string, string> = {
 
 async function requireOwner(req: Request) {
   const url = env("SUPABASE_URL");
-  const anon = env("SUPABASE_ANON_KEY") || env("SUPABASE_PUBLISHABLE_KEY");
-  const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
+  const anon = resolvePublishableKey(env);
+  const serviceKey = resolveServiceRoleKey(env);
   if (!url || !anon || !serviceKey) throw new Error("SERVER_SETUP_MISSING");
   const authorization = req.headers.get("Authorization") ?? "";
   if (!authorization.startsWith("Bearer ")) throw new Error("UNAUTHORIZED");
@@ -36,7 +37,7 @@ async function requireOwner(req: Request) {
   if (!userRes.ok) throw new Error("UNAUTHORIZED");
   const user = await userRes.json();
   const roleRes = await fetch(`${url}/rest/v1/user_roles?user_id=eq.${encodeURIComponent(user.id)}&role=eq.owner&select=id&limit=1`, {
-    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Accept-Profile": "public" },
+    headers: { ...serviceRoleHeaders(serviceKey), "Accept-Profile": "public" },
   });
   if (!roleRes.ok) throw new Error("OWNER_ROLE_CHECK_FAILED");
   const roles = await roleRes.json();
@@ -155,7 +156,7 @@ async function cloudflare(input: any) {
 }
 
 async function supabaseRest(action: string, input: any, auth: { url: string; user: { id: string } }) {
-  const key = env("SUPABASE_SERVICE_ROLE_KEY");
+  const key = resolveServiceRoleKey(env);
   if (!key) throw new Error("SUPABASE_ADMIN_NOT_CONFIGURED");
   if (!["supabase.read", "supabase.insert", "supabase.update", "supabase.delete"].includes(action)) {
     throw new Error("UNSUPPORTED_SUPABASE_ACTION");
@@ -164,18 +165,21 @@ async function supabaseRest(action: string, input: any, auth: { url: string; use
   if (!/^[a-z_][a-z0-9_]*$/.test(table) || !AGENT_READ_TABLES.has(table)) {
     throw new Error("TABLE_NOT_ALLOWED");
   }
+  const method = action === "supabase.read" ? "GET" : action === "supabase.insert" ? "POST" : action === "supabase.update" ? "PATCH" : "DELETE";
+  const filters = method === "GET"
+    ? scopeReadFilters(table, input.filters ?? {}, auth.user.id)
+    : input.filters ?? {};
   const query = new URLSearchParams();
-  for (const [column, value] of Object.entries(input.filters ?? {})) {
+  for (const [column, value] of Object.entries(filters)) {
     if (!/^[a-z_][a-z0-9_]*$/.test(column) || typeof value !== "string") throw new Error("INVALID_FILTER");
     query.set(column, "eq." + value);
   }
-  const method = action === "supabase.read" ? "GET" : action === "supabase.insert" ? "POST" : action === "supabase.update" ? "PATCH" : "DELETE";
   const ownerColumn = AGENT_WRITE_OWNER_COLUMN[table];
   if (method !== "GET" && !ownerColumn) throw new Error("TABLE_WRITE_NOT_ALLOWED");
   if (method === "DELETE" && input.confirmDestructive !== true) throw new Error("CONFIRM_DESTRUCTIVE_REQUIRED");
   if (["PATCH", "DELETE"].includes(method)) {
-    if (!Object.keys(input.filters ?? {}).length) throw new Error("FILTER_REQUIRED");
-    if (input.filters?.[ownerColumn] !== auth.user.id) throw new Error("OWNER_FILTER_REQUIRED");
+    if (!Object.keys(filters).length) throw new Error("FILTER_REQUIRED");
+    if (filters[ownerColumn] !== auth.user.id) throw new Error("OWNER_FILTER_REQUIRED");
   }
   const writeData: Record<string, unknown> = {};
   if (method === "POST" || method === "PATCH") {
@@ -190,8 +194,7 @@ async function supabaseRest(action: string, input: any, auth: { url: string; use
   const response = await fetch(auth.url + "/rest/v1/" + table + (query.size ? "?" + query.toString() : ""), {
     method,
     headers: {
-      apikey: key,
-      Authorization: "Bearer " + key,
+      ...serviceRoleHeaders(key),
       "Content-Type": "application/json",
       Prefer: "return=representation",
       "Accept-Profile": "public",
@@ -214,12 +217,19 @@ Deno.serve(async (req: Request) => {
     if (!input || typeof input !== "object" || Array.isArray(input)) return reply(400, { error: "INVALID_REQUEST_BODY" });
     const owner = await requireOwner(req);
     const action = String(input.action ?? "");
+    if (isExternalWriteAction(action, input)) {
+      const flags = await loadFeatureFlags({
+        supabaseUrl: owner.url,
+        serviceRoleKey: resolveServiceRoleKey(env),
+      });
+      if (!externalWritesAllowed(flags)) throw new Error("EXTERNAL_ACTIONS_DISABLED");
+    }
     let result: unknown;
     if (action === "status") {
       result = {
         github: Boolean(env("GITHUB_TOKEN")),
         cloudflare: Boolean(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")),
-        supabaseAdmin: Boolean(env("SUPABASE_SERVICE_ROLE_KEY")),
+        supabaseAdmin: Boolean(resolveServiceRoleKey(env)),
         ownerAuthenticated: true,
       };
     } else if (action.startsWith("github.")) result = await github(action, input);
@@ -229,7 +239,7 @@ Deno.serve(async (req: Request) => {
     return reply(200, { ok: true, action, result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";
-    const status = message === "UNAUTHORIZED" ? 401 : message === "FORBIDDEN" ? 403 : message === "SERVER_SETUP_MISSING" ? 503 : message.endsWith("_NOT_CONFIGURED") ? 503 : message === "CONFIRM_DESTRUCTIVE_REQUIRED" ? 409 : 400;
+    const status = message === "UNAUTHORIZED" ? 401 : message === "FORBIDDEN" || message === "EXTERNAL_ACTIONS_DISABLED" ? 403 : message === "SERVER_SETUP_MISSING" || message === "FEATURE_POLICY_UNAVAILABLE" || message.endsWith("_NOT_CONFIGURED") ? 503 : message === "CONFIRM_DESTRUCTIVE_REQUIRED" ? 409 : 400;
     return reply(status, { ok: false, error: message });
   }
 });
