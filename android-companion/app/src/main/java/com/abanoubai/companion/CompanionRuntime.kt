@@ -1,6 +1,7 @@
 package com.abanoubai.companion
 
 import android.content.Context
+import android.content.Intent
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.WebSocket
@@ -29,8 +30,6 @@ object CompanionRuntime {
     private val commandLock = Any()
 
     fun start(context: Context) {
-        if (socket != null) return
-        stopped = false
         val prefs = context.getSharedPreferences("companion", Context.MODE_PRIVATE)
         val deviceId = prefs.getString("device_id", null) ?: return
         val accessToken = prefs.getString("access_token", null) ?: return
@@ -40,6 +39,15 @@ object CompanionRuntime {
             android.util.Log.w("AbanoubAICompanion", "Cloud connection disabled: Supabase publishable key is not configured")
             return
         }
+        if (!SupabaseSessionPolicy.matchesProject(accessToken, url)) {
+            android.util.Log.e("AbanoubAICompanion", "Cloud connection paused: session issuer does not match the configured Supabase project")
+            stop(context)
+            prefs.edit().remove("access_token").remove("refresh_token").apply()
+            context.stopService(Intent(context, CompanionForegroundService::class.java))
+            return
+        }
+        if (socket != null) return
+        stopped = false
         val wsUrl = url.replace("https://", "wss://") + "/realtime/v1/websocket?apikey=$key&vsn=1.0.0"
         val request = Request.Builder().url(wsUrl).build()
         socket = http.newWebSocket(request, object : WebSocketListener() {
