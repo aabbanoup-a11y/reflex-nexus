@@ -65,11 +65,14 @@ jobs:
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-      - name: Build installable debug APK
+      - name: Run Android lint and unit tests
         working-directory: android-companion
         run: |
           chmod +x ./gradlew
-          ./gradlew --no-daemon --stacktrace assembleDebug
+          ./gradlew --no-daemon --stacktrace lintDebug testDebugUnitTest
+      - name: Build installable debug APK
+        working-directory: android-companion
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
@@ -121,5 +124,11 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - name: Type-check agent-control
-        run: deno check --node-modules-dir=auto supabase/functions/agent-control/index.ts
+      - name: Type-check authenticated agent and chat functions
+        run: |
+          deno check --node-modules-dir=auto supabase/functions/agent-control/index.ts
+          deno check --node-modules-dir=auto supabase/functions/reflex-nexus-chat/index.ts
+      - name: Test agent permission boundaries and model routing
+        run: |
+          deno test supabase/functions/_shared/agent-permissions.test.ts
+          deno test supabase/functions/_shared/model-routing.test.ts
