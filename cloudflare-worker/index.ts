@@ -1,3 +1,5 @@
+import { readAgentStatus } from "./agent-status.mjs";
+
 type AiBinding = { run: (model: string, input: Record<string, unknown>) => Promise<unknown> };
 export interface Env {
   SUPABASE_URL: string;
@@ -10,10 +12,28 @@ export interface Env {
 export default {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
+    if (url.pathname === "/agent/status") {
+      if (request.method !== "GET") {
+        return Response.json({ error: "METHOD_NOT_ALLOWED" }, { status: 405 });
+      }
+      return runAgentStatus(request, env);
+    }
     if (url.pathname === "/ai/chat" && request.method === "POST") return runAiChat(request, env);
     return new Response("AbanoubAi cloud gateway is ready", { status: 200 });
   },
 };
+
+async function runAgentStatus(request: Request, env: Env) {
+  const result = await readAgentStatus({
+    supabaseUrl: env.SUPABASE_URL,
+    publishableKey: env.SUPABASE_PUBLISHABLE_KEY,
+    authorization: request.headers.get("authorization") ?? "",
+  });
+  return Response.json(result.body, {
+    status: result.status,
+    headers: { "Cache-Control": "no-store", Vary: "Authorization" },
+  });
+}
 
 async function runAiChat(request: Request, env: Env) {
   if (!(await isAuthorized(request, env))) return Response.json({ error: "Unauthorized" }, { status: 401 });

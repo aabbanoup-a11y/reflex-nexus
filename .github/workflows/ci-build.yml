@@ -30,6 +30,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Read-only agent status tests
+        run: npm run test:agent-status
       - name: Companion policy tests
         run: npm run test:companion
       - name: Offline planner tests
