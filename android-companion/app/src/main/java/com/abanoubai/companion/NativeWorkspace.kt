@@ -83,10 +83,9 @@ private val destinations = listOf(
     WorkspaceDestination("الإعدادات", "النظام", "⚙")
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 data class ChatTurn(val role: String, val content: String)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NativeWorkspaceScreen(
     initialAuthenticated: Boolean,
