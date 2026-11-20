@@ -82,25 +82,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "منصة إدارة الموظفين" },
-      { name: "description", content: "دليل الموظفين ومساعد المهام الذكي" },
-      { name: "theme-color", content: "#171717" },
-      { property: "og:site_name", content: "منصة إدارة الموظفين" },
+      { title: "AbanoubAI — مساحة العمل الشخصية" },
+      { name: "description", content: "نظام الذكاء والتنفيذ الشخصي." },
+      { name: "theme-color", content: "#0D0D10" },
+      { property: "og:site_name", content: "AbanoubAI" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
+      { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/abanoubai-mark.svg", type: "image/svg+xml" },
       { rel: "manifest", href: "/manifest.json" },
     ],
   }),
@@ -112,7 +109,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" className="dark">
       <head>
         <HeadContent />
       </head>
@@ -128,11 +125,27 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
   useAndroidAutoPair();
+
   useEffect(() => {
-    const inIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
-    const preview = location.hostname.includes("id-preview--") || location.hostname.includes("lovableproject.com") || location.hostname === "localhost";
+    const inIframe = (() => {
+      try {
+        return window.self !== window.top;
+      } catch {
+        return true;
+      }
+    })();
+    const preview =
+      location.hostname.includes("id-preview--") ||
+      location.hostname.includes("lovableproject.com") ||
+      location.hostname === "localhost";
+
     if (!("serviceWorker" in navigator)) return;
-    if (inIframe || preview) { void navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())); return; }
+    if (inIframe || preview) {
+      void navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => registration.unregister());
+      });
+      return;
+    }
     void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
   }, []);
 
@@ -147,9 +160,8 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen lg:pl-[272px]">
+      <div className="min-h-screen lg:pr-[288px]">
         <ChatSidebar />
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </div>
       <Toaster position="top-center" richColors />

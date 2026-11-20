@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AbanoubAI A mark">
+  <defs>
+    <linearGradient id="gold" x1="88" y1="42" x2="420" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7DEA0"/>
+      <stop offset=".42" stop-color="#D6A84C"/>
+      <stop offset="1" stop-color="#8F6427"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="160" y1="95" x2="350" y2="410" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF1C7" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#FFF1C7" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="#0D0D10"/>
+  <rect x="8" y="8" width="496" height="496" rx="108" fill="none" stroke="#D6A84C" stroke-opacity=".22" stroke-width="4"/>
+  <path d="M256 76 438 421h-77l-105-209-105 209H74L256 76Z" fill="url(#gold)"/>
+  <path d="m256 76 92 175-42 8-50-98-50 98-42-8 92-175Z" fill="url(#shine)" opacity=".22"/>
+  <path d="M174 314h164l-31 59H205l-31-59Z" fill="#0D0D10"/>
+  <path d="M206 310h100" stroke="#F7DEA0" stroke-linecap="round" stroke-width="7" opacity=".8"/>
+</svg>

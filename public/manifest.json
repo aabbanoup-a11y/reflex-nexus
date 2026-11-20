@@ -1,14 +1,40 @@
 {
-  "name": "AbanoubAI Reflex Nexus",
+  "id": "/",
+  "name": "AbanoubAI — نظام الذكاء والتنفيذ الشخصي",
   "short_name": "AbanoubAI",
-  "description": "مساعد محلي أولًا مع تشغيل سحابي عند توفر الإنترنت",
+  "description": "مساحة شخصية لفهم الأهداف والتخطيط والتنفيذ ومراجعة النتائج.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#171717",
-  "theme_color": "#171717",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#0D0D10",
+  "theme_color": "#0D0D10",
   "lang": "ar",
   "dir": "rtl",
   "icons": [
-    { "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon" }
+    {
+      "src": "/abanoubai-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/abanoubai-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/abanoubai-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/abanoubai-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
   ]
 }
