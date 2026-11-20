@@ -319,3 +319,78 @@
 7. **P1/P2:** durable Workflow prototype، read-only MCP، browser/Chrome bridge محدود، ثم دراسة أفضل عشرة منتجات بعد اجتياز Phase 1 فقط.
 
 Phase 1 لم يجتز بوابة القبول. Phase 2 (دراسة أفضل عشرة منتجات) لم يبدأ. Phase 3 (منح AI capabilities/permissions) يظل متوقفًا حتى موافقة صريحة.
+
+
+---
+
+## سجل التنفيذ اليومي — 2026-11-20
+
+### مقارنة موثقة مع تشغيل 2026-11-19
+
+- تحسن main من 7dc6eb0acd9185c0d055716aa190a6287eb7b453 إلى 892304c46e7f6e85af3795428a97c1419efdc405 بعد دمج PR #31 في 20 نوفمبر. أصبح Web Home/Workspace وSidebar والهوية السوداء/الذهبية وA mark في main. هذا لا يعني أن Android أو shared data أصبحا مكتملين.
+- PR #35 تم تحديثه دون إنشاء PR مكرر: أُضيف merge commit b72176bf6df1b51b9680c8a7a3ec8dad536978b0 على فرع fix/server-side-feature-gates-20261118، بوالدَي commit هما main الحالي ورأس PR السابق. المقارنة أصبحت ahead 22 / behind 0، والـdiff ما زال محصورًا في سبعة ملفات الأمن/Edge Functions/CI. PR ما زال Draft وغير منشور.
+- CI الجديد [44792989800](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/44792989800) نجح في Web checks/build، Android Debug APK، وEdge Function type-check واختبارات policy gates. Artifact APK: [تنزيل Debug APK ZIP](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/44792989800) — artifact ID 14657257788، الحجم 5,848,447 bytes، مرتبط بالـcommit أعلاه وينتهي في 2026-12-04. هذا Debug build فقط، وليس Signed RC أو اختبار جهاز.
+- PR #31 أصبح Closed/Merged. PR #32 ما زال Draft ومتأخرًا عن main باثنين من commits وموسومًا غير قابل للدمج حاليًا؛ PR #19 ما زال Draft ومتأخرًا/متباعدًا بشدة. لا تدمج أيًا منهما قبل reconciliation وفحص diff.
+- PR #38 جديد ومبني على main، لكنه لا يحقق بوابة الأمان: reflex-nexus-chat لا يفحص emergency_kill_switch أو enable_ai_routing قبل استدعاء النموذج، وagent-control لا يفرض enable_external_actions على الكتابات. كما يضيف أذونات Android واسعة دون إثبات حاجة P0. CI فشل في bounded-history test وAndroid lint binary incompatibility. أُضيف تعليق مراجعة يطلب إبقاءه Draft وإعادة استخدام policy module في PR #35. لا تعتمد أي كود أو صلاحيات من PR #38.
+- لا توجد تغييرات على Supabase أو Cloudflare أو إعدادات الإنتاج. لم يتم deploy أو merge لـPR #35.
+
+### Supabase / Cloudflare / الأمن
+
+- أعيد فحص migrations: 44 migration مسجلة؛ آخرها 20261113143847_lock_webauthn_challenges_table. لم تُطبّق migrations ولم تُعد أي DDL.
+- Edge Functions المنشورة ما زالت agent-control v5 وreflex-nexus-chat v3، وكلتاهما verify_jwt=true. المصدر المنشور ما زال بلا feature gates. القيم الحالية بقيت emergency_kill_switch=true وenable_ai_routing=false وenable_external_actions=false.
+- Security advisors: 14 authenticated SECURITY DEFINER warnings، وتحذير leaked-password protection واحد، وINFO واحد لـwebauthn_challenges بلا client policies. Performance: 103 auth RLS initplan، 44 unindexed foreign keys، 19 unused indexes (INFO)، و13 multiple permissive policies. Health: لا lints. لا mass edits.
+- command_catalog: 546/546 صفًا ما زالت requires_approval=false. هذا blocker governance مستقل؛ لم أغير البيانات.
+- Cloudflare inventory أُعيد قراءته: Worker واحد abanoupai-local-first-scheduler، و0 Workflows، و0 Queues. فحص المصدر المنشور أكد غياب scheduled() وغياب Workflow/Queue bindings؛ لا يوجد durable runtime مثبت.
+
+### Observability — آخر 24 ساعة
+
+النافذة الدقيقة: 2026-11-19T18:24:00Z إلى 2026-11-20T18:24:00Z.
+
+- الاستعلام التجميعي أعاد 81 حدثًا: 72 pgbouncer_logs و9 postgres_logs، ولم يُرجع مصدر Edge في هذه النافذة.
+- لم تتوفر أعمدة موثوقة في هذا الاستعلام لحساب HTTP status/error rate أو p50/p95؛ هذه المقاييس غير مقاسة. لا أستنتج نجاح الطلبات أو فشلها من أعداد سجلات الخدمات.
+
+### استخبارات السوق — اكتشافات 20 نوفمبر
+
+- [OpenAI ChatGPT release notes](https://help.openai.com/en/articles/6825453-chatgpt-release-notes) — 18 نوفمبر: Live Dictation عالميًا على Android والويب، مع عرض النص أثناء الكلام وإزالة حد التسجيل السابق. القرار: تجربة مستقبلية لإدخال صوت عربي قابل للتصحيح قبل الإرسال؛ لا يوجد benchmark للهجة المصرية بعد.
+- [Google Gemini 4 Neon](https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-neon/) — 18 نوفمبر: Google تعلن سياق 1M وتسعير API قدره $3/M input و$15/M output. أرقام الأداء والـleaderboards ادعاءات مورد حتى تُختبر على golden tasks لدينا. القرار: أضفه لقائمة benchmark فقط؛ لا اعتماد ولا تغيير provider افتراضي.
+- [Perplexity Teammates](https://www.perplexity.ai/hub/blog/teammates-are-agents-for-complex-ongoing-work) — إطلاق web-first لمشتركين Max؛ يحفظ أهداف المشروع وسجل المهام والملفات بين التشغيلات، وينسق Computer sessions وteammates مع مراجعة المستخدم، وبيئات منفصلة وصلاحيات Computer الحالية. القرار: تبنّي نمط workflow فقط بعد الاختبار؛ لا نضيف تكاملًا الآن.
+- [Mistral release notes](https://docs.mistral.ai/resources/release-notes) — 5 نوفمبر Managed Agents في Public Preview: تشغيل لساعات/أيام، استئناف من آخر خطوة مكتملة، approval ثم resume، وtraces model/tool. الميزة قوية لكنها قد ترفع lock-in لأن Mistral يخزن session ويدير بيئة التنفيذ. القرار: مقارنة benchmark مع Cloudflare Workflows؛ لا تبديل للبنية قبل مقارنة التكلفة والخصوصية وقابلية النقل.
+- [Cursor release notes](https://prod.cursor.com/docs/release-notes) — 17 نوفمبر: تحسين عزل sandbox، حماية بيانات المفاتيح، إيقاف الوكلاء عند إبطال مفاتيح الحساب، وتحسينات browser/computer-use. الدرس: credential revocation وsandbox boundaries يجب أن تكون runtime controls لا مجرد تعليمات للنموذج.
+- [Android AppFunctions release notes](https://developer.android.com/jetpack/androidx/releases/appfunctions) — أحدث نسخة Beta 1.0.0-beta01 بتاريخ 21 أكتوبر، مع واجهات تجريبية أخرى؛ لم تصبح أساسًا مضمونًا للتوافق العام. بالمقابل [Compose Material 3 1.5.0](https://developer.android.com/jetpack/androidx/releases/compose-material3) أصبح Stable بتاريخ 18 نوفمبر. القرار: راجع توافق Compose shell مع stable Material 3 قبل الترقية، وأبقِ AppFunctions خلف تجربة منفصلة وعلى جهاز مدعوم فقط.
+- [OWASP GenAI Security Project — 2026 Top 10 and Agent Control Standard](https://genai.owasp.org/2026/09/01/owasp-genai-security-project-unveils-2026-top-10-for-llm-applications-new-agent-control-standard-and-sponsors-as-community-tops-30000-members/) — إصدار 2026 يضيف Agent Control Standard. القرار: استخدمه كقائمة تحقق runtime للصلاحيات والهوية والتدقيق؛ لا تعتمد معيارًا دون mapping إلى controls واختبارات فعلية.
+
+### التنبؤات — سجل 30/90/180 يومًا و1–2 سنة
+
+- 30 يومًا، ثقة متوسطة: ستزداد عروض managed agents التي تجمع durable execution وapproval/resume وtraces. المؤشرات: Perplexity Teammates وMistral Managed Agents وChatGPT Dots. البديل: قد تبقى هذه القدرات مقيدة بالاشتراك أو enterprise. الاستعداد: احتفظ بواجهات job/event/checkpoint محايدة للمورد. Trigger: API مستقرة موثقة وpricing واضح وتجربة تعافٍ قابلة للتكرار.
+- 90 يومًا، ثقة منخفضة–متوسطة: AppFunctions قد تقترب من Stable لكن دعمها الفعلي سيظل مرتبطًا بإصدار Android ومساعد النظام وسياسات الجهاز. الاستعداد: adapter interface فقط، دون permission broadening. Trigger: stable 1.0 + توثيق رسمي للتوزيع + نجاح على جهاز المستخدم.
+- 180 يومًا، ثقة منخفضة: سيزداد ضغط المنافسة على تكلفة inference ووقت الاستجابة، لكن لا يوجد دليل كافٍ هنا لتوقع مقدار الانخفاض. الاستعداد: قياس cost-per-successful-task وprovider-neutral routing قبل اختيار مزود.
+- 1–2 سنة، ثقة متوسطة: تتقارب واجهات المساعدين مع قدرات التطبيقات/النظام، وتزداد أهمية app-owned typed capabilities والـpermission provenance. السيناريو الأساسي: تكامل تدريجي؛ المتسارع: AppFunctions/MCP/A2A أكثر انتشارًا؛ السلبي: قيود Android وارتفاع lock-in. القرار المتين في الحالات الثلاث: وظائف ضيقة ومملوكة للتطبيق، consent واضح، وتدقيق وundo.
+
+### Scorecard — 20 نوفمبر
+
+| البعد | الحالة المقاسة | مقارنة 19 نوفمبر |
+|---|---|---|
+| Product capability | Web Home/Sidebar أصبحا في main بعد دمج #31؛ لا shared vertical slice | تحسن Web shell فقط |
+| Task success | غير مقاس | لا تغيير |
+| Tool correctness | 237-line feature-policy tests + Deno typecheck ناجحة في PR #35 | تحسن: branch rebased وCI أخضر |
+| Android integration | Compose shell في PR #32 Draft؛ لا Auth/data sync | لا تغيير |
+| UX / Accessibility | RTL/LTR وTalkBack وcontrast وsmall-screen لم تُقَس end-to-end | غير مقاس |
+| Latency / Cost | p50/p95 وcost per successful task غير مقاسة | غير مقاس |
+| Reliability / Recovery | لا Workflows/Queues أو crash-resume proof | لا تغيير |
+| Privacy / Security | PR #35 يحتوي gates واختبارات ناجحة لكنه غير deployed؛ المصدر المنشور ما زال بلا gates | تحسن في branch evidence فقط، لا تحسن إنتاجي |
+| Model quality | لا benchmark عربي/إنجليزي قابل للمقارنة | غير مقاس |
+| Test coverage | CI كامل لـPR #35 بعد rebase ناجح؛ لا live IDOR أو Android device tests | تحسن في CI |
+| Release readiness | لا Signed RC؛ Auth issuer وshared data وdevice validation غير مكتملة | غير جاهز |
+
+### Backlog مرتب بعد هذه الدورة
+
+1. P0 — مطلوب من المستخدم: تأكيد Web Supabase Project URL/host أو Project ref غير السري من Lovable Integration Settings. لا Android Auth قبل إثبات issuer. لا ترسل مفاتيح أو أسرار.
+2. P0 — PR #35: مراجعة مستقلة للكود الأمني ثم إبقاؤه Draft حتى اعتماد release؛ CI ناجح لكنه غير deployed. لا تنشر Edge Functions قبل review واختبارات cross-user.
+3. P0 — Android: reconcile PR #32 مع main دون فقد Compose/adaptive drawer أو A-only identity؛ إكمال route parity والـnative loading/error/offline states.
+4. P0 — Shared data: اختيار جدول واحد user-owned وإكمال authenticated read/create/update على Web وAndroid، ثم cross-user/RLS/refresh/reconnect/idempotency tests.
+5. P0 — Governance: تدقيق 546 approval flags وmigration-source mismatch و14 SECURITY DEFINER warnings؛ لا mass updates أو reapply DDL.
+6. P1: activity/execution history، memory controls، consented reminders، صوت عربي مع correction UI.
+7. P2: durable runtime prototype ومقارنته بـMistral Managed Agents، read-only MCP، ثم دراسة أفضل 10 منتجات فقط بعد اجتياز Phase 1.
+8. Phase 3: ممنوعة حاليًا؛ لا AI routing ولا external actions ولا broad device permissions ولا skill activation قبل موافقة صريحة.
+
+حالة المراحل: Phase 1 لم يجتز بوابة القبول؛ Phase 2 لم يبدأ؛ Phase 3 متوقف. PR #35 وPR #38 لا يغيران إعدادات الإنتاج. لا يوجد signed release أو device validation.
