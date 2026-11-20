@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { modelRoute, normalizeHistory } from "../_shared/model-routing.ts";
+import { resolvePublishableKey } from "../_shared/agent-permissions.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -15,8 +16,7 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "POST_REQUIRED" });
 
   const url = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
-  const publishable = Deno.env.get("SUPABASE_PUBLISHABLE_KEY")?.trim() ||
-    Deno.env.get("SUPABASE_ANON_KEY")?.trim() || "";
+  const publishable = resolvePublishableKey((name) => Deno.env.get(name));
   const providerKey = Deno.env.get("LOVABLE_API_KEY")?.trim() ?? "";
   const authorization = req.headers.get("Authorization") ?? "";
 
