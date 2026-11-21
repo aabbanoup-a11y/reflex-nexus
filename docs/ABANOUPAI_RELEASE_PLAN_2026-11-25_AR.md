@@ -496,3 +496,12 @@ Phase 1 لم يجتز بوابة القبول. Phase 2 (دراسة أفضل عش
 9. **Phase 3 متوقف:** لا AI routing، لا external actions، لا broad device permissions، لا generated-skill activation حتى موافقة صريحة على خطة صلاحيات محددة.
 
 **حالة المراحل:** Phase 1 لم يجتز القبول؛ Phase 2 لم يبدأ؛ Phase 3 متوقف. لا merge ولا production deployment في هذه الدورة.
+
+
+### Security review addendum — 2026-11-21
+
+- تمت مطابقة owner-column map في PR #35 مع schema الفعلي للجداول الأحد عشر: الأعمدة user_id/owner_id/created_by موجودة، وكلها UUID. هذا يثبت صحة أسماء الأعمدة فقط؛ لا يثبت IDOR isolation end-to-end.
+- اكتُشف اختلاف مهم في RLS: سياسة public.goals_read تستخدم qual=true لكل authenticated، بينما جدول goals يحتوي owner_id قابلًا لأن يكون NULL. عدد صفوف goals حاليًا صفر، لذلك لم تُثبت قراءة بيانات مستخدم آخر في هذه الدورة؛ لكن عند إدخال بيانات شخصية ستسمح السياسة الحالية بقراءة كل الصفوف لأي مستخدم authenticated ما لم تكن هذه مشاركة عامة مقصودة.
+- جدول goals موجود ضمن service-role owner filter في PR #35، ولذلك قراءات agent-control المقيدة بالـowner لا تلغي الخطر في استدعاءات PostgREST المباشرة التي تعتمد على RLS. يجب فحص مستهلكي goals وتحديد هل السجلات global templates أم user-owned قبل تعديل السياسة.
+- سياسات tasks وknowledge_docs وmemory_entries تستخدم أدوار owner/manager/reviewer، بينما دوال has_role/can_write/can_review الحالية تتحقق من auth.uid() = _user_id قبل فحص الدور. هذا يقلل خطر تمرير user_id لشخص آخر داخل هذه الدوال، لكنه لا يغني عن اختبار العزل بين حسابين.
+- لا تعديل على RLS أو SECURITY DEFINER grants أو البيانات في هذه الدورة. يُضاف فحص goals_read إلى P0 security review، ويُطلب اختبار second-user بعد تحديد دلالة مشاركة الأهداف.
