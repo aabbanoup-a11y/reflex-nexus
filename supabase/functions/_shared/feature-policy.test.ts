@@ -67,6 +67,35 @@ Deno.test("missing or malformed flags fail closed", () => {
   assertEqual(externalWritesAllowed(malformed), false);
 });
 
+Deno.test("duplicate feature settings fail closed independently", () => {
+  const duplicateKillSwitch = parseFeatureFlags([
+    { key: "emergency_kill_switch", value: "false" },
+    { key: "emergency_kill_switch", value: "false" },
+    { key: "enable_ai_routing", value: "true" },
+    { key: "enable_external_actions", value: "true" },
+  ]);
+  assertEqual(duplicateKillSwitch.emergencyKillSwitch, true);
+  assertEqual(aiRoutingAllowed(duplicateKillSwitch), false);
+  assertEqual(externalWritesAllowed(duplicateKillSwitch), false);
+
+  const duplicateAiFlag = parseFeatureFlags([
+    { key: "emergency_kill_switch", value: "false" },
+    { key: "enable_ai_routing", value: "true" },
+    { key: "enable_ai_routing", value: "true" },
+    { key: "enable_external_actions", value: "true" },
+  ]);
+  assertEqual(duplicateAiFlag.aiRoutingEnabled, false);
+  assertEqual(aiRoutingAllowed(duplicateAiFlag), false);
+  assertEqual(externalWritesAllowed(duplicateAiFlag), true);
+
+  const duplicateExternalFlag = parseFeatureFlags([
+    ...enabledRows,
+    { key: "enable_external_actions", value: "true" },
+  ]);
+  assertEqual(duplicateExternalFlag.externalActionsEnabled, false);
+  assertEqual(externalWritesAllowed(duplicateExternalFlag), false);
+});
+
 Deno.test("both kill switch and capability flag must permit execution", () => {
   const enabled = parseFeatureFlags(enabledRows);
   assertEqual(aiRoutingAllowed(enabled), true);
