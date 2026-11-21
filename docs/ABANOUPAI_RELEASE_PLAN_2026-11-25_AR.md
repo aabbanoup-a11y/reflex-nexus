@@ -394,3 +394,103 @@ Phase 1 لم يجتز بوابة القبول. Phase 2 (دراسة أفضل عش
 8. Phase 3: ممنوعة حاليًا؛ لا AI routing ولا external actions ولا broad device permissions ولا skill activation قبل موافقة صريحة.
 
 حالة المراحل: Phase 1 لم يجتز بوابة القبول؛ Phase 2 لم يبدأ؛ Phase 3 متوقف. PR #35 وPR #38 لا يغيران إعدادات الإنتاج. لا يوجد signed release أو device validation.
+
+
+---
+
+## سجل التنفيذ اليومي — 2026-11-21
+
+### مقارنة تشغيل 21 نوفمبر بتقرير 20 نوفمبر
+
+- بقي main على commit 892304c46e7f6e85af3795428a97c1419efdc405؛ لا يوجد تحسن إنتاجي جديد اليوم.
+- تحسن دليل الاختبار داخل PR #35 فقط: أُضيف اختبار يثبت أن تكرار أي سجل من سجلات feature flags يؤدي إلى fallback مغلق لكل flag على حدة. Commit: 80f91a705d2f6ffc92748d81ccd109a79a230ffe.
+- CI run [44936950958](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/44936950958) اكتمل بنجاح: Web checks/build، Android Debug APK، وSupabase Edge Function type-check مع feature-policy tests. لم يحدث merge أو deploy.
+- Artifact مرتبط بنفس التشغيل: abanoubai-companion-debug-apk، ID 14719654806، الحجم 5,848,443 bytes، انتهاء الاحتفاظ 2026-12-05. Debug APK فقط؛ ليس Signed Release ولا دليل اختبار على جهاز المستخدم.
+- PR #35 ما زال Draft. لم تُنشر نسخ Edge Function التي تحتوي على feature gates. لا تستخدم مسارات الكتابة أو النماذج المنشورة اعتمادًا على هذه التغييرات قبل المراجعة والنشر الآمن.
+
+### GitHub / CI — الحالة التي أعيد فحصها
+
+- PR #31 مدمج، وWeb Home/Workspace والـSidebar في main.
+- PR #35: رأسه الحالي 80f91a7؛ CI ناجح، لكنه غير مدمج وغير منشور.
+- PR #38: Draft؛ CI run [44702007560](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/44702007560) فشل في Android lint/unit tests وفي agent-permission/model-routing tests. لا يُقبل أو يُدمج بصيغته الحالية؛ مسارات الكتابة والنماذج لا تلتزم بعد ببوابات PR #35، كما أن Android permissions تحتاج تضييقًا ومبررًا لكل صلاحية.
+- PR #37: CI run [44421325645](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/44421325645) ناجح، لكنه Draft وغير قابل للدمج وفق GitHub. اتجاهه View/legacy، وألوانه violet/cyan وحرفه lowercase a؛ لذلك يتعارض مع قرار Compose والهوية المعتمدة black/gold وA، ولا يحل محل PR #32.
+- PR #32: Draft على رأس a75adfd4d53fa1a65ce345fbbd82ab085e71427f مع CI سابق ناجح، لكنه لا يزال يحتاج reconciliation مع main وإكمال الشاشات والـroute parity.
+- PR #34 و#33 و#29 و#18 لديها تشغيلات CI سابقة ناجحة على رؤوسها المسجلة، لكنها لا تثبت تكاملًا حيًا أو اكتمال P0. PR #19 لا يزال فرع الخطة canonical لكنه Draft ومتباعد وغير قابل للدمج؛ لم يتم إنشاء PR خطة مكرر.
+- لم يتم merge أو deploy لأي تغيير في دورة 21 نوفمبر.
+
+### Supabase — إعادة التحقق
+
+- تاريخ قاعدة البيانات يعرض 44 migration؛ آخر migration مسجل هو 20261113143847_lock_webauthn_challenges_table.
+- الوظائف المنشورة: agent-control v5 وreflex-nexus-chat v3، وكلتاهما verify_jwt=true.
+- فحص المصدر المنشور أكد أن agent-control v5 لا يستورد feature-policy وما زالت به مسارات GitHub write وservice-role reads؛ وreflex-nexus-chat v3 لا يفحص emergency_kill_switch أو enable_ai_routing قبل استدعاء مزود النماذج.
+- القيم الحالية لم تتغير: emergency_kill_switch=true، وenable_ai_routing=false، وenable_external_actions=false. لم أستدعِ مسارات الكتابة أو النماذج، ولم أغير الإعدادات أو أنشر الوظائف.
+- Security advisors: 14 تحذير SECURITY DEFINER callable by authenticated، وتحذير واحد لتعطيل leaked-password protection، وINFO واحد لجدول webauthn_challenges مع RLS بلا client policies. لا تُلغَ صلاحيات جماعيًا؛ راجع كل دالة وسببها.
+- Performance advisors: 103 auth RLS initplan warnings، و44 unindexed foreign keys، و19 unused indexes (INFO)، و13 multiple permissive policies. Health advisor: لا lints.
+- جدول command_catalog ما زال 546/546 صفًا بقيمة requires_approval=false. كما يوجد عدم تطابق بين migration history (20261112180104_disable_command_catalog_approval_gates) وبين ملف main الحالي 20261112190000_autonomous_command_execution.sql الذي يعطّل الموافقات لجميع الصفوف. هذا blocker حوكمة/تاريخ migration؛ لا تعد تطبيق SQL ولا تغيّر الصفوف قبل reconciliation ومراجعة المستهلكين.
+- لم تُجرَ أي DDL أو تغييرات RLS أو تغييرات إعدادات Auth.
+
+### Cloudflare — إعادة التحقق
+
+- حساب Cloudflare المتصل يعرض Worker واحدًا: abanoupai-local-first-scheduler.
+- عدد Workflows المنشورة: صفر. عدد Queues المنشورة: صفر.
+- قراءة محتوى Worker تؤكد وجود مسار /ai/chat وعدم وجود scheduled() أو Workflow/Queue bindings. لذلك لا يوجد durable continuous runtime مثبت.
+- لم يتم إنشاء موارد أو تغيير billing/plan أو نشر أي كود.
+
+### Auth issuer وLovable
+
+- مشروع Lovable الوحيد Omni Control Hub حالته ready، وآخر commit يطابق main أعلاه. هذا لا يكشف environment variables الفعلية للنشر.
+- لم أتمكن من إثبات Supabase Auth issuer الخاص بالـWeb من بيانات Lovable المتاحة. عنوان النشر لم يكن قابلًا للفحص عبر أداة الويب في هذه الدورة، ولا أستنتج منه status code.
+- Android Auth يظل محظورًا حتى يقدم المستخدم Project URL/host أو project ref غير السري من إعدادات Supabase integration في مشروع Lovable. لا تطلب أو تنقل أي API key أو secret.
+
+### Observability — آخر 24 ساعة
+
+النافذة الدقيقة: 2026-11-20T18:37:42Z إلى 2026-11-21T18:37:42Z.
+
+- 79 log events إجمالًا: 72 pgbouncer_logs و7 postgres_logs.
+- تجميع المسار أظهر / فقط للخدمتين؛ لم تظهر سجلات Edge في هذه النافذة.
+- Postgres: ستة أحداث بمستوى LOG وSQLSTATE 00000، وحدث واحد بمستوى LOG وSQLSTATE 08006. لا يثبت هذا الحدث وحده فشل طلب.
+- لا توجد حقول HTTP status أو request latency في السجلات المتاحة لهذه النافذة؛ error rate وp50/p95 غير مقاسة. لم تُقرأ request bodies أو JWTs أو عناوين IP أو محتويات المستخدم.
+
+### استخبارات السوق والتوقعات
+
+- [OpenAI ChatGPT release notes — 20 Nov 2026](https://help.openai.com/en/articles/6825453-chatgpt-release-notes): ChatGPT Space يضيف صفحات وعروضًا تفاعلية قابلة للتحديث من التطبيقات المتصلة، مع مشاركة وتعاون. الإطلاق موجّه إلى مستخدمي Plus بعمر 18+؛ لا يُعد خيارًا متاحًا لهذا المستخدم ولا نطلب منه الوصول إليه. الدرس المعماري: artifacts دائمة قابلة للتحديث، لكن التعاون والربط الخارجي يحتاجان صلاحيات واضحة.
+- [Google Gemini API Tool Retrieval — 19 Nov 2026](https://blog.google/innovation-and-ai/technology/developers-tools/gemini-api-tool-retrieval/): Preview في Interactions API؛ يؤجل تحميل parameter schemas للأدوات حتى الحاجة مع إبقاء الأسماء والأوصاف. هذه إشارة تقنية مهمة لتقليل سياق الأدوات، لكنها vendor-specific وPreview. القرار: دراسة retrieval محايد للمزود بعد Phase 1، وليس اعتماد Gemini الآن.
+- [Google Gemini computer use on Mac — 19 Nov 2026](https://blog.google/innovation-and-ai/products/gemini-app/computer-use-mac/): استخدام تطبيقات Mac والملفات والويب داخل نافذة معزولة مع اختيار التطبيقات ومشاهدة التنفيذ والموافقة؛ الإطلاق بالإنجليزية في الولايات المتحدة ويتطلب Apple Silicon وmacOS Sequoia وحسابًا شخصيًا 18+. لا يقدّم مسارًا مباشرًا إلى Android Chrome.
+- [Anthropic News](https://www.anthropic.com/news) لم يظهر إعلان منتج أحدث من 9 نوفمبر في المراجعة الحالية؛ [Agent Skills donation](https://www.anthropic.com/news/skills) يظل إشارة معيارية، لا ميزة جديدة لهذا اليوم.
+- [Microsoft 365 Copilot release notes](https://learn.microsoft.com/en-us/microsoft-365/copilot/release-notes) تعرض تحديثات حتى 17 نوفمبر، ومنها Learning Agent على Windows وتوسيع مصادر بيانات بعض declarative agents. لم أجد تغييرًا جديدًا موثقًا في 20–21 نوفمبر.
+- لا توجد في هذه الدورة أدلة كافية على إطلاق جديد من Manus أو Perplexity أو مشروع Open Source صغير يغير قرارنا المعماري؛ يستمر الرصد ولا ندّعي تفوقًا أو feature parity.
+- فرصة استباقية مرشحة: tool registry محايد للمزود يختار أسماء/أوصاف الأدوات أولًا ثم يجلب schema الكامل عند الحاجة. القبول المقترح بعد Phase 1: benchmark ثابت من 50 مهمة عربية/إنجليزية و100 أداة اصطناعية؛ خفض tokens المرسلة للأدوات بنسبة 50% على الأقل مع عدم تراجع دقة اختيار الأداة بأكثر من نقطة مئوية واحدة، وعدم كشف أدوات كتابة غير مصرح بها. لا يوجد prototype أو قياس حالي.
+- توقع 30 يومًا (ثقة متوسطة): مزيد من tool retrieval وdurable artifacts. Trigger: API مستقرة أو عدة تطبيقات إنتاجية تعتمد lazy schema loading.
+- توقع 90 يومًا (ثقة منخفضة–متوسطة): زيادة الربط بين cloud agents وقدرات التطبيقات المحلية. Trigger: Android API stable وتوثيق رسمي لدعم مساعدات الطرف الثالث.
+- توقع 180 يومًا (ثقة متوسطة): تصبح cost-aware tool selection وcontext compression أهم مع توسع tool catalogs. Trigger: بيانات benchmark عامة قابلة لإعادة الإنتاج من أكثر من مزود.
+- أفق 1–2 سنة (ثقة متوسطة): وكلاء شخصية متعددة الأجهزة مع ذاكرة وأعمال قابلة للاستئناف. السيناريو السلبي يظل قيود OS وvendor lock-in؛ الأساس المتين هو typed capabilities وportable jobs وconsent provenance وverification.
+
+### Scorecard — 21 نوفمبر
+
+| البعد | الحالة | مقارنة 20 نوفمبر |
+|---|---|---|
+| Product capability | Web shell في main؛ لا Android route parity أو shared vertical slice | لا تغيير |
+| Task success | غير مقاس | غير مقاس |
+| Tool correctness | أضيف اختبار duplicate feature flags ونجح CI | تحسن دليل الاختبار فقط |
+| Android integration | Debug build في CI؛ Auth/sync/device execution غير مثبتة | لا تغيير |
+| UX/accessibility | Contrast وTalkBack وRTL/LTR وsmall-screen audit غير مقاسة | غير مقاس |
+| Latency | p50/p95 غير متاحة | غير مقاس |
+| Reliability/recovery | لا Workflows أو Queues أو resume proof | لا تغيير |
+| Privacy/security | gates في PR #35 فقط؛ الوظائف المنشورة بلا gates | لا تحسن إنتاجي |
+| Model quality/cost | لا benchmark عربي/إنجليزي أو cost/task | غير مقاس |
+| Test coverage | PR #35 CI كامل ناجح | تحسن محدود في branch tests |
+| Release readiness | لا Signed RC، Auth issuer غير مثبت، لا device validation | لا تغيير |
+
+### Backlog بعد تشغيل 21 نوفمبر
+
+1. **P0 / مطلوب من المستخدم:** تأكيد Web Supabase Project URL/host أو project ref غير السري من Lovable Integration Settings؛ هذا يثبت Auth issuer قبل Android sign-in. لا ترسل مفاتيح أو secrets.
+2. **P0 / أمني:** مراجعة مستقلة لـPR #35، خصوصًا service-role reads وwrite classifier وfeature flag failure modes، ثم قرار إصدار منفصل. لا deploy قبل review واختبارات cross-user.
+3. **P0 / Android:** reconcile PR #32 مع main، ثم إكمال Native Compose routes وA icon وdrawer وdark/light وRTL/LTR وحالات offline/error/loading. PR #37 ليس بديلًا معتمدًا.
+4. **P0 / Shared data:** vertical slice واحد user-owned على Web وAndroid مع نفس issuer، ownership/RLS، refresh، reconnect، conflict وidempotency tests.
+5. **P0 / Governance:** reconcile migration history/file mismatch وتدقيق 546 approval flags و14 SECURITY DEFINER functions؛ لا mass update ولا reapply DDL.
+6. **P0 / Release:** signed APK/AAB pipeline، commit-linked RC، known issues، ثم physical-device test من المستخدم.
+7. **P1:** Activity/execution history، memory correction/export/deletion، reminders بإذن صريح، Arabic voice transcript correction.
+8. **P2:** durable Workflow prototype، read-only MCP، browser/Chrome bridge محدود، وبعد اجتياز Phase 1 فقط تبدأ دراسة أفضل عشرة منتجات.
+9. **Phase 3 متوقف:** لا AI routing، لا external actions، لا broad device permissions، لا generated-skill activation حتى موافقة صريحة على خطة صلاحيات محددة.
+
+**حالة المراحل:** Phase 1 لم يجتز القبول؛ Phase 2 لم يبدأ؛ Phase 3 متوقف. لا merge ولا production deployment في هذه الدورة.
