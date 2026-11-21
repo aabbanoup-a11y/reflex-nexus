@@ -203,3 +203,62 @@ Scope: public product documentation and release notes only. No competitor accoun
 - **Robust across scenarios:** one verified identity, portable data, least-privilege capabilities, user-visible traces, cancellation and rollback.
 
 This is a recurring intelligence update only. It does not begin the ten-product Phase 2 study, authorize external account connections, or enable Phase 3 permissions.
+
+
+---
+
+## Market scan — 2026-11-21
+
+### Confirmed announcements and observed product changes
+
+| Product | Evidence / maturity | Capability and constraints | AbanoubAI decision |
+|---|---|---|---|
+| ChatGPT Space | [OpenAI release notes, 20 Nov 2026](https://help.openai.com/en/articles/6825453-chatgpt-release-notes); rolling rollout | Interactive pages and presentations, shared editing, automatic refresh from connected apps/tools. Current rollout is Plus and 18+; shared access requires an eligible account and public links are unavailable. | Learn from durable, updateable artifacts; do not treat Space as available to this user or copy its interface. Build an original private task/report artifact model only after Phase 1. |
+| Gemini API Tool Retrieval | [Google announcement, 19 Nov 2026](https://blog.google/innovation-and-ai/technology/developers-tools/gemini-api-tool-retrieval/); Preview in Interactions API | Defers full parameter schemas while exposing tool names/descriptions; fetches schemas on demand within a request. Vendor says this reduces token/context overhead and latency. It is a provider-specific preview, not a neutral standard. | Candidate experiment: provider-neutral lazy tool-schema retrieval. Keep tool registry typed and permission-filtered before retrieval; defer prototype until Phase 1/Phase 2 gate. |
+| Gemini computer use for Mac | [Google announcement, 19 Nov 2026](https://blog.google/innovation-and-ai/products/gemini-app/computer-use-mac/); rollout | Mac desktop automation across files/apps/web with isolated background window, live preview, app permissions and approvals. English/U.S. rollout; Apple Silicon, macOS Sequoia and 18+ personal account requirements. | Not an Android Chrome path. Learn from visible execution and narrow app permissions; do not adopt desktop automation into Android. |
+| Claude / Agent Skills | [Anthropic News](https://www.anthropic.com/news); latest relevant announcements reviewed | No new product announcement dated 20–21 Nov was verified. Agent Skills donation to the Agentic AI Foundation remains a useful interoperability signal, not a new feature this cycle. | Continue tracking the standard; no implementation or new dependency today. |
+| Microsoft 365 Copilot | [Microsoft release notes](https://learn.microsoft.com/en-us/microsoft-365/copilot/release-notes); latest reviewed update 17 Nov | Learning Agent on Windows and richer mail/people/meeting data for declarative agents. Enterprise identity, licensing and source authorization remain material dependencies. | Learn from permission-respecting enterprise retrieval; defer Microsoft-specific integration. |
+| Manus / Perplexity / smaller open-source entrants | Official release/changelog scan for the current window | No newly verified 20–21 Nov change was found that alters the existing architecture choice. This is not evidence that no changes exist; coverage is bounded by accessible public sources. | Keep the dynamic watchlist; do not claim competitive superiority or feature parity. |
+
+### Cross-product comparison and insight
+
+- Artifact continuity: ChatGPT Space is extending the assistant from conversation into durable, editable, connected artifacts. The value is state that remains useful after a chat ends; the limitation is rollout, account and age eligibility.
+- Tool efficiency: Gemini Tool Retrieval highlights that sending every full tool schema on every turn becomes expensive and can degrade selection as tool catalogs grow. The reusable idea is staged discovery, not dependence on a single provider's API.
+- Computer use: Google’s Mac release emphasizes a separate execution surface, app-level permission choice, visible preview, pause and approval. It is desktop-only and does not solve Android's app sandbox or permission constraints.
+- Enterprise grounding: Copilot's strength remains contextual access under source-system permissions. The transferable lesson is to preserve source ownership and authorization rather than copy broad connector catalogs.
+- AbanoubAI opportunity hypothesis: combine Arabic-first workflows with one user-owned job state shared across independent Web and native Android clients, verifiable completion evidence, and resumable execution after network loss. This combination is not proven absent from competitors; it is a differentiation hypothesis to test against real workflows.
+
+### Candidate opportunity pipeline
+
+1. **Radar:** growing use of durable artifacts, deferred tool schemas, and visible computer-use approval.
+2. **Thesis:** tool catalogs and long-running work can inflate model context and cost; users need the right capability without exposing every tool schema or granting every permission.
+3. **Prototype (after Phase 1):** synthetic provider-neutral registry with 100 typed tools, 50 Arabic/English golden tasks, staged retrieval of full schemas, and a strict permission filter before the model sees callable tools.
+4. **Validation target:** reduce tool-schema tokens by at least 50% relative to the full-catalog baseline while keeping tool-selection accuracy within 1 percentage point of baseline; zero unauthorized write tools exposed. These are proposed acceptance thresholds, not measured results.
+5. **Prepare now:** keep stable tool IDs, concise descriptions, versioned JSON schemas, ownership, capability scopes and audit metadata separate from provider adapters.
+6. **Kill criteria:** abandon or redesign if schema retrieval increases tool-selection errors by more than 1 percentage point, causes hidden tool exposure, adds more latency than it saves, or makes auditability worse.
+
+### Forecast ledger — append-only hypotheses
+
+| Horizon | Hypothesis / confidence | Supporting signals | Alternative / disconfirming evidence | Trigger to confirm or revise | Preparation |
+|---|---|---|---|---|---|
+| 30 days | More assistants will add durable, updateable artifacts and on-demand tool discovery. Medium. | Space rollout; Gemini Tool Retrieval preview. | Rollouts may remain limited or become provider-specific features without public APIs. | Stable public API or multiple production products exposing equivalent documented workflows. | Portable artifact and tool-registry contracts. |
+| 90 days | Cloud agents will increasingly expose explicit app/capability permissions and visible execution traces. Low–medium. | Gemini Mac computer-use design; existing browser/computer-use products. | OS restrictions and vendor-specific sandboxes may prevent cross-platform parity. | Stable APIs plus reproducible third-party integration on supported devices. | Narrow typed Android capabilities and trace model; no broad permissions. |
+| 180 days | Context-efficient tool selection will become a key cost/latency control for large agent systems. Medium. | Gemini Tool Retrieval addresses tool-schema overhead; growing tool catalogs. | Better context windows or provider-side caching may reduce the need for client-side retrieval. | Independent benchmarks showing repeatable cost/latency gains across providers. | Provider-neutral registry and golden-task benchmark. |
+| 1–2 years | Personal agents will combine cloud orchestration, local app capabilities and portable memory/jobs. Medium. | MCP/A2A and Android capability work; product movement toward persistent agents. | Android policy restrictions, privacy concerns and vendor lock-in may slow adoption. | Stable platform APIs, user-controlled data portability and cross-provider execution contracts. | Keep cloud jobs, on-device actions and memory behind replaceable interfaces. |
+
+### Scenario update
+
+- **Base:** hosted models and cloud orchestration remain useful; durable user-owned state, Arabic UX and verified outcomes are robust investments.
+- **Accelerated:** on-device models and Android app capabilities become practical; add opt-in adapters behind existing typed contracts.
+- **Downside:** Android restricts automation, hosted inference remains costly, or competitors bundle agents at no extra cost; retain offline planning, explicit in-app actions and replaceable providers.
+- **Robust choices:** one verified identity, least-privilege tools, portable memory/job records, user-visible traces, bounded retries, cancellation and rollback.
+
+### Adoption decisions
+
+- Build natively later: provider-neutral tool registry with schema versioning and permission metadata.
+- Controlled experiment later: lazy schema retrieval using synthetic tasks and measured token/latency/accuracy comparisons.
+- Integrate now: none.
+- Defer: broad computer use, Android AppFunctions as a required dependency, external account connectors, multi-agent execution.
+- Reject: copying proprietary UI/assets/prompts or relying on provider-only APIs as the core architecture.
+
+This is a market-intelligence update only. It does not start the ten-product Phase 2 study, grant permissions, connect external accounts, enable model routing or external actions, or authorize deployment.
