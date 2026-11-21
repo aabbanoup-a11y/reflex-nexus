@@ -1,1 +1,7 @@
 project_id = "wobfdslqlmvlatyrtgkd"
+
+[functions.agent-control]
+verify_jwt = true
+
+[functions.reflex-nexus-chat]
+verify_jwt = true
