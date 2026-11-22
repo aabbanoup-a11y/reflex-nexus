@@ -265,3 +265,41 @@ This is a recurring intelligence update only. It does not begin the ten-product 
 - Reject: copying proprietary UI/assets/prompts or relying on provider-only APIs as the core architecture.
 
 This is a market-intelligence update only. It does not start the ten-product Phase 2 study, grant permissions, connect external accounts, enable model routing or external actions, or authorize deployment.
+
+
+### Daily market update — 2026-11-22
+
+#### Confirmed product changes
+
+| Product | Evidence and maturity | What it does well | Limits / AbanoubAI decision |
+|---|---|---|---|
+| ChatGPT Space | OpenAI release notes, 20 Nov 2026: https://help.openai.com/en/articles/6825453-chatgpt-release-notes. Rolling out globally to Plus users aged 18+; interactive pages and presentations can update from connected apps/tools; web, desktop, iOS and Android. | Persistent collaborative artifacts that remain connected to source context. | Not available to this 15-year-old user under the announced age gate; plan/rollout constraints apply. **Defer** API assumptions; prepare a portable user-owned artifact contract only after Phase 1. |
+| Claude Computer Use | Anthropic release notes, 20 Nov 2026: https://support.claude.com/en/articles/12138966-release-notes. Beta for Team/Enterprise, gradual rollout; desktop apps, with web/mobile access where computer access is enabled. | Visible screen-based execution across allowed desktop apps. | Beta and organization/permission constrained. **Do not clone broad screen control**; AbanoubAI should expose narrow app-owned Android capabilities with explicit scopes and an audit trail. |
+| Gemini 4 Hydrogen / Neon | Google official announcements: https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-hydrogen/ and https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-neon/. Recent model launches positioned for agentic workflows and software/knowledge work. | Faster model iteration and task-oriented positioning. | Performance claims are vendor claims; no same-workflow Arabic/tool-use benchmark was run. **Controlled experiment later**, not an automatic router change. |
+| Manus 2.0 | Official product overview: https://manus.im/blog. Existing Cloud Computer, Automations and connector workflows remain relevant; no new verified capability change in this 24-hour scan. | Persistent cloud computer and multi-step workflow packaging. | Operational usage/plan costs and permissions need account-level verification. **Defer integration** until cost, scopes and recovery are tested. |
+
+#### Comparative insight
+
+The strongest near-term pattern is a shift from chat replies toward persistent artifacts and delegated execution. OpenAI emphasizes living collaborative pages; Anthropic is extending screen-based execution under organization controls; Google is iterating task-oriented models; Manus packages cloud execution and recurring automations. None of these announcements proves reliable cross-client state, Arabic task quality, or safe execution for AbanoubAI's workflow. No capability above was adopted or benchmarked in this cycle.
+
+#### Opportunity and ranked intelligence backlog
+
+1. **Owner-isolated shared workspace data** — impact critical; evidence high (live policy audit); effort low–medium; risk medium because migration history is drifted. Acceptance: two synthetic users cannot read, create, update, delete, or reassign each other's goals; then a real Supabase staging smoke test. Prototype is PR #39; not merged/deployed.
+2. **Arabic-first living artifacts with provenance** — impact high; evidence medium; effort medium; privacy risk manageable with user-owned storage. Acceptance: one artifact updated from a user-approved task, with source references and a visible change log, independently on Web and native Android. Defer until Phase 1.
+3. **Typed Android capability bridge** — impact high; evidence medium (Claude computer-use beta and existing Manus–OPPO direction); effort high; platform/policy risk high. Acceptance: a single explicit user-triggered reminder action on a real supported Android device, with permission education, visible result, cancellation and no broad Accessibility privilege. Defer until user/device and API support are verified.
+4. **Provider-neutral task benchmark** — impact high; evidence high that model releases are frequent, but quality/cost advantage unmeasured; effort medium. Acceptance: identical Arabic/English tool-calling tasks, with success, latency and cost per successful task measured before any routing change.
+
+#### Forecast ledger (hypotheses, not roadmaps)
+
+- **30 days — living artifacts become a more common assistant primitive.** Confidence: medium. Evidence: ChatGPT Space launch. Disconfirming signal: no documented APIs or sustained user adoption. Prepare: portable artifact/version/source contracts. Trigger: at least two providers expose documented artifact APIs or interoperable export.
+- **90 days — Android agent integrations expand through OEM/app partnerships but remain permission constrained.** Confidence: medium. Evidence: Claude computer-use beta and Manus's previously announced OPPO partnership. Disconfirming signal: platform restrictions prevent third-party action APIs. Prepare: app-owned typed capabilities, consent scopes and visible traces. Trigger: a stable Android API or verified OEM integration available to third parties.
+- **180 days — permission and execution observability become differentiators.** Confidence: medium. Evidence: OWASP agentic tool-execution and configuration-control guidance; https://cornucopia.owasp.org/edition/companion/AAI8/1.0/en and https://cornucopia.owasp.org/cards/AAI9. Disconfirming signal: platform-level controls standardize the same guarantees. Prepare: risk classes, per-tool audit and recoverable actions.
+- **1–2 years — local models may handle more private routine tasks.** Confidence: low. Disconfirming signal: device memory/latency/energy or quality gaps persist. Prepare: a replaceable local-model adapter, but do not assume local inference is cheaper or adequate before device benchmarks.
+
+#### Scenario planning
+
+- **Base:** hosted models remain useful; portable user-owned state, Arabic UX, least privilege and verified completion remain robust.
+- **Accelerated:** local models and Android capability APIs mature; add opt-in adapters behind the same typed contracts.
+- **Downside:** Android restricts automation and competitors bundle assistant artifacts free; preserve offline planning, transparent state and provider neutrality rather than chasing broad device control.
+
+This update is intelligence only. It does not begin the Phase 2 top-10 study, enable model routing, grant permissions, connect external accounts, or authorize deployment.
