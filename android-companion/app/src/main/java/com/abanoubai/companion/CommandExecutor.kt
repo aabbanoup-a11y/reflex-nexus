@@ -6,10 +6,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.provider.Settings
-import java.io.BufferedReader
-import java.io.File
-import java.io.InputStreamReader
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -33,10 +29,6 @@ object CommandExecutor {
             "تم تعطيل قراءة محتوى التطبيقات الأخرى والإشعارات والتحكم العام حفاظًا على الخصوصية."
         }
         val payload = record["payload"] as? JsonObject
-        val delegated = payload?.get("agent_action")?.jsonPrimitive?.contentOrNull
-        if (kind == "tap_text" && !delegated.isNullOrBlank()) {
-            return execute(context, delegated, record)
-        }
         return when (kind) {
             "open_app" -> {
                 val packageName = payload?.get("package")?.jsonPrimitive?.contentOrNull ?: error("اسم حزمة التطبيق غير موجود")
@@ -44,7 +36,6 @@ object CommandExecutor {
                 val intent = context.packageManager.getLaunchIntentForPackage(packageName) ?: error("التطبيق غير مثبت أو لا يملك شاشة تشغيل")
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
-                Thread.sleep(450L)
                 "تم فتح التطبيق: $packageName"
             }
             "open_note" -> {
@@ -59,7 +50,6 @@ object CommandExecutor {
                     else -> error("لا يوجد تطبيق ملاحظات متاح")
                 }
                 context.startActivity(intent)
-                Thread.sleep(450L)
                 "تم فتح تطبيق الملاحظات"
             }
             "open_settings" -> {
@@ -67,13 +57,12 @@ object CommandExecutor {
                 openSetting(context, setting)
                 "تم فتح إعدادات: $setting"
             }
-            "open_chrome" -> { openChrome(context); Thread.sleep(450L); "تم فتح Chrome" }
+            "open_chrome" -> { openChrome(context); "تم فتح Chrome" }
             "open_camera" -> { openCamera(context); "تم فتح الكاميرا" }
             "open_url" -> {
                 val url = payload?.get("url")?.jsonPrimitive?.contentOrNull ?: error("الرابط غير موجود")
                 require(url.startsWith("https://") || url.startsWith("http://")) { "الرابط غير مسموح" }
                 openUrl(context, url)
-                Thread.sleep(450L)
                 "تم فتح الرابط"
             }
             "open_document" -> {
@@ -95,23 +84,7 @@ object CommandExecutor {
             }
             "download_file" -> download(context, payload)
             "speak" -> { VoiceController.speak(context, payload?.get("text")?.jsonPrimitive?.contentOrNull ?: error("النص غير موجود")); "بدأ نطق الرد" }
-            "listen" -> { VoiceController.listen(context, record); "بدأ الاستماع لمدة أمر واحد" }
-            "back" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK, "تم الرجوع")
-            "home" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME, "تم فتح الشاشة الرئيسية")
-            "recents" -> global(context, android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS, "تم فتح التطبيقات الأخيرة")
-            "tap_text", "tap_id", "tap_description", "tap_coordinates", "long_press", "type_text", "press_enter", "press_search", "clear_text", "screenshot", "read_screen", "screen_text", "swipe", "scroll", "wait_for_text", "press_back", "press_home", "open_notifications", "quick_settings" -> {
-                val result = CompanionAccessibilityService.instance?.handleScopedCommand(kind, record) ?: error("Accessibility غير مفعّلة")
-                if (kind == "read_screen" || kind == "screen_text") result else "تم إرسال أمر $kind"
-            }
             "device_inventory" -> DeviceInventory.device(context)
-            "app_inventory" -> DeviceInventory.apps(context)
-            "app_permissions" -> DeviceInventory.permissions(context, payload?.get("package")?.jsonPrimitive?.contentOrNull)
-            "file_inventory" -> DeviceInventory.files(context)
-            "file_read" -> readFile(context, payload)
-            "notification_inventory" -> {
-                require(NotificationInbox.enabled) { "فعّل الوصول إلى الإشعارات أولًا" }
-                DeviceInventory.notifications()
-            }
             "stop" -> { CompanionRuntime.stop(context); "تم الإيقاف الطارئ" }
             "wait" -> { Thread.sleep((payload?.get("ms")?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 1000L).coerceIn(0L, 10000L)); "تم الانتظار" }
             "batch" -> executeBatch(context, payload)
@@ -127,26 +100,6 @@ object CommandExecutor {
         val request = DownloadManager.Request(Uri.parse(url)).setTitle(name).setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED).setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name)
         context.getSystemService(DownloadManager::class.java).enqueue(request)
         return "بدأ تنزيل $name، وستظهر حالته في إشعارات Android"
-    }
-
-    private fun Thread.sleep(450L) {
-        val start = System.currentTimeMillis()
-        while (System.currentTimeMillis() - start < 6000L) {
-            val service = CompanionAccessibilityService.instance
-            val current = service?.rootInActiveWindow?.packageName?.toString().orEmpty()
-            if (service != null && (expectedPackage == null || current == expectedPackage)) {
-                Thread.sleep(450L)
-                return
-            }
-            Thread.sleep(150L)
-        }
-        Thread.sleep(450L)
-    }
-
-    private fun readFile(context: Context, payload: JsonObject?): String {
-        val raw = payload?.get("uri")?.jsonPrimitive?.contentOrNull ?: error("رابط الملف غير موجود")
-        val stream = if (raw.startsWith("content://")) context.contentResolver.openInputStream(Uri.parse(raw)) else File(raw).inputStream()
-        stream.use { input -> return BufferedReader(InputStreamReader(input)).readText().take(20000) }
     }
 
     private fun executeBatch(context: Context, payload: JsonObject?): String {
@@ -190,8 +143,6 @@ object CommandExecutor {
 
     private fun openSetting(context: Context, setting: String) {
         val action = when (setting) {
-            "accessibility" -> Settings.ACTION_ACCESSIBILITY_SETTINGS
-            "notifications" -> "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"
             "usage" -> Settings.ACTION_USAGE_ACCESS_SETTINGS
             "battery" -> Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
             "wifi" -> Settings.ACTION_WIFI_SETTINGS
