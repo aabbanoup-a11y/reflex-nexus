@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/companion")({
 type Device = { id: string; device_name: string; platform: string; status: string; last_seen_at?: string | null };
 type Cmd = { id: string; kind: string; status: string; requires_approval: boolean; payload: any; created_at: string; error: string | null };
 type Ev = { id: string; event_type: string; message: string | null; created_at: string };
-const supervisedKinds = new Set(["open_settings", "download_file", "open_document", "open_file", "file_read", "file_inventory", "app_permissions", "batch", "workflow", "type_text", "clear_text", "tap_coordinates", "long_press", "screenshot", "read_screen", "screen_text", "notification_inventory", "quick_settings", "open_camera"]);
+const supervisedKinds = new Set(["open_settings", "download_file", "open_document", "open_file", "batch", "workflow", "open_camera"]);
 declare const chrome: any;
 declare global {
   interface Window { AbanoubAI?: { savePairing?: (deviceId: string, accessToken: string) => void; startVoiceRecognition?: () => void; stopVoiceRecognition?: () => void } }
@@ -35,7 +35,6 @@ function CompanionPage() {
   const [cmds, setCmds] = useState<Cmd[]>([]);
   const [events, setEvents] = useState<Ev[]>([]);
   const [extId, setExtId] = useState("");
-  const [sessionToken, setSessionToken] = useState("");
   const [url, setUrl] = useState("https://example.com");
   const [appPackage, setAppPackage] = useState("");
   const [text, setText] = useState("");
@@ -62,7 +61,6 @@ function CompanionPage() {
     setExtId(localStorage.getItem("companion-ext-id") ?? "");
     supabase.auth.getSession().then(({ data }) => {
       setUid(data.session?.user.id ?? "");
-      setSessionToken(data.session?.access_token ?? "");
       if (data.session?.user.id) void (supabase as any).from("companion_settings").select("mode,emergency_stopped").eq("user_id", data.session.user.id).maybeSingle().then(({ data: settings }: any) => {
         if (settings?.mode) { setMode(settings.mode); localStorage.setItem("companion-mode", settings.mode); }
       });
@@ -166,16 +164,13 @@ function CompanionPage() {
     const value = text.trim();
     const payload = action === "open_url" || action === "download_file" ? { url: url.trim() } :
       action === "open_app" ? { package: appPackage.trim() } :
-      action === "open_settings" ? { setting: value || "accessibility" } :
-      action === "speak" ? { text: value } :
-      action === "tap_text" || action === "type_text" ? { text: value } : {};
+      action === "open_settings" ? { setting: value || "wifi" } :
+      action === "speak" ? { text: value } : {};
     await send(action, payload);
   }
   async function runScan() {
     await send("device_inventory");
-    await send("app_inventory");
-    await send("notification_inventory");
-    setMsg("تم إرسال الفحص الشامل تلقائيًا؛ راجع سجل التنفيذ");
+    setMsg("تم إرسال معلومات حالة الجهاز المحدودة فقط؛ لا يتم فحص الشاشة أو الإشعارات.");
   }
 
   return (
@@ -184,7 +179,7 @@ function CompanionPage() {
       <header>
         <h1 className="text-2xl font-bold">التحكم في Chrome</h1>
         <p className="text-sm text-muted-foreground">
-          ثبّت إضافة AbanoubAI Companion في Chrome، ثم اربطها هنا. النماذج تنفذ الأوامر المسموحة تلقائيًا مع سجل تنفيذ وزر إيقاف طارئ.
+          اربط الجهاز لمتابعة حالة الاتصال وتنفيذ الأفعال المحدودة التي يختارها المستخدم. لا يقرأ التطبيق شاشة التطبيقات الأخرى أو الإشعارات.
         </p>
       </header>
 
@@ -193,13 +188,6 @@ function CompanionPage() {
         <Input dir="ltr" value={extId} onChange={(e) => setExtId(e.target.value.trim())} placeholder="Extension ID من chrome://extensions" />
         <Button onClick={() => void pair()}>ربط هذا المتصفح</Button>
         <Button variant="outline" onClick={() => void createAndroidDevice()}>إنشاء جهاز Android لـ Oppo</Button>
-        <Button
-          variant="outline"
-          disabled={!sessionToken}
-          onClick={() => void navigator.clipboard.writeText(sessionToken).then(() => setMsg("تم نسخ Access token المؤقت؛ الصقه في تطبيق Oppo ثم احذفه من الحافظة بعد الربط."))}
-        >
-          نسخ Access token لتطبيق Oppo
-        </Button>
         {dev && devices.find((d) => d.id === dev)?.platform === "android" && (
           <Button
             variant="outline"
@@ -241,12 +229,11 @@ function CompanionPage() {
           <select className="w-full rounded border bg-background p-2" value={action} onChange={(e) => setAction(e.target.value)}>
             <option value="open_url">فتح رابط</option><option value="open_app">فتح تطبيق</option><option value="open_settings">فتح إعدادات</option>
             <option value="open_camera">فتح الكاميرا</option><option value="download_file">تنزيل رابط</option><option value="speak">نطق نص</option><option value="listen">استماع من الميكروفون</option>
-            <option value="back">رجوع</option><option value="home">الرئيسية</option><option value="recents">التطبيقات الأخيرة</option><option value="tap_text">ضغط نص</option><option value="type_text">كتابة نص</option>
-            <option value="scroll">سحب للأسفل</option><option value="screenshot">لقطة شاشة</option><option value="read_screen">قراءة الشاشة</option><option value="screen_text">إرسال نص الشاشة</option><option value="file_inventory">فهرس الملفات</option><option value="open_document">فتح منتقي الملفات</option><option value="device_inventory">معلومات الجهاز</option><option value="app_inventory">قائمة التطبيقات</option><option value="app_permissions">صلاحيات التطبيقات</option><option value="notification_inventory">قراءة الإشعارات</option>
+            <option value="open_document">فتح منتقي الملفات</option><option value="device_inventory">معلومات الجهاز الأساسية</option>
           </select>
           {(action === "open_url" || action === "download_file") && <Input dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />}
           {action === "open_app" && <Input dir="ltr" value={appPackage} onChange={(e) => setAppPackage(e.target.value.trim())} placeholder="com.google.android.youtube" />}
-          {["open_settings", "speak", "tap_text", "type_text"].includes(action) && <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="القيمة أو النص" />}
+          {["open_settings", "speak"].includes(action) && <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="القيمة أو النص" />}
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => void sendSelected()}>تنفيذ الأمر</Button>
             <Button variant="outline" onClick={() => void runScan()}>فحص شامل</Button>

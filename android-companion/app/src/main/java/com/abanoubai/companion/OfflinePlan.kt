@@ -3,7 +3,6 @@ package com.abanoubai.companion
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -12,7 +11,16 @@ import kotlinx.serialization.json.put
 
 object OfflinePlan {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
-    private val allowed = setOf("open_app", "open_note", "open_url", "open_camera", "open_settings", "tap_text", "tap_description", "type_text", "press_enter", "press_search", "clear_text", "wait", "wait_for_text", "back", "home", "recents", "scroll", "press_back", "press_home")
+    private val allowed = setOf("open_app", "open_note", "open_url", "open_camera", "open_settings", "open_document", "speak", "wait")
+    private val allowedPackages = setOf(
+        "com.google.android.youtube",
+        "com.android.chrome",
+        "com.whatsapp",
+        "org.telegram.messenger",
+        "com.google.android.gm",
+        "com.android.settings"
+    )
+    private val allowedSettings = setOf("battery", "wifi", "bluetooth", "app")
 
     fun fromModel(raw: String): JsonArray? {
         val candidate = raw.substringAfter("```json", raw).substringAfter("```").substringBeforeLast("```").trim()
@@ -26,16 +34,25 @@ object OfflinePlan {
     }
 
     fun validate(steps: JsonArray): JsonArray? {
-        if (steps.isEmpty() || steps.size > 12) return null
+        if (steps.isEmpty() || steps.size > 8) return null
         val valid = buildJsonArray {
             steps.forEach { item ->
                 val step = item as? JsonObject ?: return@forEach
                 val kind = step["kind"]?.jsonPrimitive?.contentOrNull ?: return@forEach
                 if (kind !in allowed) return@forEach
                 val payload = step["payload"] as? JsonObject ?: buildJsonObject { }
-                if (kind == "type_text" && payload["text"]?.jsonPrimitive?.contentOrNull.isNullOrBlank()) return@forEach
-                if ((kind == "tap_text" || kind == "tap_description" || kind == "wait_for_text") && payload["text"]?.jsonPrimitive?.contentOrNull.isNullOrBlank()) return@forEach
-                add(buildJsonObject { put("kind", kind); put("payload", payload); step["if_text"]?.let { put("if_text", it) }; step["unless_text"]?.let { put("unless_text", it) }; step["repeat"]?.let { put("repeat", it) } })
+                val safePayload = when (kind) {
+                    "open_app" -> payload["package"]?.jsonPrimitive?.contentOrNull?.let { it in allowedPackages } == true
+                    "open_url" -> payload["url"]?.jsonPrimitive?.contentOrNull?.let {
+                        it.length <= 2048 && (it.startsWith("https://") || it.startsWith("http://"))
+                    } == true
+                    "open_settings" -> payload["setting"]?.jsonPrimitive?.contentOrNull?.let { it in allowedSettings } == true
+                    "wait" -> payload["ms"]?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let { it in 0L..10000L } == true
+                    "speak" -> payload["text"]?.jsonPrimitive?.contentOrNull?.let { it.isNotBlank() && it.length <= 4000 } == true
+                    else -> true
+                }
+                if (!safePayload) return@forEach
+                add(buildJsonObject { put("kind", kind); put("payload", payload) })
             }
         }
         return valid.takeIf { it.size == steps.size }
@@ -44,10 +61,13 @@ object OfflinePlan {
     fun prompt(request: String, phoneContext: String = "{}", rag: String = ""): String = """
 أنت مخطط أوفلاين للهاتف. حوّل طلب المستخدم إلى JSON فقط بلا شرح.
 الشكل الإجباري: {"steps":[{"kind":"...","payload":{}}]}
-الأوامر المسموحة: open_app(package), open_note(), open_url(url), open_camera(), open_settings(setting), tap_text(text), tap_description(text), type_text(text,submit), press_enter(), press_search(), clear_text(), wait(ms), wait_for_text(text,timeout_ms), back(), home(), recents(), scroll(dir).
-الحزم المعروفة: YouTube=com.google.android.youtube, Chrome=com.android.chrome, WhatsApp=com.whatsapp, Telegram=org.telegram.messenger, Gmail=com.google.android.gm, Settings=com.android.settings.
-بعد فتح التطبيق انتظر 1200ms. بعد الكتابة استخدم submit=true للبحث أو الإرسال. لا تخترع عناصر غير موجودة في حالة الهاتف. اجعل الخطة 1 إلى 8 خطوات.
-حالة الهاتف: $phoneContext
+الأوامر المسموحة فقط: open_app(package), open_note(), open_url(url), open_camera(), open_settings(setting), open_document(), speak(text), wait(ms).
+الحزم المسموحة: YouTube=com.google.android.youtube, Chrome=com.android.chrome, WhatsApp=com.whatsapp, Telegram=org.telegram.messenger, Gmail=com.google.android.gm, Settings=com.android.settings.
+الإعدادات المسموحة: battery, wifi, bluetooth, app.
+لا تقرأ شاشة أي تطبيق آخر، ولا تنقر أو تكتب داخله، ولا تقرأ الإشعارات أو قائمة التطبيقات أو أسماء الملفات. لا تستخدم Accessibility.
+فتح التطبيق لا يعني إتمام المهمة داخله؛ إذا احتاج الطلب إدخالًا في تطبيق آخر، افتحه فقط واطلب من المستخدم إكمال الإدخال بنفسه.
+اجعل الخطة من خطوة إلى 8 خطوات. انتظر مدة قصيرة فقط عند الحاجة، وبحد أقصى 10000ms.
+حالة الجهاز العامة: $phoneContext
 أمثلة ناجحة من الذاكرة (RAG): ${rag.ifBlank { "لا يوجد" }}
 طلب المستخدم: $request
 JSON:

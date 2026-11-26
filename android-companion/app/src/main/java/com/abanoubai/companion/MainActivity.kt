@@ -2,9 +2,7 @@ package com.abanoubai.companion
 
 import android.annotation.SuppressLint
 import android.Manifest
-import android.app.AppOpsManager
 import android.app.ActivityManager
-import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.net.ConnectivityManager
@@ -73,10 +71,6 @@ class MainActivity : AppCompatActivity() {
                     .onFailure { android.util.Log.e("AbanoubAICompanion", "Could not restart companion runtime after pairing", it) }
             }
         }
-
-        @JavascriptInterface fun openAccessibility() = runOnUiThread { openSettings(Settings.ACTION_ACCESSIBILITY_SETTINGS) }
-
-        @JavascriptInterface fun isAccessibilityOn(): Boolean = CompanionAccessibilityService.instance != null
 
         @JavascriptInterface fun stop() = runOnUiThread {
             CompanionRuntime.stop(this@MainActivity)
@@ -163,21 +157,6 @@ class MainActivity : AppCompatActivity() {
         return box
     }
 
-    private fun notificationAccessOn(): Boolean {
-        val component = ComponentName(this, CompanionNotificationListener::class.java).flattenToString()
-        return Settings.Secure.getString(contentResolver, "enabled_notification_listeners").orEmpty().split(':').contains(component)
-    }
-
-    private fun usageAccessOn(): Boolean {
-        val appOps = getSystemService(APP_OPS_SERVICE) as AppOpsManager
-        @Suppress("DEPRECATION")
-        return appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName) == AppOpsManager.MODE_ALLOWED
-    }
-
-    private fun mediaAccessOn(): Boolean {
-        val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
-        return ContextCompat.checkSelfPermission(this, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
 
     private fun showSetupHub() {
         showingDashboard = false
@@ -202,9 +181,6 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(title)
         root.addView(subtitle)
-        root.addView(setupItem("1  Accessibility", "مطلوبة للتحكم المرئي: فتح التطبيقات، الضغط، الكتابة والتنقل. لا يتم تفعيلها من التطبيق.", CompanionAccessibilityService.instance != null) {
-            openSettings(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-        })
         val power = getSystemService(POWER_SERVICE) as PowerManager
         root.addView(setupItem("2  البطارية والعمل في الخلفية", "تمنع Oppo من إيقاف الاتصال. اختر AbanoubAI يدويًا ثم اجعله بدون قيود.", if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) power.isIgnoringBatteryOptimizations(packageName) else null) {
             openSettings(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
@@ -212,37 +188,18 @@ class MainActivity : AppCompatActivity() {
         root.addView(setupItem("3  التشغيل التلقائي وإعدادات التطبيق", "التشغيل التلقائي خاص بـ ColorOS وقد لا يمكن للتطبيق قراءته. فعّله يدويًا من App Launch.", null) {
             openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
         })
-        root.addView(setupItem("4  الوصول إلى الإشعارات", "اختياري وحساس: يسمح بقراءة الإشعارات التي يختار Android تمريرها. لا يتم تفعيله تلقائيًا.", notificationAccessOn()) {
-            openSettings("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
-        })
-        root.addView(setupItem("5  Usage Access", "اختياري: يعرض إحصاءات استخدام التطبيقات فقط، ولا يمنح قراءة كلمات المرور أو قواعد بيانات التطبيقات.", usageAccessOn()) {
-            openSettings(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-        })
         root.addView(setupItem("6  الملفات والصور", "لا يوجد وصول شامل تلقائي. يفتح Android منتقي الملفات ويختار المستخدم الملف يدويًا.", null) {
             startActivity(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 type = "*/*"
                 addCategory(Intent.CATEGORY_OPENABLE)
             })
         })
-        root.addView(setupItem("6 أ  فهرس الوسائط", "اختياري: يسمح بفهرسة أسماء الصور والفيديو والصوت والملفات التي يعرضها MediaStore فقط.", mediaAccessOn()) {
-            val permissions = if (Build.VERSION.SDK_INT >= 33) arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_AUDIO) else arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-            requestPermissions(permissions, REQUEST_MEDIA)
-        })
-        root.addView(setupItem("7  الكاميرا", "تُطلب عند فتح الكاميرا فقط، ويمكن إيقافها من إعدادات التطبيق في أي وقت.", ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA)
-        })
         root.addView(setupItem("8  الميكروفون", "مطلوب للاستماع الصوتي عند تشغيله فقط. لا يتم تسجيل الصوت من دون تشغيل وضع الاستماع.", ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_MIC)
         })
         root.addView(button("استدعاء AbanoupAi صوتيًا — أمر واحد") { listenLocalAgent() })
-        root.addView(setupItem("9  الموقع", "اختياري ولا علاقة له بالتحكم المرئي. فعّله فقط إذا أضفت ميزة تعتمد على الموقع.", ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), REQUEST_LOCATION)
-        })
-        root.addView(setupItem("10  إدارة الجهاز (Device Admin)", "ليست تجاوزًا لحماية Android. هذا مسار مؤسسي اختياري، ولا نفعّله لأن التطبيق لا يحتاج امتلاك الهاتف أو منع إزالته.", null) {
-            openSettings("android.app.action.DEVICE_ADMIN_SETTINGS")
-        })
         val note = TextView(this).apply {
-            text = "مهم: العناصر أعلاه لا تُفعّل تلقائيًا؛ الحالة المعروضة تقرأ ما فعّلته أنت في Android. لا توجد صلاحية واحدة تمنح تحكمًا كاملًا. لا تمنح الإشعارات أو الموقع أو الكاميرا أو الميكروفون إلا عند الحاجة. التطبيق لا يقرأ كلمات المرور أو قواعد بيانات التطبيقات الخاصة."
+            text = "مهم: لا يقرأ التطبيق محتوى شاشة التطبيقات الأخرى أو الإشعارات. لا تفعّل خدمات وصول واسعة؛ استخدم منتقي Android لاختيار الملفات يدويًا."
             textSize = 14f
             setTextColor(0xffffd180.toInt())
             setPadding(0, 18, 0, 12)
@@ -446,14 +403,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        val label = when (requestCode) {
-            REQUEST_CAMERA -> "الكاميرا"
-            REQUEST_MIC -> "الميكروفون"
-            REQUEST_LOCATION -> "الموقع"
-            REQUEST_MEDIA -> "الوسائط"
-            else -> "الصلاحية"
-        }
-        Toast.makeText(this, if (grantResults.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED) "تم السماح بـ $label" else "لم يتم السماح بـ $label", Toast.LENGTH_SHORT).show()
+        if (requestCode != REQUEST_MIC) return
+        val granted = grantResults.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED
+        Toast.makeText(this, if (granted) "تم السماح بالميكروفون" else "لم يتم السماح بالميكروفون", Toast.LENGTH_SHORT).show()
     }
 
     override fun onResume() {
@@ -525,10 +477,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val SITE_HOST = "reflex-nexus.lovable.app"
-        private const val REQUEST_CAMERA = 1001
         private const val REQUEST_MIC = 1002
-        private const val REQUEST_LOCATION = 1003
-        private const val REQUEST_MEDIA = 1004
     }
 
     private fun isNetworkAvailable(): Boolean {
