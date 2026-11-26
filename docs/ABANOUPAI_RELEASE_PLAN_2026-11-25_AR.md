@@ -528,3 +528,51 @@ Phase 1 لم يجتز بوابة القبول. Phase 2 (دراسة أفضل عش
 - The notification listener captures notification title/text into a local inbox after the user manually grants Notification Access; whether that content is later transmitted requires a separate call-path review. No actual device permission state was inspected, so no claim is made that these services are enabled on the user's phone.
 - MainActivity stores access/refresh tokens in ordinary `SharedPreferences`, not a Keystore-backed store. This requires a separate auth/session remediation before any signed RC.
 - **P0 release gate:** do not enable Accessibility or Notification Access. Before RC, audit and remove unnecessary permissions, eliminate broad cross-app screen capture/reading and gestures in favor of narrow app-owned typed capabilities, keep screen/notification/voice content local unless separately scoped consent and retention are approved, and move session material to Keystore-backed storage. Add tests for no unintended content upload, exported-component boundaries and native launcher selection. Keep this work separate from PR #39's Goals RLS fix.
+
+
+---
+
+## Evidence update — 2026-11-26
+
+### Main, PR and release state
+
+- **Main:** `892304c46e7f6e85af3795428a97c1419efdc405`. PR #31 (Web workspace shell) is merged; the Web Home/sidebar shell is now on main. This does not establish native Android parity.
+- **Native Android:** main still launches `MainActivity` with a WebView and stores session material in ordinary `SharedPreferences`. PR #32 and PR #37 remain Draft and non-mergeable against current main; their launcher, navigation and visual work must be reconciled before a native RC. No Android device validation or signed release has been proven.
+- **Auth:** the deployed Web Supabase Auth issuer is still unverified. Source fallbacks and Android Gradle configuration are not proof of the deployed environment. Do not wire Android Auth until the Web project's non-secret Supabase project host/ref is confirmed.
+- **Security PR #40:** existing Draft PR [#40](https://github.com/aabbanoup-a11y/reflex-nexus/pull/40), branch `security/android-disable-cross-app-capture-20261126`, latest head `81eb5e7077901c383a740ebae3e2ce4c912e4ab2`. The branch removes the AccessibilityService and NotificationListenerService source/configuration, broad app/file/media/location/camera permissions that were not needed by the remaining app-owned flows, screen/notification/remote voice-transcript upload helpers, and cross-app planner actions. The offline planner is narrowed to allowlisted app launches, user-picked Android document selection, explicit settings intents, local speech output and bounded waits. **Implemented on the PR branch only; not merged, deployed, or device-validated.**
+- **CI:** the first broad-removal attempt exposed unresolved references in `LocalAgentController` and `PhoneContext`; those paths were removed and the offline planner was constrained in the latest commit. On head `81eb5e7`, CI run [45880178412](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/45880178412) was still running at the time of this record. The preceding head's run failed at Kotlin compilation; do not describe the current head as green until the new Android job finishes.
+- **Goals RLS:** PR #39's disposable two-user PostgreSQL test passed in run [45057224377](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/45057224377), but the migration remains Draft and is not deployed. Migration-source/history drift and staging validation remain blockers.
+- **Server gates:** PR #35's CI passed, but its base is stale and its multi-file diff still needs reconciliation and security review. PR #38 remains Draft with failing CI and a permission model that conflicts with the approved requirement that AI routing and external actions remain disabled; do not merge or activate it.
+- **MCP/runtime:** PR #33 is documentation only; PR #34 adds read-only status only and is not deployed. Neither proves durable background execution or a public MCP service.
+- **Supabase inspection limitation:** the Supabase skill required for live migration/function/advisor/log review was not available in this run's skill catalogue. No live Supabase data was queried and no migration, function, policy, secret, or setting was changed. Revalidate those items when the skill is available.
+
+### Dated scorecard (evidence, not guessed scores)
+
+| Dimension | 2026-11-26 status |
+|---|---|
+| Product capability | Web shell merged; independent native Android not delivered |
+| Task success / false-completion rate | Not measured |
+| Tool correctness | Privacy regression tests added; latest CI still pending |
+| Android integration | Not measured on a physical device |
+| UX / accessibility / RTL | Not remeasured on the current main build |
+| Latency / model quality / model cost | Not measured |
+| Reliability / recovery / offline resume | Not measured end-to-end |
+| Privacy / security | Broad cross-app capture removal implemented on PR #40 branch only; main remains exposed until merge |
+| Test coverage | Main CI run [45876459598](https://github.com/aabbanoup-a11y/reflex-nexus/actions/runs/45876459598) passed; PR #40 current-head CI pending |
+| Release readiness | Not ready; no signed APK/AAB or user-device validation |
+
+### Ranked remaining backlog
+
+1. **P0 — prove the Web Auth issuer** from the Lovable/Supabase integration settings using only the non-secret project host/ref; then align Android configuration and test session refresh/revocation.
+2. **P0 — finish PR #40**: require all current-head CI jobs green, inspect the exact final diff, review the remaining session-storage path, then request human review. Keep Draft until then.
+3. **P0 — native Android launcher and navigation**: reconcile #32/#37 with main; native Compose Activity must be the launcher and no reachable WebView path may remain.
+4. **P0 — Keystore-backed session storage**, with expiry, refresh, logout and process-restart tests.
+5. **P0 — one shared authenticated data workflow** across Web and native Android, with ownership/RLS, reconnect/refetch, conflict and idempotency tests.
+6. **P0 — reconcile migration history** before any production DDL; run Goals RLS only in disposable CI and approved staging first.
+7. **P0 — verify server-side kill-switch/feature-flag enforcement** before any AI/provider or external-action path is used. Keep all three existing safety flags unchanged.
+8. **P1 —** activity/execution history, user-controlled memory export/correction/deletion, onboarding, permission education and offline resilience.
+9. **P2 —** top-10 AI-product capability study, broad multi-agent orchestration, model routing, MCP write tools and advanced Android capability APIs. Phase 2 remains gated on Phase 1; Phase 3 remains stopped pending explicit consent.
+
+### Release decision
+
+The 2026-11-25 RC target has passed without satisfying the P0 gate. Do not relabel the current debug builds as an RC or relax the security/release criteria. Phase 1 remains open; Phase 2 has not started; Phase 3 permission activation remains prohibited.

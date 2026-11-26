@@ -303,3 +303,67 @@ The strongest near-term pattern is a shift from chat replies toward persistent a
 - **Downside:** Android restricts automation and competitors bundle assistant artifacts free; preserve offline planning, transparent state and provider neutrality rather than chasing broad device control.
 
 This update is intelligence only. It does not begin the Phase 2 top-10 study, enable model routing, grant permissions, connect external accounts, or authorize deployment.
+
+
+---
+
+## Market scan — 2026-11-26 (public sources only)
+
+### Confirmed announcements and observed changes
+
+| Product / date | Capability and maturity | Constraints, cost and privacy | AbanoubAI decision |
+|---|---|---|---|
+| **OpenAI GPT-6.2 Chat — 23 Nov 2026** | OpenAI says the Chat tab model improves complex instruction following, image understanding and web research. This is a vendor-reported internal evaluation, not an independent benchmark. | Rollout is for Plus/Pro/Business/Enterprise in Chat; the announcement explicitly says Work and Codex models did not change. Do not assume API availability or a model-router upgrade from this consumer release. | **Defer routing.** Add Arabic/English tool-use, image and research cases to the future benchmark; compare only if an API model and pricing are documented. Source: https://help.openai.com/en/articles/6825453-chatgpt-release-notes |
+| **ChatGPT Space — 20 Nov 2026** | Interactive pages and presentations can be edited collaboratively and updated from connected apps. | The announcement limits initial rollout to Plus users aged 18+; shared pages are not available to Free users. This is a market signal, not an available integration assumption for this project. | **Build the underlying portable artifact/version/source model later**, not a clone of Space. Source: https://help.openai.com/en/articles/6825453-chatgpt-release-notes |
+| **Claude Skills over MCP, Tasks and Elicitation — 24 Nov 2026** | Skills over MCP is public beta; Tasks and Elicitation are GA in Claude/Claude Code for Pro, Max and Ultra and rolling out to Team/Enterprise. Servers can hand off long-running work, pause for user input, and later return results. File Uploads is rolling out soon, not yet generally available. | Client and plan support vary. A protocol handoff does not itself provide durable storage, leases, idempotency or recovery; the server still owns those guarantees. | **Experiment after Phase 1**, initially read-only Tasks/Elicitation. Keep MCP optional and keep the durable job runtime separate. Acceptance: resume after worker restart, owner isolation, bounded retries, cancellation and user-visible result evidence. Source: https://claude.com/resources/articles/skills-over-mcp-tasks-and-more |
+| **Claude Ship — 23 Nov 2026** | Code Review is GA; PR Steward and Claude Approvals are beta. It reviews PRs, repairs failing checks, and applies repository-defined approval policy; Anthropic recommends observe-only first. | Team/Enterprise and GitHub repositories; token-billed; unavailable for ZDR, HIPAA and customer-managed encryption configurations. Anthropic warns AI review can miss defects. | **Learn the policy pattern, do not integrate.** AbanoubAI's own PR gates remain authoritative; no automated merge authority. Source: https://claude.com/resources/articles/introducing-claude-ship |
+| **Claude installed Artifacts — 24 Nov 2026** | Artifacts can become separate Mac/Windows apps in beta with per-app permission levels. | Desktop only; full computer access can read/change/delete files, and permission prompts recur after app updates. This does not provide an Android integration path. | **Defer.** Reuse only the concept of version-bound permissions and visible app scopes. Source: https://claude.com/resources/articles/install-as-app |
+| **Microsoft 365 Copilot Skills — Nov 2026** | Skills in Copilot Chat are GA: reusable task instructions with optional resources/scripts; users may select them or let Copilot select automatically. Skills can be distributed through supported plugin packages. | Microsoft 365 tenant, identity and package governance apply; the same update adds credit-request review APIs for administrators. | **Prepare a portable SkillManifest later** with owner, version, scopes, risk and tests; do not install or activate generated skills now. Source: https://learn.microsoft.com/en-us/microsoft-365-copilot/extensibility/whats-new |
+| **OpenHands Agent Canvas — v1.45.0 (24 Nov) and v1.46.0 (25 Nov)** | Recent releases add project/worklog views, nested sub-agent conversations, phone-width fixes, conversation sharing controls, and a Git Sync switch that keeps automation activation status local. v1.44 also added per-automation visibility, budget-exhaustion errors and editable automation key-value state. | Open-source release cadence is observable, but no AbanoubAI workflow was run against it and no code/license was adopted. | **Experiment only in a disposable benchmark**: verify per-automation visibility, local activation state and explicit budget-stop behavior. Sources: https://github.com/OpenHands/OpenHands/releases/tag/v1.45.0 and https://github.com/OpenHands/OpenHands/releases/tag/v1.46.0 |
+| **Replit Missions — 17 Nov, updated 19 Nov 2026** | Outcome-driven agent swarms plan, build, test and iterate within user-set budgets and action boundaries; progress and approval updates are part of the workflow. | Replit's performance and DataCat results are vendor-reported controlled tests, not independent proof of general agent quality. Pricing and usage costs were not independently verified. | **Adopt the Mission Contract pattern conceptually**: outcome, acceptance criteria, budget, permission boundaries and stop condition. Do not add a swarm dependency before a deterministic baseline exists. Source: https://replit.com/blog/introducing-replit-missions |
+| **Google Pixel Drop — 10 Nov 2026** | Pixel-specific Gemini Intelligence, notification summaries and Pixel Search continue to expand. | Notification-summary languages listed in the announcement do not include Arabic; features vary by Pixel model/region and are not general Android APIs. | **Do not depend on Pixel-only capabilities.** Build around documented Android APIs and test on the user's actual device. Source: https://blog.google/intl/de-de/produkte/hardware/pixel-drop-november-2026/ |
+| **Manus / other agent platforms** | No materially new official release verified in this 21–26 Nov scan beyond the previously recorded cloud computer, connector and automation patterns. | Account pricing, connector scopes and recovery behavior remain untested. | **Defer integration**; retain the architecture comparison and test only with a bounded, non-sensitive workflow if access is later approved. |
+
+### What competitors do well — and what remains unproven
+
+- The strongest observed pattern is **bounded work contracts**: define outcomes, budgets, permission boundaries, approval points and stop conditions (Replit Missions; Claude Ship).
+- MCP is evolving beyond synchronous tool calls into skills, long-running tasks and interactive approval. This is useful interoperability, but does not replace a durable server runtime or user-owned job state.
+- OpenHands demonstrates useful operational controls around automation visibility, local activation state and explicit budget exhaustion.
+- Public announcements do **not** provide comparable, independently reproduced measures for Arabic task success, false-completion rate, cross-client ownership/sync, Android OEM reliability, or cost per successfully completed personal task. Do not infer superiority from vendor demos or self-reported benchmarks.
+
+### Architecture choices: two viable approaches
+
+**Android cross-app interaction**
+- Broad AccessibilityService: technically powerful for screen-tree reading and gestures, but Google Play policy prohibits general assistant/agent services from autonomously initiating, planning and executing actions through AccessibilityService; that exception is for genuine disability-assistance tools. It also creates a large privacy and policy surface.
+- App-owned typed actions + Android intents/SAF + WorkManager/notifications: narrower and less powerful, but the user explicitly initiates or scopes each capability and Android mediates the interaction.
+- **Decision: build the second approach.** PR #40 is removing the first approach. Future capabilities must be narrow, visible, reversible and tested on the actual OS/OEM. Sources: https://support.google.com/googleplay/android-developer/answer/10964491 and https://developer.android.com/guide/topics/ui/accessibility/views/service
+
+**Long-running agent work**
+- MCP Tasks/Elicitation: interoperable client/server handoff and interactive input, but client maturity and plan support vary.
+- Dedicated durable workflow engine: owns leases, checkpoints, retries, cancellation, idempotency and recovery independently of a chat session.
+- **Decision: keep both layers separate.** MCP may expose scoped read-only task status later; the durable runtime must remain the source of truth.
+
+### Competitor-inspired opportunity backlog
+
+1. **Proof-carrying execution trace** — impact critical; evidence medium; effort high; privacy risk manageable if metadata-only. Acceptance: every deterministic action produces an owner-bound receipt with requested action, tool/version, observed result, timestamp and verification method; 100% of the golden suite has evidence and zero false-completions. Kill if verification requires collecting other-app screen/notification content.
+2. **Portable mission contract** — impact high; evidence high; effort medium. Acceptance: each job has outcome, acceptance tests, budget, deadline, permitted tools, approval points, cancellation and explicit unresolved state. Build only after Phase 1.
+3. **Portable skill manifest** — impact high; evidence medium; effort medium. Acceptance: skill has version, owner, typed inputs/outputs, scopes, risk class, budget, tests and rollback; generated skills remain inactive until review.
+4. **Android typed capability bridge** — impact high; evidence high for policy need; effort high. Acceptance: one explicit reminder/calendar intent with a visible OS handoff, cancellation, no broad accessibility privilege and a real-device test.
+5. **Arabic/English quality-cost benchmark** — impact high; evidence high that model releases are frequent, actual advantage unmeasured; effort medium. Acceptance: identical tasks across providers, reporting success, false completion, p50/p95 latency and cost per successful task.
+
+### Forecast ledger — hypotheses, not private roadmaps
+
+| Horizon | Forecast and confidence | Leading evidence / disconfirming signal | Prepare now / measurable trigger |
+|---|---|---|---|
+| **30 days (to 26 Dec 2026)** | More MCP clients will experiment with Tasks/Elicitation; **medium confidence**. | Anthropic's 24-Nov announcement and MCP extensions; disconfirming signal is client fragmentation or lack of stable support. | Keep a read-only MCP contract and task IDs portable. Confirm only when two independent clients document support for the same extension/version. |
+| **90 days (to 24 Feb 2027)** | Reusable skills with typed scopes become a common agent packaging primitive; **medium confidence**. | Skills over MCP beta and Microsoft Copilot Skills GA; disconfirming signal is vendor-specific packaging with no portable schema. | Prepare a non-executable SkillManifest schema; trigger adoption only after two independent implementations and license/security review. |
+| **180 days (to 25 May 2027)** | Android agent integrations will continue shifting toward app-owned APIs and explicit intents rather than broad accessibility automation; **high confidence**. | Current Google Play restrictions and Android's app-scoped service model; disconfirming signal is a stable, policy-approved third-party capability API with broader documented support. | Build typed local capabilities and a compatibility bridge; trigger expansion only when API maturity and OEM behavior are verified. |
+| **1–2 years** | Models become more interchangeable while user-owned memory, execution evidence, privacy and recovery become stronger differentiators; **medium confidence**. | Increasing provider-neutral tool/skill protocols and rapid model releases; disconfirming signal is sustained provider lock-in or no improvement in local inference economics. | Keep provider adapters, portable memory and evaluation harnesses; benchmark on real Android hardware before enabling local inference. |
+
+### Scenario planning
+
+- **Base case:** MCP task extensions spread unevenly; maintain first-party Web/Android clients and one durable runtime.
+- **Accelerated case:** several major clients support common task/elicitation contracts; expose read-only task status and scoped resources.
+- **Downside case:** protocol extensions fragment and inference costs rise; keep MCP optional, avoid multi-agent fan-out and prioritize local deterministic workflows.
+
+This scan is intelligence and architecture preparation only. It does not begin the gated top-10 Phase 2 study, connect external accounts, enable AI routing, grant device scopes, install skills or activate write tools.
