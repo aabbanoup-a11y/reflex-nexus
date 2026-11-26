@@ -3,12 +3,10 @@ package com.abanoubai.companion
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Bundle
 import androidx.core.content.ContextCompat
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.Locale
@@ -60,19 +58,20 @@ object LocalAgentController {
             return engine.status()
         }
         if (containsAny(lower, "التطبيقات المثبتة", "كل التطبيقات", "قائمة التطبيقات")) {
-            return DeviceInventory.apps(context)
+            return "لا أستعرض قائمة التطبيقات المثبتة. اذكر اسم التطبيق الذي تريد فتحه."
         }
         if (containsAny(lower, "صلاحيات التطبيق", "الصلاحيات", "permissions")) {
-            return DeviceInventory.permissions(context, null)
+            return "لا أفحص صلاحيات التطبيقات الأخرى. يمكنك مراجعة صلاحيات كل تطبيق من إعدادات Android."
         }
         if (containsAny(lower, "الملفات", "فحص الملفات", "الصور", "الفيديوهات")) {
-            return DeviceInventory.files(context)
+            run(context, "open_document", buildPayload())
+            return "فتحت منتقي Android للملفات. اختر الملف بنفسك؛ لا أفهرس ملفات الهاتف."
         }
         if (containsAny(lower, "الإشعارات", "الرسائل الأخيرة", "اشعارات")) {
-            return if (NotificationInbox.enabled) DeviceInventory.notifications() else "فعّل الوصول إلى الإشعارات أولًا من إعدادات AbanoubAI"
+            return "لا أقرأ محتوى الإشعارات أو الرسائل. افتح لوحة الإشعارات يدويًا من Android."
         }
         if (containsAny(lower, "لقطة شاشة", "سكرين شوت", "screenshot")) {
-            return run(context, "screenshot", buildPayload())
+            return "قراءة أو التقاط شاشات التطبيقات الأخرى غير مدعومة حفاظًا على الخصوصية."
         }
 
         if (containsAny(lower, "افتح الكاميرا", "شغل الكاميرا", "شغّل الكاميرا", "الكاميرا")) {
@@ -85,24 +84,13 @@ object LocalAgentController {
             return run(context, "open_settings", buildPayload("setting" to "bluetooth"))
         }
         if (containsAny(lower, "افتح إعدادات إمكانية الوصول", "إعدادات إمكانية الوصول", "accessibility")) {
-            return run(context, "open_settings", buildPayload("setting" to "accessibility"))
+            return "لا نستخدم خدمات Accessibility العامة ولا نطلب صلاحيتها؛ استخدم إعدادات Android المعتادة."
         }
 
-        // Offline planner for the common multi-step request: open YouTube and search.
+        // Open YouTube only; the user performs any search inside the other app.
         if (containsAny(lower, "يوتيوب", "youtube") && containsAny(lower, "ابحث", "بحث", "عن", "أغنية", "اغنية")) {
-            val query = ((Regex("(?:عن|على|في)\\s+(.+)", RegexOption.IGNORE_CASE).find(command)?.groupValues?.getOrNull(1)?.trim() ?: "")
-                .ifBlank { command.replace(Regex(".*?(يوتيوب|youtube)", RegexOption.IGNORE_CASE), "").trim() })
-                .take(300)
-            if (query.isNotBlank()) {
-                val steps = buildJsonArray {
-                    add(buildJsonObject { put("kind", "open_app"); put("payload", buildPayload("package" to "com.google.android.youtube")) })
-                    add(buildJsonObject { put("kind", "wait"); put("payload", buildPayload("ms" to "1200")) })
-                    add(buildJsonObject { put("kind", "tap_description"); put("if_text", "بحث"); put("payload", buildPayload("text" to "بحث")) })
-                    add(buildJsonObject { put("kind", "tap_description"); put("if_text", "Search"); put("payload", buildPayload("text" to "Search")) })
-                    add(buildJsonObject { put("kind", "type_text"); put("payload", buildPayload("text" to query, "submit" to "true")) })
-                }
-                return run(context, "batch", buildJsonObject { put("steps", steps); put("return_to_chat", "true") })
-            }
+            val opened = run(context, "open_app", buildPayload("package" to "com.google.android.youtube"))
+            return "$opened. اكتب عبارة البحث بنفسك داخل YouTube؛ لا أقرأ أو أتحكم في شاشة تطبيق آخر."
         }
 
         val app = appPackages.entries.firstOrNull { (name, _) -> lower.contains(name) }
@@ -117,25 +105,14 @@ object LocalAgentController {
             return run(context, "open_url", buildPayload("url" to normalized))
         }
 
-        val global = when {
-            containsAny(lower, "ارجع", "رجوع", "back") -> "back"
-            containsAny(lower, "الرئيسية", "الشاشة الرئيسية", "home") -> "home"
-            containsAny(lower, "التطبيقات الأخيرة", "التطبيقات المفتوحة", "recents") -> "recents"
-            else -> null
+        if (containsAny(lower, "ارجع", "رجوع", "back", "الرئيسية", "الشاشة الرئيسية", "home", "التطبيقات الأخيرة", "التطبيقات المفتوحة", "recents")) {
+            return "استخدم أزرار التنقل في Android؛ لا أتحكم في أزرار النظام العامة."
         }
-        if (global != null) return run(context, global, buildPayload())
 
-        // Deterministic safety nets for the most common underspecified requests.
         if (containsAny(lower, "النوتة", "النوت", "الملاحظات", "note", "notepad") &&
-            containsAny(lower, "افتح", "شغل", "اكتب", "اكتبي")) {
-            val noteText = Regex("(?:اكتب|اكتبي|دوّن|دون)\\s+(.+)", RegexOption.IGNORE_CASE)
-                .find(command)?.groupValues?.getOrNull(1)?.trim()
-            val steps = buildJsonArray {
-                add(buildJsonObject { put("kind", "open_note"); put("payload", buildPayload()) })
-                add(buildJsonObject { put("kind", "wait"); put("payload", buildPayload("ms" to "1200")) })
-                if (!noteText.isNullOrBlank()) add(buildJsonObject { put("kind", "type_text"); put("payload", buildPayload("text" to noteText)) })
-            }
-            return run(context, "batch", buildJsonObject { put("steps", steps); put("return_to_chat", "true") })
+            containsAny(lower, "افتح", "شغل", "اكتب", "اكتبي", "دوّن", "دون")) {
+            val opened = run(context, "open_note", buildPayload())
+            return "$opened. اكتب النص بنفسك داخل تطبيق الملاحظات؛ لا أتحكم في شاشة تطبيق آخر."
         }
 
         // Real local LLM planner. It is loaded lazily and never calls the network.
@@ -177,7 +154,7 @@ object LocalAgentController {
         val result = run(context, "batch", buildJsonObject { put("steps", steps); put("return_to_chat", "true") })
         if (allowRetry && (result.lowercase(Locale.ROOT).contains("failed") || result.contains("فشل"))) {
             val corrected = runCatching {
-                OfflinePlan.fromModel(engine.plan("أعد المحاولة باستخدام مرادفات الضغط مثل click_text أو tap_description للعناصر الظاهرة، ثم نفّذ: $request", PhoneContext.snapshot(context), LocalLearning.rag(context, request)))
+                OfflinePlan.fromModel(engine.plan("أعد التخطيط باستخدام فتح تطبيق أو رابط أو إعداد مسموح فقط، ولا تحاول النقر أو الكتابة داخل تطبيق آخر: $request", PhoneContext.snapshot(context), LocalLearning.rag(context, request)))
             }.getOrNull()
             if (corrected != null) return executePlanned(context, request, corrected, engine, false)
         }
@@ -222,7 +199,7 @@ object LocalAgentController {
             val payload = step["payload"]?.toString().orEmpty().lowercase(Locale.ROOT)
             // Only truly risky effects need a "yes": sending to others, deleting, paying,
             // uninstalling, or factory/password changes. Everything else runs directly.
-            if ((kind == "type_text" && payload.contains("submit")) ||
+            if (
                 containsAny(payload, "إرسال", "ارسال", "send", "حذف", "امسح", "delete",
                     "شراء", "اشتري", "دفع", "payment", "purchase",
                     "uninstall", "factory", "ضبط المصنع", "كلمة السر", "password")) {

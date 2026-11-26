@@ -9,11 +9,16 @@ const context = fs.readFileSync("android-companion/app/src/main/java/com/abanoub
 
 assert.match(qwen, /fun plan\(request: String, phoneContext: String/);
 assert.match(controller, /OfflinePlan\.fromModel\(engine\.plan\(command, phoneContext, LocalLearning\.rag\(context, command\)\)\)/);
+assert.doesNotMatch(controller, /DeviceInventory\.(apps|permissions|files|notifications)|NotificationInbox|CompanionAccessibilityService|run\(context, "screenshot"|tap_description|type_text/);
+assert.match(controller, /اختر الملف بنفسك/);
+assert.match(controller, /لا أقرأ محتوى الإشعارات/);
+assert.doesNotMatch(planner, /tap_text|tap_description|type_text|press_enter|press_search|clear_text|wait_for_text|scroll|press_back|press_home|read_screen|screenshot/);
+assert.match(planner, /لا تقرأ شاشة أي تطبيق آخر/);
 assert.match(controller, /engine\.verifyPlan\(command, planned\.toString\(\), phoneContext\)/);
 assert.match(context, /DeviceInventory\.device/);
-assert.match(context, /readScreen/);
+assert.doesNotMatch(context, /readScreen|CompanionAccessibilityService|\.put\("screen"/);
 assert.match(planner, /"open_note"/);
-assert.match(planner, /"press_enter"/);
+assert.doesNotMatch(planner, /tap_text|tap_description|type_text|press_enter|press_search|clear_text|wait_for_text|scroll|press_back|press_home|read_screen|screenshot/);
 assert.match(planner, /fun validate\(steps: JsonArray\)/);
 assert.match(controller, /put\("return_to_chat", "true"\)/);
 assert.match(controller, /تأكيد صريح/);
