@@ -8,6 +8,9 @@ const universalMigration = fs.readFileSync("supabase/migrations/20261007010000_c
 const android = fs.readFileSync("android-companion/app/src/main/java/com/abanoubai/companion/MainActivity.kt", "utf8");
 const manifest = fs.readFileSync("android-companion/app/src/main/AndroidManifest.xml", "utf8");
 const executor = fs.readFileSync("android-companion/app/src/main/java/com/abanoubai/companion/CommandExecutor.kt", "utf8");
+const runtime = fs.readFileSync("android-companion/app/src/main/java/com/abanoubai/companion/CompanionRuntime.kt", "utf8");
+const voice = fs.readFileSync("android-companion/app/src/main/java/com/abanoubai/companion/VoiceController.kt", "utf8");
+const inventory = fs.readFileSync("android-companion/app/src/main/java/com/abanoubai/companion/DeviceInventory.kt", "utf8");
 
 assert.match(companion, /const requiresApproval = supervisedKinds\.has\(kind\)/);
 assert.match(companion, /requires_approval: requiresApproval/);
@@ -34,5 +37,15 @@ for (const command of ["read_screen", "screen_text", "screenshot", "notification
 }
 assert.doesNotMatch(companion, /value="read_screen"|value="screenshot"|value="screen_text"|value="notification_inventory"|value="app_inventory"|value="file_inventory"/);
 assert.doesNotMatch(companion, /clipboard\.writeText\(sessionToken\)/);
+assert.doesNotMatch(manifest, /QUERY_ALL_PACKAGES|android.permission.CAMERA|ACCESS_COARSE_LOCATION|ACCESS_FINE_LOCATION|READ_EXTERNAL_STORAGE|READ_MEDIA_IMAGES|READ_MEDIA_VIDEO|READ_MEDIA_AUDIO/);
+assert.equal(fs.existsSync("android-companion/app/src/main/java/com/abanoubai/companion/CompanionAccessibilityService.kt"), false);
+assert.equal(fs.existsSync("android-companion/app/src/main/java/com/abanoubai/companion/CompanionNotificationListener.kt"), false);
+assert.equal(fs.existsSync("android-companion/app/src/main/res/xml/accessibility_service_config.xml"), false);
+assert.doesNotMatch(runtime, /reportScreenshot|reportScreenText|reportVoice|reportUserAction|screen_text|voice_transcript/);
+assert.doesNotMatch(voice, /fun listen\\(|CompanionRuntime/);
+assert.match(voice, /fun listenLocal\\(/);
+assert.doesNotMatch(inventory, /NotificationInbox|CompanionAccessibilityService|PackageManager|MediaStore|getInstalledApplications/);
+assert.doesNotMatch(android, /AppOpsManager|usageAccessOn|mediaAccessOn|REQUEST_CAMERA|REQUEST_LOCATION|REQUEST_MEDIA|Manifest\\.permission\\.CAMERA|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|READ_MEDIA_|READ_EXTERNAL_STORAGE|Device Admin|Usage Access|فهرس الوسائط/);
+assert.doesNotMatch(executor, /CompanionAccessibilityService|NotificationInbox|DeviceInventory\\.(apps|permissions|files|notifications)|ACTION_ACCESSIBILITY_SETTINGS|ACTION_NOTIFICATION_LISTENER_SETTINGS|ACTION_USAGE_ACCESS_SETTINGS/);
 console.log("Android cross-app screen/notification privacy gate: PASS (static policy regression checks)");
 console.log("companion auto-execution and YouTube search smoke test: PASS");

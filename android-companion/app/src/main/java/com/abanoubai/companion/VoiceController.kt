@@ -51,40 +51,6 @@ object VoiceController {
         }
     }
 
-    fun listen(context: Context, record: kotlinx.serialization.json.JsonObject) {
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
-            runCatching { listenNow(context, record) }.onFailure { CompanionRuntime.reportVoiceError(context, record, it.message ?: "فشل الاستماع") }
-        }
-    }
-
-    private fun listenNow(context: Context, record: kotlinx.serialization.json.JsonObject) {
-        require(ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) { "فعّل إذن الميكروفون أولًا" }
-        require(SpeechRecognizer.isRecognitionAvailable(context)) { "خدمة التعرف الصوتي غير متاحة" }
-        recognizer?.destroy()
-        recognizer = SpeechRecognizer.createSpeechRecognizer(context.applicationContext).apply {
-            setRecognitionListener(object : RecognitionListener {
-                override fun onResults(results: android.os.Bundle) {
-                    val text = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
-                    CompanionRuntime.reportVoice(context, record, text.ifBlank { "لم يتم التعرف على كلام" })
-                    destroy(); recognizer = null
-                }
-                override fun onError(error: Int) { CompanionRuntime.reportVoiceError(context, record, "فشل التعرف الصوتي: $error"); destroy(); recognizer = null }
-                override fun onReadyForSpeech(params: android.os.Bundle?) = Unit
-                override fun onBeginningOfSpeech() = Unit
-                override fun onRmsChanged(rmsdB: Float) = Unit
-                override fun onBufferReceived(buffer: ByteArray?) = Unit
-                override fun onEndOfSpeech() = Unit
-                override fun onPartialResults(partialResults: android.os.Bundle?) = Unit
-                override fun onEvent(eventType: Int, params: android.os.Bundle?) = Unit
-            })
-            startListening(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            })
-        }
-    }
-
     fun stop() { tts?.stop(); recognizer?.stopListening() }
     fun shutdown() { tts?.shutdown(); tts = null; recognizer?.destroy(); recognizer = null }
 }

@@ -143,7 +143,6 @@ object CommandExecutor {
 
     private fun openSetting(context: Context, setting: String) {
         val action = when (setting) {
-            "usage" -> Settings.ACTION_USAGE_ACCESS_SETTINGS
             "battery" -> Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
             "wifi" -> Settings.ACTION_WIFI_SETTINGS
             "bluetooth" -> Settings.ACTION_BLUETOOTH_SETTINGS
