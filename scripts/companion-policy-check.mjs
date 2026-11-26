@@ -42,10 +42,10 @@ assert.equal(fs.existsSync("android-companion/app/src/main/java/com/abanoubai/co
 assert.equal(fs.existsSync("android-companion/app/src/main/java/com/abanoubai/companion/CompanionNotificationListener.kt"), false);
 assert.equal(fs.existsSync("android-companion/app/src/main/res/xml/accessibility_service_config.xml"), false);
 assert.doesNotMatch(runtime, /reportScreenshot|reportScreenText|reportVoice|reportUserAction|screen_text|voice_transcript/);
-assert.doesNotMatch(voice, /fun listen\\(|CompanionRuntime/);
-assert.match(voice, /fun listenLocal\\(/);
+assert.doesNotMatch(voice, /fun listen\(|CompanionRuntime/);
+assert.match(voice, /fun listenLocal\(/);
 assert.doesNotMatch(inventory, /NotificationInbox|CompanionAccessibilityService|PackageManager|MediaStore|getInstalledApplications/);
-assert.doesNotMatch(android, /AppOpsManager|usageAccessOn|mediaAccessOn|REQUEST_CAMERA|REQUEST_LOCATION|REQUEST_MEDIA|Manifest\\.permission\\.CAMERA|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|READ_MEDIA_|READ_EXTERNAL_STORAGE|Device Admin|Usage Access|فهرس الوسائط/);
-assert.doesNotMatch(executor, /CompanionAccessibilityService|NotificationInbox|DeviceInventory\\.(apps|permissions|files|notifications)|ACTION_ACCESSIBILITY_SETTINGS|ACTION_NOTIFICATION_LISTENER_SETTINGS|ACTION_USAGE_ACCESS_SETTINGS/);
+assert.doesNotMatch(android, /AppOpsManager|usageAccessOn|mediaAccessOn|REQUEST_CAMERA|REQUEST_LOCATION|REQUEST_MEDIA|Manifest\.permission\.CAMERA|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|READ_MEDIA_|READ_EXTERNAL_STORAGE|Device Admin|Usage Access|فهرس الوسائط/);
+assert.doesNotMatch(executor, /CompanionAccessibilityService|NotificationInbox|DeviceInventory\.(apps|permissions|files|notifications)|ACTION_ACCESSIBILITY_SETTINGS|ACTION_NOTIFICATION_LISTENER_SETTINGS|ACTION_USAGE_ACCESS_SETTINGS/);
 console.log("Android cross-app screen/notification privacy gate: PASS (static policy regression checks)");
 console.log("companion auto-execution and YouTube search smoke test: PASS");
