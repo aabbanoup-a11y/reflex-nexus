@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.Manifest
 import android.app.AppOpsManager
 import android.app.ActivityManager
-import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.net.ConnectivityManager
@@ -73,10 +72,6 @@ class MainActivity : AppCompatActivity() {
                     .onFailure { android.util.Log.e("AbanoubAICompanion", "Could not restart companion runtime after pairing", it) }
             }
         }
-
-        @JavascriptInterface fun openAccessibility() = runOnUiThread { openSettings(Settings.ACTION_ACCESSIBILITY_SETTINGS) }
-
-        @JavascriptInterface fun isAccessibilityOn(): Boolean = CompanionAccessibilityService.instance != null
 
         @JavascriptInterface fun stop() = runOnUiThread {
             CompanionRuntime.stop(this@MainActivity)
@@ -163,10 +158,6 @@ class MainActivity : AppCompatActivity() {
         return box
     }
 
-    private fun notificationAccessOn(): Boolean {
-        val component = ComponentName(this, CompanionNotificationListener::class.java).flattenToString()
-        return Settings.Secure.getString(contentResolver, "enabled_notification_listeners").orEmpty().split(':').contains(component)
-    }
 
     private fun usageAccessOn(): Boolean {
         val appOps = getSystemService(APP_OPS_SERVICE) as AppOpsManager
@@ -202,18 +193,12 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(title)
         root.addView(subtitle)
-        root.addView(setupItem("1  Accessibility", "مطلوبة للتحكم المرئي: فتح التطبيقات، الضغط، الكتابة والتنقل. لا يتم تفعيلها من التطبيق.", CompanionAccessibilityService.instance != null) {
-            openSettings(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-        })
         val power = getSystemService(POWER_SERVICE) as PowerManager
         root.addView(setupItem("2  البطارية والعمل في الخلفية", "تمنع Oppo من إيقاف الاتصال. اختر AbanoubAI يدويًا ثم اجعله بدون قيود.", if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) power.isIgnoringBatteryOptimizations(packageName) else null) {
             openSettings(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
         })
         root.addView(setupItem("3  التشغيل التلقائي وإعدادات التطبيق", "التشغيل التلقائي خاص بـ ColorOS وقد لا يمكن للتطبيق قراءته. فعّله يدويًا من App Launch.", null) {
             openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
-        })
-        root.addView(setupItem("4  الوصول إلى الإشعارات", "اختياري وحساس: يسمح بقراءة الإشعارات التي يختار Android تمريرها. لا يتم تفعيله تلقائيًا.", notificationAccessOn()) {
-            openSettings("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
         })
         root.addView(setupItem("5  Usage Access", "اختياري: يعرض إحصاءات استخدام التطبيقات فقط، ولا يمنح قراءة كلمات المرور أو قواعد بيانات التطبيقات.", usageAccessOn()) {
             openSettings(Settings.ACTION_USAGE_ACCESS_SETTINGS)
@@ -242,7 +227,7 @@ class MainActivity : AppCompatActivity() {
             openSettings("android.app.action.DEVICE_ADMIN_SETTINGS")
         })
         val note = TextView(this).apply {
-            text = "مهم: العناصر أعلاه لا تُفعّل تلقائيًا؛ الحالة المعروضة تقرأ ما فعّلته أنت في Android. لا توجد صلاحية واحدة تمنح تحكمًا كاملًا. لا تمنح الإشعارات أو الموقع أو الكاميرا أو الميكروفون إلا عند الحاجة. التطبيق لا يقرأ كلمات المرور أو قواعد بيانات التطبيقات الخاصة."
+            text = "مهم: لا يقرأ التطبيق محتوى شاشة التطبيقات الأخرى أو الإشعارات. لا تفعّل خدمات وصول واسعة؛ استخدم منتقي Android لاختيار الملفات يدويًا."
             textSize = 14f
             setTextColor(0xffffd180.toInt())
             setPadding(0, 18, 0, 12)

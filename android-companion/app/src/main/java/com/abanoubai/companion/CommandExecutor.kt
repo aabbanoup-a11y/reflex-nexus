@@ -18,7 +18,20 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
 object CommandExecutor {
+    private val disabledCrossAppCommands = setOf(
+        "back", "home", "recents",
+        "tap_text", "tap_id", "tap_description", "tap_coordinates", "long_press",
+        "type_text", "press_enter", "press_search", "clear_text", "screenshot",
+        "read_screen", "screen_text", "swipe", "scroll", "wait_for_text",
+        "press_back", "press_home", "open_notifications", "quick_settings",
+        "app_inventory", "app_permissions", "file_inventory", "file_read",
+        "notification_inventory", "listen"
+    )
+
     fun execute(context: Context, kind: String, record: JsonObject): String {
+        require(kind !in disabledCrossAppCommands) {
+            "تم تعطيل قراءة محتوى التطبيقات الأخرى والإشعارات والتحكم العام حفاظًا على الخصوصية."
+        }
         val payload = record["payload"] as? JsonObject
         val delegated = payload?.get("agent_action")?.jsonPrimitive?.contentOrNull
         if (kind == "tap_text" && !delegated.isNullOrBlank()) {
@@ -31,7 +44,7 @@ object CommandExecutor {
                 val intent = context.packageManager.getLaunchIntentForPackage(packageName) ?: error("التطبيق غير مثبت أو لا يملك شاشة تشغيل")
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
-                waitForScreenReady(packageName)
+                Thread.sleep(450L)
                 "تم فتح التطبيق: $packageName"
             }
             "open_note" -> {
@@ -46,7 +59,7 @@ object CommandExecutor {
                     else -> error("لا يوجد تطبيق ملاحظات متاح")
                 }
                 context.startActivity(intent)
-                waitForScreenReady(null)
+                Thread.sleep(450L)
                 "تم فتح تطبيق الملاحظات"
             }
             "open_settings" -> {
@@ -54,13 +67,13 @@ object CommandExecutor {
                 openSetting(context, setting)
                 "تم فتح إعدادات: $setting"
             }
-            "open_chrome" -> { openChrome(context); waitForScreenReady("com.android.chrome"); "تم فتح Chrome" }
+            "open_chrome" -> { openChrome(context); Thread.sleep(450L); "تم فتح Chrome" }
             "open_camera" -> { openCamera(context); "تم فتح الكاميرا" }
             "open_url" -> {
                 val url = payload?.get("url")?.jsonPrimitive?.contentOrNull ?: error("الرابط غير موجود")
                 require(url.startsWith("https://") || url.startsWith("http://")) { "الرابط غير مسموح" }
                 openUrl(context, url)
-                waitForScreenReady(null)
+                Thread.sleep(450L)
                 "تم فتح الرابط"
             }
             "open_document" -> {
@@ -116,7 +129,7 @@ object CommandExecutor {
         return "بدأ تنزيل $name، وستظهر حالته في إشعارات Android"
     }
 
-    private fun waitForScreenReady(expectedPackage: String?) {
+    private fun Thread.sleep(450L) {
         val start = System.currentTimeMillis()
         while (System.currentTimeMillis() - start < 6000L) {
             val service = CompanionAccessibilityService.instance
@@ -143,12 +156,10 @@ object CommandExecutor {
         val results = mutableListOf<String>()
         steps.forEachIndexed { index, item ->
             val step = item.jsonObject
-            val screen = CompanionAccessibilityService.instance?.readScreen().orEmpty()
             val ifText = step["if_text"]?.jsonPrimitive?.contentOrNull
             val unlessText = step["unless_text"]?.jsonPrimitive?.contentOrNull
-            if ((!ifText.isNullOrBlank() && !screen.contains(ifText, ignoreCase = true)) || (!unlessText.isNullOrBlank() && screen.contains(unlessText, ignoreCase = true))) {
-                results += "الخطوة ${index + 1}: تم تخطيها بالشرط"
-                return@forEachIndexed
+            require(ifText.isNullOrBlank() && unlessText.isNullOrBlank()) {
+                "شروط workflow المعتمدة على قراءة الشاشة غير مفعّلة."
             }
             val kind = step["kind"]?.jsonPrimitive?.contentOrNull ?: run { results += "الخطوة ${index + 1} فشلت: الأمر مفقود"; return@forEachIndexed }
             val stepPayload = step["payload"] as? JsonObject ?: kotlinx.serialization.json.buildJsonObject { }
@@ -173,25 +184,8 @@ object CommandExecutor {
         val steps = payload?.get("steps") as? JsonArray ?: error("خطوات workflow غير موجودة")
         require(steps.isNotEmpty() && steps.size <= 50) { "workflow يحتاج من 1 إلى 50 خطوة" }
         val until = payload["until_text"]?.jsonPrimitive?.contentOrNull
-        val cycles = (payload["max_cycles"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 100).coerceIn(1, 100)
-        val results = mutableListOf<String>()
-        for (cycle in 0 until cycles) {
-            val screen = CompanionAccessibilityService.instance?.readScreen().orEmpty()
-            if (!until.isNullOrBlank() && screen.contains(until, ignoreCase = true)) {
-                results += "تحقق هدف workflow في الدورة ${cycle + 1}: $until"
-                break
-            }
-            val result = executeBatch(context, kotlinx.serialization.json.buildJsonObject { put("steps", steps) })
-            results += "الدورة ${cycle + 1}: $result"
-            if (until.isNullOrBlank()) break
-            Thread.sleep(300L)
-        }
-        return results.takeLast(100).joinToString("\n")
-    }
-
-    private fun global(context: Context, action: Int, message: String): String {
-        CompanionAccessibilityService.instance?.performGlobalAction(action) ?: error("Accessibility غير مفعّلة")
-        return message
+        require(until.isNullOrBlank()) { "تحقق workflow المعتمد على قراءة الشاشة غير مفعّل." }
+        return executeBatch(context, kotlinx.serialization.json.buildJsonObject { put("steps", steps) })
     }
 
     private fun openSetting(context: Context, setting: String) {
